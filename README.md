@@ -1,6 +1,6 @@
 # 🚀 Laravel Multi-Environment Deployment Guide
 
-Panduan ini menjelaskan langkah-langkah **manual** untuk melakukan deployment Laravel ke berbagai environment (`local`, `staging`, `production`) berdasarkan script `deploy.sh`.
+Panduan ini menjelaskan langkah-langkah **manual** untuk melakukan deployment Laravel
 
 ---
 
@@ -38,12 +38,36 @@ composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
 ---
 
-### 3. Salin File .env
+### 3. Buat File .env
+<!--
+APP_NAME="Sistem Penjadwalan"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
 
-```bash
-cp .env.example .env
-```
+# Kunci ini akan kita isi di Langkah 3
+APP_KEY=base64:HC0ZJqyxMmrd1CsTGMdnzrt61Zezxebk3keBTgtZ9Nc=
 
+LOG_CHANNEL=stack
+LOG_LEVEL=debug
+
+# --- KONFIGURASI DATABASE ANDA ---
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=db_penjadwalan_ft
+DB_USERNAME=root
+DB_PASSWORD=
+# ----------------------------------
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+MEMCACHE_HOST=127.0.0.1
+-->
 ---
 
 ### 4. Generate Application Key
@@ -67,6 +91,8 @@ chmod -R 775 storage bootstrap/cache
 ```bash
 # Hanya untuk local/staging
 php artisan db:seed --force
+atau
+php artisan migrate:fresh --seed
 ```
 
 ---
@@ -102,31 +128,10 @@ npm run dev
 # Untuk production:
 npm run build
 ```
-
----
-
-## 🔁 Alternatif Otomatis: Gunakan Script
-
-Gunakan script `deploy.sh` untuk mempercepat proses:
-
-```bash
-# Tambahkan permission untuk eksekusi jika belum
-chmod +x deploy.sh
-
-# Jalankan sesuai environment:
-./deploy.sh local
-./deploy.sh staging
-./deploy.sh production
-```
-
 ---
 
 ## 📝 Catatan Tambahan
 
 - Selalu **backup database** sebelum melakukan migrasi atau seeding di production.
-- Pastikan menggunakan HTTPS di environment `production` dan `staging`.
-- Untuk `queue`, `scheduler`, atau `horizon`, setup tambahan mungkin dibutuhkan.
-
----
 
 Happy deploying! 🚀
