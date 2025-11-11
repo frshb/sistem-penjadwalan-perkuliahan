@@ -39,7 +39,7 @@ composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 ---
 
 ### 3. Buat File .env
-<!--
+```
 APP_NAME="Sistem Penjadwalan"
 APP_ENV=local
 APP_DEBUG=true
@@ -67,7 +67,7 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 MEMCACHE_HOST=127.0.0.1
--->
+```
 ---
 
 ### 4. Generate Application Key
