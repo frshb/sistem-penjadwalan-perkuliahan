@@ -156,11 +156,9 @@
 
     <!-- ===== AWAL MODAL TAMBAH PRODI ===== -->
     <!-- Overlay -->
-    <!-- PERUBAHAN: Mengganti bg-black bg-opacity-50 dengan bg-[rgba(0,0,0,0.5)] -->
     <div id="modal-overlay" class="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-20 hidden"></div>
 
     <!-- Konten Modal -->
-    <!-- z-40 (agar di atas sidebar dan overlay) -->
     <div id="tambah-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-40 w-full max-w-md hidden">
         <div class="p-6">
             <!-- Header Modal -->
@@ -240,7 +238,6 @@
                 if(modal && overlay) {
                     modal.classList.remove('hidden');
                     overlay.classList.remove('hidden');
-                    // PERUBAHAN: Tambahkan blur ke main content
                     if(mainContent) mainContent.classList.add('filter', 'blur-sm', 'pointer-events-none');
                 }
             }
@@ -249,7 +246,6 @@
                 if(modal && overlay) {
                     modal.classList.add('hidden');
                     overlay.classList.add('hidden');
-                    // PERUBAHAN: Hapus blur dari main content
                     if(mainContent) mainContent.classList.remove('filter', 'blur-sm', 'pointer-events-none');
                 }
             }
