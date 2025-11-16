@@ -104,7 +104,6 @@
                     </div>
                 </div>
 
-
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
                     <div class="overflow-x-auto">
                         <table class="min-w-full bg-white">
