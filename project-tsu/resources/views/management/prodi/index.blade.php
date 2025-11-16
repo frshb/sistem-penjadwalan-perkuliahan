@@ -104,6 +104,7 @@
                                 <tr>
                                     <th class="w-16 text-left py-3 px-4 uppercase font-semibold text-sm">No</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Program Studi</th>
+                                    <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Kode Prodi</th>
                                     <th class="w-48 text-left py-3 px-4 uppercase font-semibold text-sm">Aksi</th>
                                 </tr>
                             </thead>
@@ -113,6 +114,7 @@
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                         <td class="text-left py-3 px-4">{{ $loop->iteration }}</td>
                                         <td class="text-left py-3 px-4">{{ $prodi->nama_prodi }}</td>
+                                        <td class="text-left py-3 px-4">{{ $prodi->kode_prodi }}</td>
                                         <td class="text-left py-3 px-4">
                                             <div class="flex space-x-2">
                                                 <a href="#" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-4 py-1.5 rounded-md hover:bg-yellow-500 text-sm font-medium">
@@ -154,11 +156,9 @@
 
     <!-- ===== AWAL MODAL TAMBAH PRODI ===== -->
     <!-- Overlay -->
-    <!-- PERUBAHAN: Mengganti bg-black bg-opacity-50 dengan bg-[rgba(0,0,0,0.5)] -->
     <div id="modal-overlay" class="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-20 hidden"></div>
 
     <!-- Konten Modal -->
-    <!-- z-40 (agar di atas sidebar dan overlay) -->
     <div id="tambah-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-40 w-full max-w-md hidden">
         <div class="p-6">
             <!-- Header Modal -->
@@ -174,6 +174,10 @@
             <!-- Body Modal (Form) -->
             <form action="{{ route('prodi.store') }}" method="POST" class="mt-6 space-y-6">
                 @csrf
+                <div class="flex items-center space-x-4">
+                    <label for="nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Id Prodi :</label>
+                    <input type="text" id="id_prodi" name="id_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                </div>
                 <!-- Baris Nama Prodi -->
                 <div class="flex items-center space-x-4">
                     <label for="nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Nama Prodi :</label>
@@ -243,7 +247,6 @@
                 if(modal && overlay) {
                     modal.classList.add('hidden');
                     overlay.classList.add('hidden');
-                    // PERUBAHAN: Hapus blur dari main content
                     if(mainContent) mainContent.classList.remove('filter', 'blur-sm', 'pointer-events-none');
                 }
             }
