@@ -117,8 +117,8 @@
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                         <td class="text-left py-3 px-4">{{ $loop->iteration }}</td>
                                         <td class="text-left py-3 px-4">{{ $ruangan->nama_ruang }}</td>
-                                        <td class="text-left py-3 px-4">{{ $ruangan->gedung }}</td>
-                                        <td class="text-left py-3 px-4">{{ $ruangan->lokasi }}</td>
+                                        <td class="text-left py-3 px-4">{{ $ruangan->gedung->nama_gedung }}</td>
+                                        <td class="text-left py-3 px-4">{{ $ruangan->gedung->lokasi }}</td>
                                         <td class="text-left py-3 px-4">{{ $ruangan->fasilitas }}</td>
                                         <td class="text-left py-3 px-4">{{ $ruangan->kapasitas }}</td>
                                         <td class="text-left py-3 px-4">
@@ -151,6 +151,7 @@
                     </div>
                 </div>
                 <!-- End Tabel Data --></div>
+
             <!-- End Card Konten Utama --></main>
         <!-- ===== End Main Content ===== --></div>
 

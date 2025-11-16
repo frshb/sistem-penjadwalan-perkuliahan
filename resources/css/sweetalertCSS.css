@@ -1,0 +1,41 @@
+SweetAlertCSS
+
+.my-sweetalert-popup {
+    border-radius: 1rem !important; /* 16px */
+}
+
+/* 2. Mengubah warna teks judul */
+.my-sweetalert-popup .swal2-title {
+    color: #047857 !important; /* Hijau (teal) tua */
+    font-weight: 700 !important;
+}
+
+/* 3. Mengubah warna teks konten (paragraf) menjadi hijau */
+.my-sweetalert-popup .swal2-html-container {
+    color: #15803d !important; /* Hijau (green-700) */
+}
+
+/* 4. Memberi style pada tombol "OK" (Konfirmasi) */
+.my-sweetalert-confirm-button {
+    background-color: #0D9488 !important; /* Warna Teal (teal-600) */
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important; /* 8px */
+    padding: 0.625rem 1.25rem !important; /* 10px 20px */
+}
+/* Style saat di-hover */
+.my-sweetalert-confirm-button:hover {
+    background-color: #0F766E !important; /* Teal-700 */
+}
+
+/* 5. Memberi style pada tombol "Batal" (Cancel) */
+.my-sweetalert-cancel-button {
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    padding: 0.625rem 1.25rem !important;
+    color: #1f2937 !important; /* Teks abu-abu tua */
+    background-color: #E5E7EB !important; /* Abu-abu (gray-200) */
+}
+/* Style saat di-hover */
+.my-sweetalert-cancel-button:hover {
+     background-color: #D1D5DB !important; /* Gray-300 */
+}
