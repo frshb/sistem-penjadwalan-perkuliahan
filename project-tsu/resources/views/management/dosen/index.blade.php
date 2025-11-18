@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Data | Dosen</title>
+
+    <!-- Memuat CSS dan JS dari Vite -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
 </head>
 <body class="bg-gray-100/50 overflow-x-hidden min-h-screen">
+
+    <!-- Tombol untuk MEMBUKA sidebar (muncul saat sidebar tertutup) -->
     <button id="sidebar-open-btn" class="fixed top-6 left-6 z-20 text-gray-600 hover:text-gray-900 hidden transition-all duration-300 ease-in-out">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -15,7 +19,10 @@
     </button>
 
     <div class="flex min-h-screen">
+
+        <!-- ===== Sidebar ===== -->
         <aside id="sidebar" class="w-64 flex-shrink-0 bg-white shadow-md flex flex-col transition-all duration-300 ease-in-out fixed inset-y-0 left-0 z-30">
+            <!-- Logo & Tombol Toggle (untuk MENUTUP) -->
             <div class="h-20 flex items-center justify-between px-6 border-b border-gray-200">
                 <img src="{{ asset('1151.jpg') }}" alt="TSU Logo" class="h-10">
                 <button id="sidebar-toggle" class="text-gray-500 hover:text-gray-800">
@@ -25,7 +32,7 @@
                 </button>
             </div>
 
-
+            <!-- Navigasi -->
             <nav class="px-4 py-4 space-y-1">
                 <a href="#" class="flex items-center px-4 py-2 text-gray-700 rounded-lg hover:bg-gray-100">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 12h.01M15 12h.01M12 15h.01M15 15h.01M9 15h.01"></path></svg>

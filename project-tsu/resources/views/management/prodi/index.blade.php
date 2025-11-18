@@ -47,7 +47,7 @@
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                     Management Mata Kuliah
                 </a>
-                <a href="{{ route('dosen.index') }} class="flex items-center py-2 pl-12 pr-4 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900">
+                <a href="#" class="flex items-center py-2 pl-12 pr-4 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     Management Data Dosen
                 </a>
@@ -74,7 +74,7 @@
         <main id="main-content" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-64">
 
             <div class="flex items-center">
-                <div class="flex flex-col">
+                <div class="flex flex-col" id="title-decorator">
                     <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
                     <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
                 </div>
@@ -83,7 +83,6 @@
                     Management Data
                 </h1>
             </div>
-
 
             <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6">
 
@@ -104,7 +103,7 @@
                                 <tr>
                                     <th class="w-16 text-left py-3 px-4 uppercase font-semibold text-sm">No</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Program Studi</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Kode Prodi</th>
+                                    <th class="w-40 text-left py-3 px-4 uppercase font-semibold text-sm">Kode Prodi</th>
                                     <th class="w-48 text-left py-3 px-4 uppercase font-semibold text-sm">Aksi</th>
                                 </tr>
                             </thead>
@@ -114,15 +113,21 @@
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                         <td class="text-left py-3 px-4">{{ $loop->iteration }}</td>
                                         <td class="text-left py-3 px-4">{{ $prodi->nama_prodi }}</td>
-                                        <td class="text-left py-3 px-4">{{ $prodi->kode_prodi }}</td>
+                                        <td class="text-left py-3 px-4">{{ $prodi->kode_prodi ?? '-' }}</td>
                                         <td class="text-left py-3 px-4">
                                             <div class="flex space-x-2">
-                                                <a href="#" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-4 py-1.5 rounded-md hover:bg-yellow-500 text-sm font-medium">
+                                                <!--Tombol Edit -->
+                                                <button type="button"
+                                                        class="edit-prodi-btn flex items-center justify-center bg-yellow-400 text-gray-900 px-4 py-1.5 rounded-md hover:bg-yellow-500 text-sm font-medium"
+                                                        data-nama="{{ $prodi->nama_prodi }}"
+                                                        data-kode="{{ $prodi->kode_prodi ?? '' }}"
+                                                        data-url="{{ route('prodi.update', $prodi) }}">
+
                                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
-                                                </a>
+                                                </button>
                                                 <!-- Tombol Hapus -->
-                                                <form action="#" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus prodi ini?');">
+                                                <form action="{{ route('prodi.destroy', $prodi) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus prodi ini?');">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 text-sm font-medium">
@@ -133,6 +138,7 @@
                                             </div>
                                         </td>
                                     </tr>
+
                                 @empty
                                     <!-- Jika data kosong -->
                                     <tr>
@@ -156,9 +162,11 @@
 
     <!-- ===== AWAL MODAL TAMBAH PRODI ===== -->
     <!-- Overlay -->
+    <!-- PERUBAHAN: Mengganti bg-black bg-opacity-50 dengan bg-[rgba(0,0,0,0.5)] -->
     <div id="modal-overlay" class="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-20 hidden"></div>
 
     <!-- Konten Modal -->
+    <!-- z-40 (agar di atas sidebar dan overlay) -->
     <div id="tambah-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-40 w-full max-w-md hidden">
         <div class="p-6">
             <!-- Header Modal -->
@@ -174,10 +182,6 @@
             <!-- Body Modal (Form) -->
             <form action="{{ route('prodi.store') }}" method="POST" class="mt-6 space-y-6">
                 @csrf
-                <div class="flex items-center space-x-4">
-                    <label for="nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Id Prodi :</label>
-                    <input type="text" id="id_prodi" name="id_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                </div>
                 <!-- Baris Nama Prodi -->
                 <div class="flex items-center space-x-4">
                     <label for="nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Nama Prodi :</label>
@@ -202,6 +206,40 @@
             </form>
         </div>
     </div>
+    <div id="edit-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-40 w-full max-w-md hidden">
+        <div class="p-6">
+            <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                <h2 class="text-xl font-bold text-teal-800">Edit Program Studi</h2>
+                <button id="close-edit-modal-btn" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="edit-prodi-form" action="" method="POST" class="mt-6 space-y-6">
+                @csrf
+                @method('PUT') <div class="flex items-center space-x-4">
+                    <label for="edit_nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Nama Prodi :</label>
+                    <input type="text" id="edit_nama_prodi" name="nama_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <label for="edit_kode_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Kode Prodi :</label>
+                    <input type="text" id="edit_kode_prodi" name="kode_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+
+                <div class="flex justify-end space-x-4 pt-6">
+                    <button id="cancel-edit-modal-btn" type="button" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">
+                        Update
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     <!-- ===== AKHIR MODAL ===== -->
 
 
@@ -213,17 +251,20 @@
             const openBtn = document.getElementById('sidebar-open-btn');
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('main-content');
+            const titleDecorator = document.getElementById('title-decorator');
 
             if (closeBtn && openBtn && sidebar && mainContent) {
                 closeBtn.addEventListener('click', function() {
                     sidebar.classList.add('-translate-x-full');
                     mainContent.classList.remove('ml-64');
                     openBtn.classList.remove('hidden');
+                    titleDecorator.classList.add('hidden');
                 });
                 openBtn.addEventListener('click', function() {
                     sidebar.classList.remove('-translate-x-full');
                     mainContent.classList.add('ml-64');
                     openBtn.classList.add('hidden');
+                    titleDecorator.classList.remove('hidden');
                 });
             }
 
@@ -247,6 +288,7 @@
                 if(modal && overlay) {
                     modal.classList.add('hidden');
                     overlay.classList.add('hidden');
+                    // PERUBAHAN: Hapus blur dari main content
                     if(mainContent) mainContent.classList.remove('filter', 'blur-sm', 'pointer-events-none');
                 }
             }
@@ -256,9 +298,69 @@
             if(cancelModalBtn) cancelModalBtn.addEventListener('click', closeModal);
             if(overlay) overlay.addEventListener('click', closeModal);
 
+            // === LOGIKA MODAL EDIT ===
+            const editModal = document.getElementById('edit-prodi-modal');
+            const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+            const cancelEditModalBtn = document.getElementById('cancel-edit-modal-btn');
+            const editButtons = document.querySelectorAll('.edit-prodi-btn'); // Ambil SEMUA tombol edit
+
+            const editForm = document.getElementById('edit-prodi-form');
+            const inputEditNama = document.getElementById('edit_nama_prodi');
+            const inputEditKode = document.getElementById('edit_kode_prodi');
+
+            // Fungsi untuk membuka modal edit
+            function openEditModal(button) {
+                // 1. Ambil data dari 'data-*' attributes tombol
+                const nama = button.dataset.nama;
+                const kode = button.dataset.kode;
+                const url = button.dataset.url;
+
+                // 2. Isi form di dalam modal
+                inputEditNama.value = nama;
+                inputEditKode.value = kode;
+                editForm.action = url; // Set action form-nya!
+
+                // 3. Tampilkan modal dan overlay
+                if(editModal && overlay) {
+                    editModal.classList.remove('hidden');
+                    overlay.classList.remove('hidden');
+                    if(mainContent) mainContent.classList.add('filter', 'blur-sm', 'pointer-events-none');
+                }
+            }
+
+            // Fungsi untuk menutup modal edit
+            function closeEditModal() {
+                if(editModal && overlay) {
+                    editModal.classList.add('hidden');
+                    overlay.classList.add('hidden');
+                    if(mainContent) mainContent.classList.remove('filter', 'blur-sm', 'pointer-events-none');
+                }
+            }
+
+            // Tambahkan event listener ke SETIAP tombol edit
+            editButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    openEditModal(this); // 'this' merujuk ke tombol yang diklik
+                });
+            });
+
+            // Tambahkan event listener untuk menutup modal edit
+            if(closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditModal);
+            if(cancelEditModalBtn) cancelEditModalBtn.addEventListener('click', closeEditModal);
+
+
+            // === LOGIKA OVERLAY ===
+            // Overlay click sekarang menutup KEDUA modal (jika terbuka)
+            if(overlay) {
+                overlay.addEventListener('click', function() {
+                    closeTambahModal();
+                    closeEditModal();
+                });
+            }
+
         });
     </script>
     <!-- ===== End JavaScript ===== -->
-
+    @include('sweetalert::alert')
 </body>
 </html>
