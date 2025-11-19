@@ -2,30 +2,55 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Gedung;   // <-- Tambahkan ini
-use App\Models\Ruangan;  // <-- Tambahkan ini
-use Illuminate\Http\Request;
+use App\Models\Gedung;
+use App\Models\Ruangan;
+use Illuminate\Http\Request; // <-- TAMBAHKAN INI
 
 class RuanganController extends Controller
 {
     /**
-     * Menampilkan daftar semua ruangan.
+     * Menampilkan daftar semua ruangan, dengan filter pencarian dan pengelompokan.
      */
-    public function index()
+    public function index(Request $request) // <-- TAMBAHKAN $request
     {
-        // Ambil data ruangan DAN data gedung terkait (Eager Loading)
-        $ruangans = Ruangan::with('gedung')->orderBy('nama_ruang', 'asc')->get();
+        // 1. Ambil kata kunci pencarian
+        $searchTerm = $request->input('search');
 
-        // Kirim data ke view
-        return view('management.ruangan.index', compact('ruangans'));
+        // 2. Mulai query builder
+        $query = Ruangan::with('gedung');
+
+        // 3. Terapkan filter pencarian HANYA jika searchTerm ada
+        if ($searchTerm) {
+            $query->where('nama_ruang', 'like', '%' . $searchTerm . '%');
+        }
+
+        // 4. Ambil semua data (yang sudah difilter atau belum)
+        $ruangans = $query->orderBy('nama_ruang', 'asc')->get();
+
+        // 5. Buat koleksi untuk pengelompokan
+        $ruangansByGedung = collect();
+
+        // 6. HANYA lakukan pengelompokan jika TIDAK ADA PENCARIAN
+        if (!$searchTerm) {
+            $ruangansByGedung = $ruangans->groupBy('gedung.nama_gedung')->sortKeys();
+        }
+
+        // 7. Kirim SEMUA data ke view
+        return view('management.ruangan.index', [
+            'ruangans' => $ruangans, // Untuk hasil pencarian
+            'ruangansByGedung' => $ruangansByGedung, // Untuk tampilan tab
+            'searchTerm' => $searchTerm // Untuk menampilkan value di input search
+        ]);
     }
+
+    // ... (Method create, store, edit, update, destroy Anda tidak berubah) ...
+    // ... (Pastikan method lain tetap ada di sini) ...
 
     /**
      * Menampilkan form untuk menambah ruangan baru.
      */
     public function create()
     {
-        // Ambil data gedung untuk dropdown/select
         $gedungs = Gedung::orderBy('nama_gedung', 'asc')->get();
         return view('management.ruangan.create', compact('gedungs'));
     }
@@ -35,18 +60,13 @@ class RuanganController extends Controller
      */
     public function store(Request $request)
     {
-        // Validasi input
         $request->validate([
             'nama_ruang' => 'required|string|max:50|unique:ruang,nama_ruang',
             'id_gedung' => 'required|integer|exists:gedung,id_gedung',
             'kapasitas' => 'required|integer|min:1',
             'fasilitas' => 'nullable|string',
         ]);
-
-        // Simpan data baru
         Ruangan::create($request->all());
-
-        // Redirect kembali ke halaman index dengan pesan sukses
         return redirect()->route('ruangan.index')
                          ->with('success', 'Ruangan berhasil ditambahkan.');
     }
@@ -54,9 +74,8 @@ class RuanganController extends Controller
     /**
      * Menampilkan form untuk mengedit ruangan.
      */
-    public function edit(Ruangan $ruangan) // <-- Route Model Binding
+    public function edit(Ruangan $ruangan)
     {
-        // $ruangan otomatis terisi berdasarkan ID dari URL
         $gedungs = Gedung::orderBy('nama_gedung', 'asc')->get();
         return view('management.ruangan.edit', compact('ruangan', 'gedungs'));
     }
@@ -66,19 +85,13 @@ class RuanganController extends Controller
      */
     public function update(Request $request, Ruangan $ruangan)
     {
-        // Validasi input
         $request->validate([
-            // 'unique' harus mengabaikan ID saat ini
             'nama_ruang' => 'required|string|max:50|unique:ruang,nama_ruang,' . $ruangan->id_ruang . ',id_ruang',
             'id_gedung' => 'required|integer|exists:gedung,id_gedung',
             'kapasitas' => 'required|integer|min:1',
             'fasilitas' => 'nullable|string',
         ]);
-
-        // Update data
         $ruangan->update($request->all());
-
-        // Redirect kembali ke halaman index dengan pesan sukses
         return redirect()->route('ruangan.index')
                          ->with('success', 'Data ruangan berhasil diperbarui.');
     }
@@ -93,9 +106,8 @@ class RuanganController extends Controller
             return redirect()->route('ruangan.index')
                              ->with('success', 'Data ruangan berhasil dihapus.');
         } catch (\Exception $e) {
-            // Tangani jika ada error (misal: foreign key constraint)
             return redirect()->route('ruangan.index')
-                             ->with('error', 'Gagal menghapus data. Data mungkin masih digunakan di jadwal.');
+                             ->with('error', 'Gagal menghapus data. Data mungkin still digunakan di jadwal.');
         }
     }
 }

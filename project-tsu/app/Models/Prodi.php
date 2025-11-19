@@ -22,7 +22,11 @@ class Prodi extends Model
         'kode_prodi',
     ];
 
-
+    /**
+     * [BARU]
+     * Boot method untuk model.
+     * Ini akan dijalankan secara otomatis oleh Laravel.
+     */
     protected static function boot()
     {
         parent::boot();

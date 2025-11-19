@@ -206,6 +206,7 @@
                         </table>
                     </div>
                 </div>
+
                 <!-- ===== AKHIR TABEL ===== -->
 
                 <!-- ===== AWAL PAGINATION LINKS ===== -->

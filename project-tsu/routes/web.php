@@ -5,6 +5,7 @@ use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\RuanganController;
 use App\Http\Controllers\DosenController;
 use App\Http\Controllers\MataKuliahController;
+use App\Http\Controllers\JadwalController;
 
 
 
@@ -33,3 +34,7 @@ Route::get('/management/matakuliah/export-excel', [MataKuliahController::class, 
 Route::resource('/management/ruangan', RuanganController::class)
     ->except(['show']) // <-- 'show' biasanya tidak perlu untuk tabel manajemen
     ->names('ruangan');
+
+Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
+Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
+Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
