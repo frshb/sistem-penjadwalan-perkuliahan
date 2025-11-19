@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Prodi; // Import Model Prodi
 use Illuminate\Http\Request;
 
+
 class ProdiController extends Controller
 {
-    /**
-     * Menampilkan daftar semua program studi. (READ)
-     */
+
     public function index()
     {
         $prodis = Prodi::all();
@@ -19,6 +18,7 @@ class ProdiController extends Controller
     }
 
     /**
+
      * Menyimpan program studi baru ke database. (CREATE)
      */
     public function store(Request $request)
