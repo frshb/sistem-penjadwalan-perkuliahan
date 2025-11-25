@@ -17,6 +17,7 @@ Route::get('/', function () {
 Route::get('/management/prodi', [ProdiController::class, 'index'])->name('prodi.index');
 Route::post('/management/prodi', [ProdiController::class, 'store'])->name('prodi.store');
 Route::delete('/management/prodi/{prodi}', [ProdiController::class, 'destroy'])->name('prodi.destroy');
+Route::put('/management/prodi/{id}', [ProdiController::class, 'update'])->name('prodi.update');
 
 // (Route untuk update/edit akan butuh ini nanti)
 // Route::get('/management/prodi/{prodi}/edit', [ProdiController::class, 'edit'])->name('prodi.edit');

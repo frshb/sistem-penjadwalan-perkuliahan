@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB; // <-- [BARU] Import DB facade
 
 class Prodi extends Model
@@ -21,6 +22,8 @@ class Prodi extends Model
         'nama_prodi',
         'kode_prodi',
     ];
+
+
 
     /**
      * [BARU]
