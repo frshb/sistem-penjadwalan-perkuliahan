@@ -36,6 +36,9 @@ Route::resource('/management/ruangan', RuanganController::class)
     ->except(['show']) // <-- 'show' biasanya tidak perlu untuk tabel manajemen
     ->names('ruangan');
 
-Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
-Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
-Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
+//Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
+//Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
+//Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
+
+Route::get('/penjadwalan', [JadwalController::class, 'index'])->name('penjadwalan.index');
+Route::post('/penjadwalan/proses', [JadwalController::class, 'proses'])->name('penjadwalan.proses'); 
