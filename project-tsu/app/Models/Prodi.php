@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB; // <-- [BARU] Import DB facade
 
 class Prodi extends Model
@@ -23,6 +24,12 @@ class Prodi extends Model
     ];
 
 
+
+    /**
+     * [BARU]
+     * Boot method untuk model.
+     * Ini akan dijalankan secara otomatis oleh Laravel.
+     */
     protected static function boot()
     {
         parent::boot();
