@@ -1,25 +1,55 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\RuanganController;
 use App\Http\Controllers\DosenController;
+use App\Http\Controllers\MataKuliahController;
+use App\Http\Controllers\JadwalController;
 
 
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// 🏠 Halaman Utama
+// use Illuminate\Support\Facades\Auth;
 
+// Route::get('/', function () {
+//     return Auth::check()
+//         ? redirect()->route('dashboard')
+//         : redirect()->route('login');
+// });
+
+// // LOGIN PAGE
+// Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+// Route::post('/login', [AuthController::class, 'login']);
+
+// // DASHBOARD (protected)
+// Route::get('/dashboard', function () {
+//     return view('dashboard');
+// })->middleware('auth')->name('dashboard');
 
 Route::get('/management/prodi', [ProdiController::class, 'index'])->name('prodi.index');
 Route::post('/management/prodi', [ProdiController::class, 'store'])->name('prodi.store');
 Route::delete('/management/prodi/{prodi}', [ProdiController::class, 'destroy'])->name('prodi.destroy');
+Route::put('/management/prodi/{id}', [ProdiController::class, 'update'])->name('prodi.update');
 
 // (Route untuk update/edit akan butuh ini nanti)
 // Route::get('/management/prodi/{prodi}/edit', [ProdiController::class, 'edit'])->name('prodi.edit');
 Route::put('/management/prodi/{prodi}', [ProdiController::class, 'update'])->name('prodi.update');
 
 Route::get('/management/ruangan', [RuanganController::class, 'index'])->name('ruangan.index');
+
 Route::get('/management/dosen', [DosenController::class, 'index'])->name('dosen.index');
 Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
+
+Route::get('/management/matakuliah', [MataKuliahController::class, 'index'])->name('matakuliah.index');
+Route::post('/management/matakuliah', [MataKuliahController::class, 'store'])->name('matakuliah.store');
+Route::get('/management/matakuliah/export-excel', [MataKuliahController::class, 'exportExcel'])->name('matakuliah.export.excel');
+
+Route::resource('/management/ruangan', RuanganController::class)
+    ->except(['show']) // <-- 'show' biasanya tidak perlu untuk tabel manajemen
+    ->names('ruangan');
+
+Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
+Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
+Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');

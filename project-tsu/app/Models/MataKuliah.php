@@ -8,17 +8,25 @@ use Illuminate\Database\Eloquent\Model;
 class MataKuliah extends Model
 {
     use HasFactory;
-    protected $table = 'mata_kuliah';
-    protected $primaryKey = 'id_matkul';
-    public $timestamps = false;
-    public $incrementing = true;
 
+    protected $table = 'mata_kuliah';
+    protected $primaryKey = 'kode_matkul';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    public $timestamps = false;
+
+    /**
+     * Kolom yang bisa diisi.
+     */
     protected $fillable = [
-        'id_matkul',
+        'kode_matkul',
         'nama_matkul',
         'sks',
         'jenis',
+        'id_prodi',
         'semester',
-        'kode_matkul',
+        'kurikulum', // <-- Ini adalah kolom teks
     ];
+
+    // Kita tidak perlu relasi 'kurikulum()' lagi
 }
