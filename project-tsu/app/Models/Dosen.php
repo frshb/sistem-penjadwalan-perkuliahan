@@ -14,8 +14,13 @@ class Dosen extends Model
 
     protected $fillable = [
         'nama_dosen',
-        'nuptk',
+        'nidn',
         'mata_kuliah',
         'id_prodi',
     ];
+
+    public function prodi()
+    {
+        return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
+    }
 }

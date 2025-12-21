@@ -58,6 +58,11 @@ class Jadwal extends Model
         return $this->belongsTo(Ruangan::class, 'id_ruangan', 'id_ruang');
     }
 
+    public function kelas()
+    {
+        return $this->belongsTo(Kelas::class, 'id_kelas', 'id_kelas');
+    }
+
     public function prodi()
     {
         return $this->belongsTo(Prodi::class, 'id_prodi');

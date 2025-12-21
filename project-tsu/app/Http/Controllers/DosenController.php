@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Dosen; // <-- Import model Dosen
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\DosenExport;
+use Illuminate\Support\Facades\Auth;
 
 class DosenController extends Controller
 {
@@ -13,9 +16,27 @@ class DosenController extends Controller
      */
     public function index()
     {
-        $dosens = Dosen::all();
+        $user = Auth::user();
+        $userProdiName = null;
+        $query = Dosen::query();
+
+        if ($user && $user->isKaprodi()) {
+            // Prioritize direct prodi link (new way)
+            if ($user->id_prodi) {
+                 $query->where('id_prodi', $user->id_prodi);
+                 $userProdiName = $user->prodi->nama_prodi ?? '';
+            } 
+            // Fallback to Dosen link (old way - backward compatibility)
+            elseif ($user->dosen && $user->dosen->id_prodi) {
+                $query->where('id_prodi', $user->dosen->id_prodi);
+                $userProdiName = $user->dosen->prodi->nama_prodi ?? ''; 
+            }
+        }
+
+        $dosens = $query->paginate(10)->onEachSide(1);
         return view('management.dosen.index', [
-            'dosens' => $dosens
+            'dosens' => $dosens,
+            'userProdiName' => $userProdiName
         ]);
     }
 
@@ -45,5 +66,13 @@ class DosenController extends Controller
 
         // Kembali ke halaman index
         return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil ditambahkan.');
+    }
+
+    /**
+     * Export data ke Excel.
+     */
+    public function exportExcel()
+    {
+        return Excel::download(new DosenExport, 'daftar-dosen.xlsx');
     }
 }

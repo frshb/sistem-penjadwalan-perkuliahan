@@ -8,7 +8,7 @@ SweetAlertCSS
 .my-sweetalert-popup .swal2-title {
     color: #047857 !important; /* Hijau (teal) tua */
     font-weight: 700 !important;
-}
+}s
 
 /* 3. Mengubah warna teks konten (paragraf) menjadi hijau */
 .my-sweetalert-popup .swal2-html-container {

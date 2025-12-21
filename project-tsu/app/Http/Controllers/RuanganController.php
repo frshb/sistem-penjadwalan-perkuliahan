@@ -4,15 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Gedung;
 use App\Models\Ruangan;
-use Illuminate\Http\Request; // <-- TAMBAHKAN INI
+use Illuminate\Http\Request; 
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\RuanganExport;
 
 class RuanganController extends Controller
 {
     /**
      * Menampilkan daftar semua ruangan, dengan filter pencarian dan pengelompokan.
      */
-    public function index(Request $request) // <-- TAMBAHKAN $request
+    public function index(Request $request) 
     {
+        // Kaprodi tidak boleh akses
+        if (auth()->check() && auth()->user()->isKaprodi()) {
+            abort(403, 'Unauthorized action.');
+        }
+
         // 1. Ambil kata kunci pencarian
         $searchTerm = $request->input('search');
 
@@ -35,11 +42,15 @@ class RuanganController extends Controller
             $ruangansByGedung = $ruangans->groupBy('gedung.nama_gedung')->sortKeys();
         }
 
+        // 6.b Ambil data gedung untuk dropdown filter/modal
+        $gedungs = Gedung::orderBy('nama_gedung', 'asc')->get();
+
         // 7. Kirim SEMUA data ke view
         return view('management.ruangan.index', [
             'ruangans' => $ruangans, // Untuk hasil pencarian
             'ruangansByGedung' => $ruangansByGedung, // Untuk tampilan tab
-            'searchTerm' => $searchTerm // Untuk menampilkan value di input search
+            'searchTerm' => $searchTerm, // Untuk menampilkan value di input search
+            'gedungs' => $gedungs, // Data gedung untuk modal
         ]);
     }
 
@@ -109,5 +120,10 @@ class RuanganController extends Controller
             return redirect()->route('ruangan.index')
                              ->with('error', 'Gagal menghapus data. Data mungkin still digunakan di jadwal.');
         }
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new RuanganExport, 'daftar-ruangan.xlsx');
     }
 }
