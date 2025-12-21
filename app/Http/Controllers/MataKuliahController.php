@@ -9,6 +9,7 @@ use Illuminate\Validation\Rule;
 use PDF; // Untuk export PDF
 use Maatwebsite\Excel\Facades\Excel; // Untuk export Excel
 use App\Exports\MataKuliahExport; // Untuk export Excel
+use Illuminate\Support\Facades\Auth;
 
 class MataKuliahController extends Controller
 {
@@ -19,6 +20,20 @@ class MataKuliahController extends Controller
     {
         // Mulai query
         $query = MataKuliah::query();
+
+        $user = Auth::user();
+        $userProdiName = null;
+
+        if ($user && $user->isKaprodi()) {
+            if ($user->id_prodi) {
+                $query->where('id_prodi', $user->id_prodi);
+                $userProdiName = $user->prodi->nama_prodi ?? '';
+            }
+            elseif ($user->dosen && $user->dosen->id_prodi) {
+                $query->where('id_prodi', $user->dosen->id_prodi);
+                $userProdiName = $user->dosen->prodi->nama_prodi ?? '';
+            }
+        }
 
         // Terapkan filter jika ada
         if ($request->filled('semester')) {
@@ -33,12 +48,14 @@ class MataKuliahController extends Controller
         $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA
 
         // Paginate hasil query, dan tambahkan filter ke link pagination
-        $matkuls = $query->paginate(30)->appends($request->query());
+        // USER REQUEST: Munculin semua data (limit diperbesar)
+        $matkuls = $query->paginate(100)->appends($request->query());
 
         // Kirim data matkul DAN kurikulum ke view
         return view('management.matakuliah.index', [
             'matkuls' => $matkuls,
-            'kurikulums' => $kurikulums // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
+            'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
+            'userProdiName' => $userProdiName
         ]);
     }
     /**
@@ -65,13 +82,49 @@ class MataKuliahController extends Controller
         MataKuliah::create([
             'nama_matkul' => $request->nama_matkul,
             'kode_matkul' => $request->kode_matkul,
-            'jumlah_sks' => $request->jumlah_sks,
-            'tipe' => $request->tipe,
+            'sks' => $request->jumlah_sks,
+            'jenis' => strtolower($request->tipe),
             'semester' => $request->semester,
-            'id_kurikulum' => $request->id_kurikulum, // Simpan kurikulum
+            'id_kurikulum' => $request->id_kurikulum, 
         ]);
 
         return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil ditambahkan.');
+    }
+
+    /**
+     * Memperbarui data mata kuliah.
+     */
+    public function update(Request $request, $kode_matkul)
+    {
+        $matkul = MataKuliah::where('kode_matkul', $kode_matkul)->firstOrFail();
+
+        // Validasi
+        $request->validate([
+            'nama_matkul' => 'required|string|max:100',
+            // Kode matkul bisa diubah, tapi harus unique kecuali punya sendiri
+            'kode_matkul' => [
+                'required',
+                'string',
+                'max:10', // Sesuai migration: string(10)
+                Rule::unique('mata_kuliah', 'kode_matkul')->ignore($matkul->kode_matkul, 'kode_matkul')
+            ],
+            'jumlah_sks' => 'required|integer|min:1',
+            'tipe' => 'required|string', // strtolower nanti
+            'semester' => 'required|integer|min:1|max:8',
+            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum'
+        ]);
+
+        // Update Data
+        $matkul->update([
+            'nama_matkul' => $request->nama_matkul,
+            'kode_matkul' => $request->kode_matkul,
+            'sks' => $request->jumlah_sks,
+            'jenis' => strtolower($request->tipe),
+            'semester' => $request->semester,
+            'id_kurikulum' => $request->id_kurikulum,
+        ]);
+
+        return response()->json(['message' => 'Mata kuliah berhasil diperbarui.']);
     }
 
     /**
@@ -85,6 +138,17 @@ class MataKuliahController extends Controller
             'matkuls' => $matkuls
         ]);
         return $pdf->download('daftar-mata-kuliah.pdf');
+    }
+
+    /**
+     * Menghapus mata kuliah dari database.
+     */
+    public function destroy($id)
+    {
+        $matkul = MataKuliah::findOrFail($id);
+        $matkul->delete();
+
+        return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil dihapus.');
     }
 
     /**

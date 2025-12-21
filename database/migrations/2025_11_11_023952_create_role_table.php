@@ -11,8 +11,8 @@ class CreateRoleTable extends Migration
         Schema::create('role', function (Blueprint $table) {
             $table->integer('id_role')->primary();
             $table->enum('nama_role', [
-                'super_admin',
-                'admin_fakultas',
+                'admin',
+                'kaprodi',
                 'dekan',
                 'dosen',
                 'mahasiswa'
