@@ -89,6 +89,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
     Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
 
+<<<<<<< HEAD
     // Automatic Scheduling Wizard Routes
     Route::get('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'step1'])->name('jadwal.otomatis.step1');
     Route::post('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep1'])->name('jadwal.otomatis.step1.store');
@@ -109,3 +110,11 @@ Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatis
     Route::delete('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'destroy'])->name('settings.academic_calendar.destroy');
 
 });
+=======
+//Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
+//Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
+//Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
+
+Route::get('/penjadwalan', [JadwalController::class, 'index'])->name('penjadwalan.index');
+Route::post('/penjadwalan/proses', [JadwalController::class, 'proses'])->name('penjadwalan.proses'); 
+>>>>>>> 4fb47b0488447a33505c294959653eed0a5466dd
