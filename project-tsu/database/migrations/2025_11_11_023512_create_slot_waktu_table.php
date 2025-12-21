@@ -8,12 +8,14 @@ class CreateSlotWaktuTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('slot_waktu', function (Blueprint $table) {
-            $table->integer('id_slot')->primary();
-            $table->integer('jam_ke')->unique();
-            $table->time('waktu_mulai');
-            $table->time('waktu_selesai');
-        });
+        if (!Schema::hasTable('slot_waktu')) {
+            Schema::create('slot_waktu', function (Blueprint $table) {
+                $table->integer('id_slot')->primary();
+                $table->integer('jam_ke')->unique();
+                $table->time('waktu_mulai');
+                $table->time('waktu_selesai');
+            });
+        }  
     }
 
     public function down()

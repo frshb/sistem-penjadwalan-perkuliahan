@@ -44,13 +44,12 @@ class JadwalController extends Controller
     public function handleStep1(Request $r)
     {
         $r->validated([
-            'id_kurikulum' => 'required',
             'semester' => 'required|array|min:1',
         ]);
 
         session([
-            'penjadwalan.id_kurikulum' => $r->id_kurikulum,
             'penjadwalan.semester' => $r->semester,
+            'penjadwalan.prodi' => Prodi::all(),
             'penjadwalan.current_step' => 2,
         ]);
         
@@ -60,7 +59,7 @@ class JadwalController extends Controller
     public function handleStep2(Request $r)
     {
         $r->validate([
-            'id_ruang' => 'required|array|min:1',
+            'id_ruang' => 'required|array',
         ]);
 
         session([
@@ -73,84 +72,91 @@ class JadwalController extends Controller
 
     public function handleStep3(Request $r)
     {
-        $kurikulum = session('penjadwalan.id_kurikulum');
-        $semester = session('penjadwalan.semester');
-
-        //QUERY
-        $matkul = MataKuliah::where(id_kurikulum, $kurikulum)
-                    ->whereIn('semester', $semester)
-                    ->get();
-        
-        session([
-            'penjadwalan.matkul_list' => $matkul,
-            'penjadwalan.current_step'=> 4,
+        $r->validate([
+            'kelas' => 'required|array',
+            'matkul' => 'required|array',
+            'dosen' => 'required|array'
         ]);
 
+        //simpan di session
+        session([
+            'penjadwalan.step3_data' => $r->all(),
+            'penjadwalan.current_step' => 4,
+        ]);
         return back();
     }
 
     public function handleStep4()
     {
-        $matkuls = session('penjadwalan.matkul_list', []);
-        $ruang = session('penjadwalan.id_ruang', []);
+         $input = session('penjadwalan.step3', []);
+        $ruanganDipilih = session('penjadwalan.ruangan', []);
 
-        if (empty($matkuls)) {
-            return back()->with('error', "Tidak ada matakuliah yang dipilih");
-        }
-
-        $dataMK = MataKuliah::whereIn('id_matkul', $matkuls)
-                    ->orderBy('sks', 'DESC')
-                    ->get();
         $hari = Hari::all();
-        $waktu = Waktu::all();
-        $ruangan = Ruangan::whereIn('id_ruang', $ruang)->get();
+        $slot = Waktu::all();
+        $ruangan = Ruangan::whereIn('id_ruang', $ruanganDipilih)->get();
 
         $gagal = [];
 
-        foreach ($dataMK as $mk) {
-            $dosen = $mk->id_dosen;
-            $kelas = $mk->id_kelas;
+        foreach ($input['kelas'] as $index => $kelas) {
+
+            $id_matkul = $input['matkul'][$index];
+            $id_dosen = $input['dosen'][$index];
+
+            $mk = MataKuliah::find($id_matkul);
+            if (!$mk) continue;
 
             $sukses = false;
 
             foreach ($hari as $h) {
-                foreach ($waktu as $w) {
+                foreach ($slot as $s) {
+
+                    // CEK BENTROK DOSEN / KELAS
                     $bentrok = Jadwal::where('id_hari', $h->id_hari)
-                        ->where('id_slot', $w->id_slot)
-                        ->where(function ($q) use ($dosen, $kelas) {
-                            $q->where('id_dosen', $dosen)
-                            ->orWhere('id_kelas', $kelas);
-                        })->exists();
+                        ->where('id_slot', $s->id_slot)
+                        ->where(function ($q) use ($id_dosen, $kelas) {
+                            $q->where('id_dosen', $id_dosen)
+                              ->orWhere('kelas', $kelas);
+                        })
+                        ->exists();
 
                     if ($bentrok) continue;
-                    $ruangKosong = Ruangan::whereIn('id_ruang', $ruang)
-                        ->whereDoesntHave('jadwal', function ($q) use ($h, $w) {
-                            $q->where('id_hari', $h->id_hari)
-                            ->where('id_slot', $w->id_slot);
-                        })->first();
-                    
+
+                    // CEK RUANGAN KOSONG
+                    $ruangKosong = $ruangan->filter(function($r) use ($h, $s) {
+                        return !Jadwal::where('id_ruang', $r->id_ruang)
+                            ->where('id_hari', $h->id_hari)
+                            ->where('id_slot', $s->id_slot)
+                            ->exists();
+                    })->first();
+
                     if (!$ruangKosong) continue;
 
+                    // SIMPAN JADWAL
                     Jadwal::create([
-                        'id_matkul' => $mk->id_matkul,
-                        'id_dosen' => $dosen,
-                        'id_kelas' => $kelas,
+                        'id_matkul' => $id_matkul,
+                        'id_dosen' => $id_dosen,
+                        'kelas' => $kelas,
                         'id_ruang' => $ruangKosong->id_ruang,
                         'id_hari' => $h->id_hari,
-                        'id_slot' => $w->id_slot,
-                        'jenis_jadwal' => $mk->jenis,
-                        'status_validasi' => 0,
+                        'id_slot' => $s->id_slot,
+                        'status_validasi' => 0
                     ]);
 
                     $sukses = true;
                     break;
                 }
+
                 if ($sukses) break;
             }
-            if (!$sukses) $gagal[] = $mk->nama_matkul;
+
+            if (!$sukses) {
+                $gagal[] = $mk->nama_matkul." - kelas ".$kelas;
+            }
         }
-        return back()-with('gagal', $gagal);
+
+        return back()->with('gagal', $gagal);
     }
+    
     
     //EXCEL
     //public function exportExcel()
