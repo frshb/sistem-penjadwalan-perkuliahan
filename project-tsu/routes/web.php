@@ -42,3 +42,13 @@ Route::resource('/management/ruangan', RuanganController::class)
 
 Route::get('/penjadwalan', [JadwalController::class, 'index'])->name('penjadwalan.index');
 Route::post('/penjadwalan/proses', [JadwalController::class, 'proses'])->name('penjadwalan.proses'); 
+
+
+Route::get('jadwal/manual', [JadwalManualController::class, 'index']);
+Route::get('jadwal/manual/{id}/edit', [JadwalManualController::class, 'edit']);
+Route::post('jadwal/manual/{id}', [JadwalManualController::class, 'update']);
+Route::post('jadwal/manual/{id}/validasi', function ($id) {
+    Jadwal::where('id_jadwal', $id)->update([
+        'status_validasi' => 1
+    ]);
+});

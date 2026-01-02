@@ -21,6 +21,7 @@ class Jadwal extends Model
         'jenis_jadwal', 
         'status_validasi',
         'kelas',
+        'is_manual',
     ];
     
     public function matkul() { return $this->belongTo(Matkul::class, 'id_matkul'); }

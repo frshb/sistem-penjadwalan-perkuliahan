@@ -22,12 +22,12 @@ class JadwalController extends Controller
         
         return view('penjadwalan.penjadwalan', [
             'step' => $step,
-            'kurikulums' => Kurikulum::all(),
-            'ruangans' => Ruangan::all(),
-            'dosens' => Dosen::all(),
-            'waktus' => Waktu::all(),
-            'haris' => Hari::all(),
-            'matkuls' => MataKuliah::all(),
+            'kurikulum' => Kurikulum::all(),
+            'ruang' => Ruangan::all(),
+            'dosen' => Dosen::all(),
+            'slot_waktu' => Waktu::all(),
+            'hari' => Hari::all(),
+            'mata_kuliah' => MataKuliah::all(),
         ]);
     }
 
@@ -88,7 +88,7 @@ class JadwalController extends Controller
 
     public function handleStep4()
     {
-         $input = session('penjadwalan.step3', []);
+        $input = session('penjadwalan.step3', []);
         $ruanganDipilih = session('penjadwalan.ruangan', []);
 
         $hari = Hari::all();
@@ -139,7 +139,8 @@ class JadwalController extends Controller
                         'id_ruang' => $ruangKosong->id_ruang,
                         'id_hari' => $h->id_hari,
                         'id_slot' => $s->id_slot,
-                        'status_validasi' => 0
+                        'status_validasi' => 0,
+                        'is_manual' => 0,
                     ]);
 
                     $sukses = true;
