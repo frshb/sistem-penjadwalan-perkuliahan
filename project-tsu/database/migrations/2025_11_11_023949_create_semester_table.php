@@ -8,12 +8,14 @@ class CreateSemesterTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('semester', function (Blueprint $table) {
-            $table->integer('id_semester')->primary();
-            $table->string('nama_semester', 20);
-            $table->string('tahun_ajaran', 20);
-            $table->boolean('status_aktif')->default(true);
-        });
+        if (!Schema::hasTable('semester')) {
+            Schema::create('semester', function (Blueprint $table) {
+                $table->integer('id_semester')->primary();
+                $table->string('nama_semester', 20);
+                $table->string('tahun_ajaran', 20);
+                $table->boolean('status_aktif')->default(true);
+            });
+        }
     }
 
     public function down()
