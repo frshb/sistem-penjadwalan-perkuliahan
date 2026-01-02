@@ -1,6 +1,6 @@
 <!-- Button to Open Sidebar (Visible when sidebar is closed) -->
-<button @click="sidebarOpen = true" 
-        :class="sidebarOpen ? 'hidden' : ''"
+<button @click="sidebarOpen = true" aria-label="Open Sidebar"
+        :class="sidebarOpen ? 'hidden' : 'mt-5'"
         class="fixed top-6 left-6 z-20 text-gray-600 hover:text-gray-900 transition-all duration-300 ease-in-out">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
 </button>
@@ -11,7 +11,7 @@
         <img src="{{ asset('1151.jpg') }}" alt="TSU Logo" class="h-10">
 
         <div class="flex items-center space-x-2">
-            <button @click="sidebarOpen = false" class="text-gray-500 hover:text-gray-800">
+            <button @click="sidebarOpen = false" aria-label="Close Sidebar" class="text-gray-500 hover:text-gray-800">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
         </div>

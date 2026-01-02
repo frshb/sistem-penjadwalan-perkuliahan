@@ -132,12 +132,7 @@ class MataKuliahController extends Controller
      */
     public function exportPDF()
     {
-        // Note: Export ini belum menerapkan filter, Anda bisa tambahkan logika filter di sini jika perlu
-        $matkuls = MataKuliah::all();
-        $pdf = PDF::loadView('management.matakuliah.export_pdf', [
-            'matkuls' => $matkuls
-        ]);
-        return $pdf->download('daftar-mata-kuliah.pdf');
+        return Excel::download(new MataKuliahExport(true), 'daftar-mata-kuliah.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
     }
 
     /**
@@ -156,7 +151,6 @@ class MataKuliahController extends Controller
      */
     public function exportExcel()
     {
-        // Note: Export ini juga belum menerapkan filter
         return Excel::download(new MataKuliahExport, 'daftar-mata-kuliah.xlsx');
     }
 }

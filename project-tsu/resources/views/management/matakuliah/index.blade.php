@@ -20,7 +20,7 @@
        @include('components.sidebar')
 
         <!-- Konten Utama -->
-        <main id="main-content" :class="sidebarOpen ? 'ml-64' : 'ml-0'" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
                 <!-- Header Skeleton -->
@@ -112,6 +112,9 @@
 
                                 <a href="{{ route('matakuliah.export.excel') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     Export Excel
+                                </a>
+                                <a href="{{ route('matakuliah.export.pdf') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Export PDF
                                 </a>
                             </div>
                         </div>

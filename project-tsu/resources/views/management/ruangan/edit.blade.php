@@ -9,7 +9,7 @@
 </head>
 <body class="bg-gray-100/50 overflow-x-hidden">
 
-    @include('management.ruangan.sidebar') <main id="main-content" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-64">
+    @include('management.ruangan.sidebar') <main id="main-content" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out lg:ml-64">
         <div class="flex items-center">
              <h1 class="text-2xl font-bold text-gray-800 ml-3">Edit Data Ruangan</h1>
         </div>

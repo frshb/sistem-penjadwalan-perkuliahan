@@ -53,7 +53,8 @@ Route::middleware(['auth'])->group(function () {
     // Management Routes (Admin, Dekan, Kaprodi)
     // Kaprodi access logic handled inside controllers or via specific query scopes
     Route::middleware(['role:admin,dekan,kaprodi'])->group(function () {
-        Route::get('/management/prodi/export-excel', [ProdiController::class, 'exportExcel'])->name('prodi.export.excel'); // Export Route
+        Route::get('/management/prodi/export-excel', [ProdiController::class, 'exportExcel'])->name('prodi.export.excel');
+        Route::get('/management/prodi/export-pdf', [ProdiController::class, 'exportPdf'])->name('prodi.export.pdf'); // New PDF Export Route
         Route::get('/management/prodi', [ProdiController::class, 'index'])->name('prodi.index');
     Route::get('/management/prodi/{id}', [ProdiController::class, 'show'])->name('prodi.show');
     Route::post('/management/prodi', [ProdiController::class, 'store'])->name('prodi.store');
@@ -65,10 +66,12 @@ Route::middleware(['auth'])->group(function () {
     // Additional grouping for other controllers...
     // For now applying broadly, logic inside controllers to filter data.
     
-    Route::get('/management/ruangan/export-excel', [RuanganController::class, 'exportExcel'])->name('ruangan.export.excel'); // Export Route prior to resource
+    Route::get('/management/ruangan/export-excel', [RuanganController::class, 'exportExcel'])->name('ruangan.export.excel');
+    Route::get('/management/ruangan/export-pdf', [RuanganController::class, 'exportPdf'])->name('ruangan.export.pdf'); // New PDF Export Route
     Route::get('/management/ruangan', [RuanganController::class, 'index'])->name('ruangan.index');
     Route::get('/management/dosen', [DosenController::class, 'index'])->name('dosen.index');
     Route::get('/management/dosen/export-excel', [DosenController::class, 'exportExcel'])->name('dosen.export.excel');
+    Route::get('/management/dosen/export-pdf', [DosenController::class, 'exportPdf'])->name('dosen.export.pdf'); // New PDF Export Route
     Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
     
     Route::get('/management/matakuliah', [MataKuliahController::class, 'index'])->name('matakuliah.index');
@@ -76,8 +79,10 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/management/matakuliah/{kode_matkul}', [MataKuliahController::class, 'update'])->name('matakuliah.update');
     Route::delete('/management/matakuliah/{matakuliah}', [MataKuliahController::class, 'destroy'])->name('matakuliah.destroy');
     Route::get('/management/matakuliah/export-excel', [MataKuliahController::class, 'exportExcel'])->name('matakuliah.export.excel');
+    Route::get('/management/matakuliah/export-pdf', [MataKuliahController::class, 'exportPDF'])->name('matakuliah.export.pdf'); // New PDF Export Route
     
-    Route::get('/management/mahasiswa/export-excel', [MahasiswaController::class, 'exportExcel'])->name('mahasiswa.export.excel'); // Export Route
+    Route::get('/management/mahasiswa/export-excel', [MahasiswaController::class, 'exportExcel'])->name('mahasiswa.export.excel');
+    Route::get('/management/mahasiswa/export-pdf', [MahasiswaController::class, 'exportPdf'])->name('mahasiswa.export.pdf'); // New PDF Export Route
     Route::get('/management/mahasiswa', [MahasiswaController::class, 'index'])->name('mahasiswa.index');
     
     Route::resource('/management/ruangan', RuanganController::class)
@@ -88,14 +93,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
     Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
-
-<<<<<<< HEAD
     // Automatic Scheduling Wizard Routes
     Route::get('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'step1'])->name('jadwal.otomatis.step1');
     Route::post('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep1'])->name('jadwal.otomatis.step1.store');
     Route::get('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'step2'])->name('jadwal.otomatis.step2');
     Route::post('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep2'])->name('jadwal.otomatis.step2.store');
-Route::get('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'step3'])->name('jadwal.otomatis.step3');
+    Route::get('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'step3'])->name('jadwal.otomatis.step3');
 Route::post('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep3'])->name('jadwal.otomatis.step3.store');
 Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatisController::class, 'step4'])->name('jadwal.otomatis.step4');
 
@@ -110,11 +113,4 @@ Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatis
     Route::delete('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'destroy'])->name('settings.academic_calendar.destroy');
 
 });
-=======
-//Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
-//Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
-//Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
 
-Route::get('/penjadwalan', [JadwalController::class, 'index'])->name('penjadwalan.index');
-Route::post('/penjadwalan/proses', [JadwalController::class, 'proses'])->name('penjadwalan.proses'); 
->>>>>>> 4fb47b0488447a33505c294959653eed0a5466dd

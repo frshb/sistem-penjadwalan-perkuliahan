@@ -15,7 +15,7 @@
         init() { setTimeout(() => this.isLoading = false, 2000) } 
     }">
         @include('components.sidebar')
-        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-10'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
             
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-8">
@@ -47,7 +47,7 @@
             <div x-show="!isLoading">
                 <div class="flex items-center mb-8">
                     <div class="flex flex-col mr-3">
-                        <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
+                        <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
                         <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
@@ -242,27 +242,27 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
                             <!-- Informatika: Code/Terminal Icon -->
-                            <div class="bg-[#fce595] rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-yellow-200 group">
+                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-yellow-600 group-hover:scale-110 transition-transform">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
                                 </div>
-                                <span class="font-semibold text-gray-800 text-sm sm:text-base">Informatika</span>
+                                <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Informatika</span>
                             </div>
 
                             <!-- Sistem Informasi: Database/Flow Icon -->
-                            <div class="bg-[#d2c4e5] rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-purple-200 group">
+                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-purple-600 group-hover:scale-110 transition-transform">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
                                 </div>
-                                <span class="font-semibold text-gray-800 text-sm sm:text-base">Sistem Informasi</span>
+                                <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Sistem Informasi</span>
                             </div>
 
                             <!-- Rekayasa Komputer: Chip/Hardware Icon -->
-                            <div class="bg-[#cbe6fb] rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-blue-200 group">
+                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-blue-600 group-hover:scale-110 transition-transform">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
                                 </div>
-                                <span class="font-semibold text-gray-800 text-sm sm:text-base">Rekayasa Komputer</span>
+                                <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Rekayasa Komputer</span>
                             </div>
                         </div>
                     </div>
@@ -270,7 +270,7 @@
 
                     <div class="col-span-1 bg-white rounded-xl shadow-xl p-6 border border-gray-200">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">Kalender Akademik</h3>
-                        <div class="space-y-3">
+                        <div class="space-y-3 max-h-[220px] overflow-y-auto pr-1">
                             @if($kalenderAkademik->isEmpty())
                                 <div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg border border-gray-100">
                                     <p class="text-sm">Tidak ada kegiatan akademik akan datang.</p>

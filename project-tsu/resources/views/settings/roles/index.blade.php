@@ -11,7 +11,7 @@
 
     @include('components.sidebar')
 
-    <main :class="sidebarOpen ? 'ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-white min-h-screen">
+    <main :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-white min-h-screen">
         
         <div class="flex justify-between items-center">
             <div class="flex items-center">

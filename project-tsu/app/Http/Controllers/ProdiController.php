@@ -143,4 +143,9 @@ public function update(Request $request, $id)
     {
         return Excel::download(new ProdiExport, 'daftar-prodi.xlsx');
     }
+
+    public function exportPdf()
+    {
+        return Excel::download(new ProdiExport(true), 'daftar-prodi.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+    }
 }

@@ -75,4 +75,9 @@ class DosenController extends Controller
     {
         return Excel::download(new DosenExport, 'daftar-dosen.xlsx');
     }
+
+    public function exportPdf()
+    {
+        return Excel::download(new DosenExport(true), 'daftar-dosen.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+    }
 }

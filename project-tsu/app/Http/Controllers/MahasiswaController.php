@@ -43,4 +43,9 @@ class MahasiswaController extends Controller
     {
         return Excel::download(new MahasiswaExport, 'daftar-mahasiswa.xlsx');
     }
+
+    public function exportPdf()
+    {
+        return Excel::download(new MahasiswaExport(true), 'daftar-mahasiswa.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+    }
 }
