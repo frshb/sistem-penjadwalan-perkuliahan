@@ -55,6 +55,7 @@ class DosenController extends Controller
                 Rule::unique('dosen', 'nidn') // Pastikan NIDN unik
             ],
             'mata_kuliah' => 'nullable|string',
+            'ketersediaan_waktu' => 'nullable|string',
         ]);
 
         // Simpan data
@@ -62,10 +63,45 @@ class DosenController extends Controller
             'nama_dosen' => $request->nama_dosen,
             'nidn' => $request->nidn,
             'mata_kuliah' => $request->mata_kuliah,
+            'ketersediaan_waktu' => $request->ketersediaan_waktu,
         ]);
 
         // Kembali ke halaman index
         return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil ditambahkan.');
+    }
+
+    /**
+     * Memperbarui data dosen.
+     */
+    public function update(Request $request, Dosen $dosen)
+    {
+        $request->validate([
+            'nama_dosen' => 'required|string|max:100',
+            'nidn' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('dosen', 'nidn')->ignore($dosen->id_dosen, 'id_dosen')
+            ],
+            'ketersediaan_waktu' => 'nullable|string',
+        ]);
+
+        $dosen->update([
+            'nama_dosen' => $request->nama_dosen,
+            'nidn' => $request->nidn,
+            'ketersediaan_waktu' => $request->ketersediaan_waktu,
+        ]);
+
+        return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil diperbarui.');
+    }
+
+    /**
+     * Menghapus data dosen.
+     */
+    public function destroy(Dosen $dosen)
+    {
+        $dosen->delete();
+        return redirect()->back()->with('success', 'Data dosen berhasil dihapus.');
     }
 
     /**

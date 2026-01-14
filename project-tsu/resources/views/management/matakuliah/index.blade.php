@@ -11,7 +11,32 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
 </head>
-<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, showExportMenu: false, semesterType: 'ganjil', editData: {}, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
+<body x-data="{ 
+    sidebarOpen: true, 
+    showAddModal: false, 
+    showEditModal: false, 
+    showExportMenu: false, 
+    semesterType: 'ganjil', 
+    editNamaMatkul: '',
+    editKodeMatkul: '',
+    editSks: '',
+    editSemester: '',
+    editTipe: '',
+    editKurikulum: '',
+    editUrl: '', 
+    isLoading: true, 
+    init() { setTimeout(() => this.isLoading = false, 2000) },
+    openEditModal(kode, nama, sks, jenis, semester, kurikulum) {
+        this.editKodeMatkul = kode;
+        this.editNamaMatkul = nama;
+        this.editSks = sks;
+        this.editTipe = jenis.charAt(0).toUpperCase() + jenis.slice(1); // Capitalize first letter
+        this.editSemester = semester;
+        this.editKurikulum = kurikulum;
+        this.editUrl = '{{ route('matakuliah.index') }}/' + kode; 
+        this.showEditModal = true;
+    }
+}" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
 
     <!-- Tombol untuk MEMBUKA sidebar (muncul saat sidebar tertutup) -->
 
@@ -155,7 +180,7 @@
                                         <td class="text-left py-2 px-3 text-sm">
                                             <div class="flex space-x-2">
                                                 <button 
-                                                    onclick="openEditModal('{{ $matkul->kode_matkul }}', '{{ $matkul->nama_matkul }}', '{{ $matkul->sks }}', '{{ $matkul->jenis }}', '{{ $matkul->semester }}', '{{ $matkul->id_kurikulum }}')" 
+                                                    @click="openEditModal('{{ $matkul->kode_matkul }}', '{{ $matkul->nama_matkul }}', '{{ $matkul->sks }}', '{{ $matkul->jenis }}', '{{ $matkul->semester }}', '{{ $matkul->id_kurikulum }}')" 
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
@@ -291,7 +316,7 @@
                         </button>
                     </div>
 
-                    <form id="form-edit-matkul" method="POST" class="mt-6 space-y-4">
+                    <form id="form-edit-matkul" :action="editUrl" method="POST" class="mt-6 space-y-4">
                         @csrf
                         @method('PUT')
                         <!-- Error msg container -->
@@ -300,23 +325,23 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label for="edit_nama_matkul" class="block text-sm font-medium text-gray-700 mb-1">Nama Mata Kuliah</label>
-                                <input type="text" id="edit_nama_matkul" name="nama_matkul" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <input type="text" id="edit_nama_matkul" name="nama_matkul" x-model="editNamaMatkul" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                             </div>
                             <div>
                                 <label for="edit_kode_matkul" class="block text-sm font-medium text-gray-700 mb-1">Kode Matkul</label>
-                                <input type="text" id="edit_kode_matkul" name="kode_matkul" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <input type="text" id="edit_kode_matkul" name="kode_matkul" x-model="editKodeMatkul" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                             </div>
                             <div>
                                 <label for="edit_jumlah_sks" class="block text-sm font-medium text-gray-700 mb-1">Jumlah SKS</label>
-                                <input type="number" id="edit_jumlah_sks" name="jumlah_sks" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <input type="number" id="edit_jumlah_sks" name="jumlah_sks" x-model="editSks" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                             </div>
                             <div>
                                 <label for="edit_semester" class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-                                <input type="number" id="edit_semester" name="semester" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <input type="number" id="edit_semester" name="semester" x-model="editSemester" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                             </div>
                             <div>
                                 <label for="edit_tipe" class="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
-                                <select id="edit_tipe" name="tipe" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <select id="edit_tipe" name="tipe" x-model="editTipe" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                                     <option value="">Pilih Tipe</option>
                                     <option value="Teori">Teori</option>
                                     <option value="Praktikum">Praktikum</option>
@@ -324,7 +349,7 @@
                             </div>
                             <div>
                                 <label for="edit_id_kurikulum" class="block text-sm font-medium text-gray-700 mb-1">Kurikulum</label>
-                                <select id="edit_id_kurikulum" name="id_kurikulum" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <select id="edit_id_kurikulum" name="id_kurikulum" x-model="editKurikulum" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                                     <option value="">Pilih Kurikulum</option>
                                     @foreach ($kurikulums as $kurikulum)
                                         <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
@@ -401,26 +426,6 @@
             }
 
             // Helper for Edit Form population (can be moved to Alpine but keeping simple function for now or refactor completely)
-            window.openEditModal = function(kode, nama, sks, jenis, semester, kurikulum_id) {
-                // We can use Alpine store or events, but triggering Alpine state from here is also possible.
-                // However, let's try to pass this data to Alpine state if possible, or just keep this helper to populate form
-                // and then show modal via Alpine variable.
-                const formEdit = document.getElementById('form-edit-matkul');
-                document.getElementById('edit_nama_matkul').value = nama;
-                document.getElementById('edit_kode_matkul').value = kode;
-                document.getElementById('edit_jumlah_sks').value = sks;
-                document.getElementById('edit_semester').value = semester;
-                document.getElementById('edit_id_kurikulum').value = kurikulum_id;
-
-                let jenisCapitalized = jenis.charAt(0).toUpperCase() + jenis.slice(1);
-                document.getElementById('edit_tipe').value = jenisCapitalized;
-
-                formEdit.action = `/management/matakuliah/${kode}`;
-                
-                // Trigger Alpine state change
-                document.querySelector('[x-data]').__x.$data.showEditModal = true;
-            };
-
             // Form Submit for Edit (AJAX) - Keeping this as it handles specific error display logic
              function handleFormSubmit(formId, errorId, type) {
                 const form = document.getElementById(formId);
@@ -449,7 +454,6 @@
                         }
                     })
                     .then(data => {
-                        document.querySelector('[x-data]').__x.$data.showEditModal = false;
                         window.location.reload(); 
                     })
                     .catch(error => {

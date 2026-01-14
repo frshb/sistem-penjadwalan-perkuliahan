@@ -17,6 +17,7 @@ class Dosen extends Model
         'nidn',
         'mata_kuliah',
         'id_prodi',
+        'ketersediaan_waktu',
     ];
 
     public function prodi()
