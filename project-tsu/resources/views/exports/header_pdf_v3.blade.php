@@ -46,22 +46,13 @@
     </style>
 </head>
 <body>
-
-    <!-- PRIMARY HEADER TABLE - BORDERLESS -->
-    <table class="header-table" border="0" cellspacing="0" cellpadding="0">
-        <!-- Row 1: Logo & Title -->
-        <tr>
-            <td style="width: 100px; padding-bottom: 20px;">
+       <td style="width: 100px; padding-bottom: 20px;">
                 <img src="{{ public_path('1151.jpg') }}" width="80" style="width: 80px; height: auto;">
             </td>
             <td colspan="4" style="text-align: left; vertical-align: middle; padding-bottom: 20px;">
                 <div class="header-title">TSU</div>
                 <div class="header-subtitle">TIGA SERANGKAI UNIVERSITY</div>
             </td>
-        </tr>
-    </table>
-    
-    <!-- METADATA TABLE - BORDERLESS -->
     <table class="header-table" border="0" cellspacing="0" cellpadding="0">
         <!-- Row 1 -->
         <tr>

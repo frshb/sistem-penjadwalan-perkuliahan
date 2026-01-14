@@ -30,7 +30,7 @@
 }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
         @include('components.sidebar')
 
-        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
                 <!-- Header Skeleton -->
@@ -110,7 +110,7 @@
                 </h3>
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto w-full">
                         <table class="min-w-full bg-white">
                             <thead class="bg-teal-700 text-white">
                                 <tr>
@@ -150,14 +150,11 @@
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                 Edit
                                             </button>
-                                            <form action="{{ route('ruangan.destroy', $ruangan->id_ruang) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ruangan ini?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                    Hapus
-                                                </button>
-                                            </form>
+                                            <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')" 
+                                                    class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                Hapus
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -177,18 +174,29 @@
         @else
 
             <div class="flex space-x-2 mb-6 border-b border-gray-300 overflow-x-auto">
-                <button class="building-tab px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-teal-700 active whitespace-nowrap" data-target="all">
+                <button 
+                    @click="activeTab = 'all'"
+                    class="building-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
+                    :class="activeTab === 'all' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-gray-600 hover:text-teal-700'">
                     Semua Gedung
                 </button>
                 @foreach ($ruangansByGedung as $namaGedung => $ruangansInGedung)
-                    <button class="building-tab px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-teal-700 whitespace-nowrap" data-target="#gedung-{{ Str::slug($namaGedung) }}">
+                    <button 
+                        @click="activeTab = '{{ Str::slug($namaGedung) }}'"
+                        class="building-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
+                        :class="activeTab === '{{ Str::slug($namaGedung) }}' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-gray-600 hover:text-teal-700'">
                         {{ $namaGedung }}
                     </button>
                 @endforeach
             </div>
 
             @forelse ($ruangansByGedung as $namaGedung => $ruangansInGedung)
-                <div class="building-content mb-8" id="gedung-{{ Str::slug($namaGedung) }}">
+                <div class="building-content mb-8" 
+                     id="gedung-{{ Str::slug($namaGedung) }}" 
+                     x-show="activeTab === 'all' || activeTab === '{{ Str::slug($namaGedung) }}'"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0">
 
                     <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
                         <h3 class="text-xl font-bold text-gray-700 mb-1">
@@ -197,10 +205,9 @@
                         <p class="text-sm text-gray-500 mb-6">{{ $ruangansInGedung->first()->gedung->lokasi ?? 'Lokasi tidak diketahui' }}</p>
 
                         <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                            <div class="overflow-x-auto">
+                            <div class="overflow-x-auto w-full">
                                 <table class="min-w-full bg-white">
                                     <thead class="bg-teal-700 text-white">
-                                        <tr>
                                         <tr>
                                             <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Nama Ruangan</th>
@@ -210,7 +217,6 @@
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Status</th>
                                             <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
-                                        </tr>
                                         </tr>
                                     </thead>
                                     <tbody class="text-gray-700">
@@ -236,14 +242,11 @@
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                         Edit
                                                     </button>
-                                                    <form action="{{ route('ruangan.destroy', $ruangan->id_ruang) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ruangan ini?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                            Hapus
-                                                        </button>
-                                                    </form>
+                                                    <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')" 
+                                                            class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                        Hapus
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -374,5 +377,6 @@
     </div>
 
 
+    <x-delete-confirm-popup />
     </body>
 </html>

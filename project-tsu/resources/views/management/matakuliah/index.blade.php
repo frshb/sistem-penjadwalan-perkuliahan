@@ -20,7 +20,7 @@
        @include('components.sidebar')
 
         <!-- Konten Utama -->
-        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
                 <!-- Header Skeleton -->
@@ -127,7 +127,7 @@
 
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto w-full">
                         <table class="min-w-full bg-white">
                             <thead class="bg-teal-800 text-white">
                                 <tr>

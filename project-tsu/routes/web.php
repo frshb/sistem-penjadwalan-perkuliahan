@@ -45,9 +45,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/profile/update', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
 
-    // Admin Only (Moved register out, but maybe other admin things go here?)
+    // Admin Only
     Route::middleware(['role:admin'])->group(function () {
-       // Future Admin Routes
+        // Main Settings Page
+        Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
+
+        // Role Management
+        Route::get('/settings/roles', [\App\Http\Controllers\RoleManagementController::class, 'index'])->name('settings.roles.index');
+        Route::post('/settings/roles', [\App\Http\Controllers\RoleManagementController::class, 'update'])->name('settings.roles.update');
+
+        // Academic Calendar Settings
+        Route::get('/settings/academic-calendar', [\App\Http\Controllers\AcademicCalendarController::class, 'index'])->name('settings.academic_calendar.index');
+        Route::post('/settings/academic-calendar', [\App\Http\Controllers\AcademicCalendarController::class, 'store'])->name('settings.academic_calendar.store');
+        Route::put('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'update'])->name('settings.academic_calendar.update');
+        Route::delete('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'destroy'])->name('settings.academic_calendar.destroy');
+
+        // Admin User Registration
+        Route::get('/settings/users/register', [\App\Http\Controllers\UserRegistrationController::class, 'create'])->name('settings.users.create');
+        Route::post('/settings/users', [\App\Http\Controllers\UserRegistrationController::class, 'store'])->name('settings.users.store');
     });
 
     // Management Routes (Admin, Dekan, Kaprodi)
@@ -92,7 +107,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
     Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
-    Route::post('/modul-penjadwalan/save-manual', [JadwalController::class, 'saveManual'])->name('jadwal.save_manual');
+
     // Automatic Scheduling Wizard Routes
     Route::get('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'step1'])->name('jadwal.otomatis.step1');
     Route::post('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep1'])->name('jadwal.otomatis.step1.store');
@@ -102,15 +117,8 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep3'])->name('jadwal.otomatis.step3.store');
 Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatisController::class, 'step4'])->name('jadwal.otomatis.step4');
 
-    // Role Management
-    Route::get('/settings/roles', [\App\Http\Controllers\RoleManagementController::class, 'index'])->name('settings.roles.index');
-    Route::post('/settings/roles', [\App\Http\Controllers\RoleManagementController::class, 'update'])->name('settings.roles.update');
 
-    // Academic Calendar Settings
-    Route::get('/settings/academic-calendar', [\App\Http\Controllers\AcademicCalendarController::class, 'index'])->name('settings.academic_calendar.index');
-    Route::post('/settings/academic-calendar', [\App\Http\Controllers\AcademicCalendarController::class, 'store'])->name('settings.academic_calendar.store');
-    Route::put('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'update'])->name('settings.academic_calendar.update');
-    Route::delete('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'destroy'])->name('settings.academic_calendar.destroy');
+
 
 });
 
