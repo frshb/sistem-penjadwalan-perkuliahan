@@ -13,7 +13,7 @@
         @include('components.sidebar')
 
         <!-- Main Content -->
-        <main id="main-content" :class="sidebarOpen ? 'ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0 bg-gray-50 flex flex-col">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0 bg-gray-50 flex flex-col">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-8 flex-1">
                 <!-- Header Skeleton -->
@@ -52,6 +52,9 @@
                  <h2 class="text-xl font-bold text-gray-700">Mahasiswa</h2>
                  <a href="{{ route('mahasiswa.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
                     Export Excel
+                </a>
+                <a href="{{ route('mahasiswa.export.pdf') }}" class="ml-2 px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
+                    Export PDF
                 </a>
             </div>
 

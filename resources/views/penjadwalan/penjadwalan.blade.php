@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modul Penjadwalan | {{ $prodi->nama_prodi ?? 'Penjadwalan' }}</title>
+    <meta name="description" content="Modul Penjadwalan Perkuliahan Fakultas Teknik TSU">
     <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
@@ -20,7 +21,7 @@
         @include('components.sidebar')
 
         <!-- Konten Utama -->
-        <main id="main-content" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-64 bg-gray-50">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
 
             <div class="flex items-center">
                 <div class="flex flex-col">

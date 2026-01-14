@@ -11,7 +11,7 @@
 
     @include('components.sidebar')
 
-    <main id="main-content" :class="sidebarOpen ? 'ml-64' : ''" x-data="{ sidebarOpen: true }" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50 min-h-screen">
+    <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" x-data="{ sidebarOpen: true }" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50 min-h-screen lg:ml-64">
         
 
         <div class="flex justify-between items-center mb-8">

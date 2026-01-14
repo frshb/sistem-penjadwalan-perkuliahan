@@ -3,53 +3,51 @@
 namespace App\Exports;
 
 use App\Models\MataKuliah;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class MataKuliahExport implements FromCollection, WithHeadings, WithMapping
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+
+class MataKuliahExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWidths
 {
-    private $rowNum = 0;
+    protected $isPdf;
 
-    /**
-    * @return \Illuminate\Support\Collection
-    */
-    public function collection()
+    public function __construct(bool $isPdf = false)
     {
-        // Ambil semua data matkul
-        return MataKuliah::all();
+        $this->isPdf = $isPdf;
     }
 
-    /**
-    * @var $matkul
-    * @return array
-    */
-    public function map($matkul): array
+    public function view(): View
     {
-        // Atur data untuk setiap baris
+        return view('exports.matakuliah', [
+            'matkuls' => MataKuliah::with('kurikulum')->get(),
+            'isPdf' => $this->isPdf
+        ]);
+    }
+
+    public function columnWidths(): array
+    {
         return [
-            ++$this->rowNum,
-            $matkul->nama_matkul,
-            $matkul->jumlah_sks,
-            $matkul->tipe,
-            $matkul->semester,
-            $matkul->kode_matkul,
+            'A' => 5,
+            'B' => 15, // Kode
+            'C' => 45, // Nama Matkul
+            'D' => 8,  // SKS
+            'E' => 12, // Tipe
+            'F' => 10, // Semester
+            'G' => 25, // Kurikulum
         ];
     }
 
-    /**
-    * @return array
-    */
-    public function headings(): array
+    public function registerEvents(): array
     {
-        // Definisikan header kolom
         return [
-            'No',
-            'Mata Kuliah',
-            'Jumlah SKS',
-            'Tipe',
-            'Semester',
-            'Kode Matkul',
+            AfterSheet::class => function(AfterSheet $event) {
+                $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+            },
         ];
     }
 }

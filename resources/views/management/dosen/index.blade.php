@@ -9,11 +9,11 @@
 
 </head>
 
-<body x-data="{ sidebarOpen: true, showAddModal: false, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
+<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
     
     @include('components.sidebar')
 
-    <main id="main-content" :class="sidebarOpen ? 'ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
+    <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
         <!-- Skeleton Loader -->
         <div x-show="isLoading" class="animate-pulse space-y-6">
             <!-- Header Skeleton -->
@@ -63,7 +63,10 @@
                     </h2>
                     <div class="flex space-x-2">
                         <a href="{{ route('dosen.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
-                            Export
+                            Export Excel
+                        </a>
+                        <a href="{{ route('dosen.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
+                            Export PDF
                         </a>
                         <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
                             Tambah Dosen
@@ -81,7 +84,7 @@
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Fakultas</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Nama Dosen</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">NIDN</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Mata Kuliah</th>
+
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Prioritas Waktu</th>
                                     <th class="w-48 text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Aksi</th>
                                 </tr>
@@ -94,7 +97,7 @@
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">Fakultas Teknik</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nama_dosen }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nidn }}</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->mata_kuliah }}</td>
+
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
                                             @php
                                                 $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
@@ -104,11 +107,11 @@
                                         </td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
                                             <div class="flex space-x-2">
-                                                <a href="#" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
+                                                <button onclick="openEditModal('{{ $dosen->nidn }}', '{{ $dosen->nama_dosen }}')" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
-                                                </a>
-                                                <form action="#" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus dosen ini?');">
+                                                </button>
+                                                <form action="{{ route('dosen.destroy', $dosen->nidn) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus dosen ini?');">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors">
@@ -121,7 +124,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-gray-500">
+                                        <td colspan="7" class="text-center py-4 text-gray-500">
                                             Data dosen belum tersedia.
                                         </td>
                                     </tr>
@@ -184,6 +187,62 @@
             </div>
         </div>
     </div>
+
+    <!-- ===== AWAL MODAL EDIT DOSEN ===== -->
+    <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div x-show="showEditModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                        <h3 class="text-xl font-bold text-teal-800">Edit Dosen</h3>
+                        <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <form id="form-edit-dosen" method="POST" class="mt-6 space-y-6">
+                        @csrf
+                        @method('PUT')
+                        <div class="flex items-center space-x-4">
+                            <label for="edit_nama_dosen" class="w-1/3 text-lg text-gray-700 font-medium">Nama Dosen :</label>
+                            <input type="text" id="edit_nama_dosen" name="nama_dosen" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <label for="edit_nidn" class="w-1/3 text-lg text-gray-700 font-medium">NIDN :</label>
+                            <input type="text" id="edit_nidn" name="nidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-4 pt-6">
+                            <button type="button" @click="showEditModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
+                                Batal
+                            </button>
+                            <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">
+                                Update
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openEditModal(nidn, nama) {
+            document.getElementById('edit_nidn').value = nidn;
+            document.getElementById('edit_nama_dosen').value = nama;
+            
+            // Set form action
+            document.getElementById('form-edit-dosen').action = '/management/dosen/' + nidn;
+
+            // Show modal via Alpine
+            document.querySelector('[x-data]').__x.$data.showEditModal = true;
+        }
+    </script>
 
 </body>
 </html>

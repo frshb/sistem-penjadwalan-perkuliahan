@@ -75,4 +75,46 @@ class DosenController extends Controller
     {
         return Excel::download(new DosenExport, 'daftar-dosen.xlsx');
     }
+
+    public function exportPdf()
+    {
+        return Excel::download(new DosenExport(true), 'daftar-dosen.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+    }
+
+    /**
+     * Memperbarui data dosen.
+     */
+    public function update(Request $request, $nidn)
+    {
+        $dosen = Dosen::where('nidn', $nidn)->firstOrFail();
+
+        $request->validate([
+            'nama_dosen' => 'required|string|max:100',
+            'nidn' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('dosen', 'nidn')->ignore($dosen->nidn, 'nidn')
+            ],
+            // mata_kuliah removed as per previous request
+        ]);
+
+        $dosen->update([
+            'nama_dosen' => $request->nama_dosen,
+            'nidn' => $request->nidn,
+        ]);
+
+        return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil diperbarui.');
+    }
+
+    /**
+     * Menghapus data dosen.
+     */
+    public function destroy($nidn)
+    {
+        $dosen = Dosen::where('nidn', $nidn)->firstOrFail();
+        $dosen->delete();
+
+        return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil dihapus.');
+    }
 }

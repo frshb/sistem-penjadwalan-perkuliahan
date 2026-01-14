@@ -15,7 +15,7 @@
         @include('components.sidebar')
 
         <!-- Main Content -->
-        <main id="main-content" :class="sidebarOpen ? 'ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0 bg-gray-50 flex flex-col">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0 bg-gray-50 flex flex-col">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
                 <!-- Header Skeleton -->
@@ -42,7 +42,7 @@
 
             <div x-show="!isLoading">
             
-            <!-- Header -->
+            <!-- HEADER MODUL PENJADWALAN ( BELUM FINAL) -->
             <div class="flex justify-between items-center mb-8">
                 <div class="flex items-center">
                     <div class="flex flex-col">
@@ -54,7 +54,7 @@
                 @include('components.header-profile')
             </div>
 
-            <!-- Action Headers & Filters -->
+            <!-- FILTER DAN AKSI -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                  <h2 class="text-xl font-bold text-gray-700">Penjadwalan Manual</h2>
                  

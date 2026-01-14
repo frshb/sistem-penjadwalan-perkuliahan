@@ -1,10 +1,10 @@
-<div id="header-profile" class="relative" x-data="{ 
+<div id="header-profile" class="relative w-fit ml-auto mb-6" x-data="{ 
     dropdownOpen: false, 
     modalOpen: false,
     editMode: false,
     showPassword: false
 }">
-    <!-- Trigger -->
+
     <div @click="dropdownOpen = !dropdownOpen" @click.away="dropdownOpen = false" class="flex items-center space-x-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors select-none">
         <div class="bg-teal-100 p-2 rounded-full text-teal-600">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,11 +15,10 @@
             <span class="text-sm font-semibold text-gray-800">{{ Auth::user()->username ?? 'Guest' }}</span>
             <span class="text-xs text-gray-500 capitalize">{{ Auth::user()->role->nama_role ?? '-' }}</span>
         </div>
-        <!-- Chevron Icon -->
         <svg class="w-4 h-4 text-gray-400 hidden sm:block transition-transform duration-200" :class="dropdownOpen ? 'transform rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
     </div>
 
-    <!-- Dropdown Menu -->
+
     <div x-show="dropdownOpen" 
          x-transition:enter="transition ease-out duration-100"
          x-transition:enter-start="transform opacity-0 scale-95"
@@ -30,20 +29,17 @@
          class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 z-50 border border-gray-100 origin-top-right"
          style="display: none;">
         
-        <!-- Mobile Only Info -->
         <div class="px-4 py-3 border-b border-gray-100 sm:hidden bg-gray-50 mb-1">
              <p class="text-sm font-bold text-gray-800 truncate">{{ Auth::user()->username ?? 'Guest' }}</p>
              <p class="text-xs text-gray-500 capitalize">{{ Auth::user()->role->nama_role ?? '-' }}</p>
         </div>
 
         <div class="px-2 space-y-1">
-            <!-- Lihat Profil -->
             <a href="#" @click.prevent="dropdownOpen = false; modalOpen = true" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-md transition-colors">
                 <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 Lihat Profil
             </a>
 
-            <!-- Logout -->
             <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form-header').submit();" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">
                 <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 Logout
@@ -55,7 +51,6 @@
         </form>
     </div>
 
-    <!-- Profile Modal -->
     <template x-teleport="body">
         <div x-show="modalOpen" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -76,13 +71,12 @@
                     
                     <div class="bg-gray-50 px-4 py-3 sm:px-6 border-b border-gray-200 flex justify-between items-center">
                         <h3 class="text-lg leading-6 font-medium text-gray-900">Profil Pengguna</h3>
-                        <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                        <button @click="modalOpen = false" aria-label="Close Profile Modal" class="text-gray-400 hover:text-gray-500 focus:outline-none">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
 
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <!-- Profile Info View -->
                         <div x-show="!editMode">
                             <div class="flex items-center justify-center mb-6">
                                 <div class="h-20 w-20 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 text-3xl font-bold">
@@ -99,7 +93,6 @@
                                     <dt class="text-sm font-medium text-gray-500">Role</dt>
                                     <dd class="mt-1 text-sm text-gray-900 font-semibold capitalize">{{ Auth::user()->role->nama_role ?? '-' }}</dd>
                                 </div>
-                                <!-- Add other fields like Created At if available later -->
                             </dl>
 
                             <div class="mt-8 flex justify-end">
@@ -110,7 +103,6 @@
                             </div>
                         </div>
 
-                        <!-- Edit Profile Form -->
                         <form x-show="editMode" action="{{ route('profile.update') }}" method="POST">
                             @csrf
                             <div class="space-y-4">
@@ -160,7 +152,6 @@
         </div>
     </template>
 
-    <!-- Error/Success Handling (Optional Toast) -->
     @if ($errors->any() || session('success'))
         <div x-data="{ show: true }" x-init="setTimeout(() => show = false, 5000)" x-show="show" class="fixed bottom-4 right-4 z-[110] max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
             <div class="p-4">
@@ -181,7 +172,7 @@
                         </p>
                     </div>
                     <div class="ml-4 flex-shrink-0 flex">
-                        <button @click="show = false" class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                        <button @click="show = false" aria-label="Close Notification" class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
                             <span class="sr-only">Close</span>
                             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </button>

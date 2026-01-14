@@ -8,10 +8,12 @@ class CreateHariTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('hari', function (Blueprint $table) {
-            $table->integer('id_hari')->primary();
-            $table->string('nama_hari', 20)->unique();
-        });
+        if (!Schema::hasTable('hari')) {
+            Schema::create('hari', function (Blueprint $table) {
+                $table->integer('id_hari')->primary();
+                $table->string('nama_hari', 20)->unique();
+            });
+        } 
     }
     public function down()
     {

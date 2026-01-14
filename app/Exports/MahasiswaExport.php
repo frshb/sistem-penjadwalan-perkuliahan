@@ -2,17 +2,37 @@
 
 namespace App\Exports;
 
-// use App\Models\Mahasiswa;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class MahasiswaExport implements FromCollection
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+
+class MahasiswaExport implements FromView, ShouldAutoSize, WithEvents
 {
-    /**
-    * @return \Illuminate\Support\Collection
-    */
-    public function collection()
+    protected $isPdf;
+
+    public function __construct(bool $isPdf = false)
     {
-        // return Mahasiswa::all();
-        return collect([]);
+        $this->isPdf = $isPdf;
+    }
+
+    public function view(): View
+    {
+        return view('exports.mahasiswa', [
+            'data' => [], // Empty data
+            'isPdf' => $this->isPdf
+        ]);
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function(AfterSheet $event) {
+                $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+            },
+        ];
     }
 }

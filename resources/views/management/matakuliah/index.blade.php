@@ -20,7 +20,7 @@
        @include('components.sidebar')
 
         <!-- Konten Utama -->
-        <main id="main-content" :class="sidebarOpen ? 'ml-64' : 'ml-0'" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
                 <!-- Header Skeleton -->
@@ -85,6 +85,16 @@
                                 <!-- Opsi diisi JavaScript -->
                             </select>
 
+                            <!-- Filter Prodi (Dinamis dari Controller) -->
+                            <select name="prodi" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <option value="">Semua Prodi</option>
+                                @foreach ($prodis as $prodi)
+                                    <option value="{{ $prodi->id_prodi }}" {{ request('prodi') == $prodi->id_prodi ? 'selected' : '' }}>
+                                        {{ $prodi->nama_prodi }}
+                                    </option>
+                                @endforeach
+                            </select>
+
                             <!-- Filter Kurikulum (Dinamis dari Controller) -->
                             <select name="kurikulum" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                                 <option value="">Semua Kurikulum</option>
@@ -113,6 +123,9 @@
                                 <a href="{{ route('matakuliah.export.excel') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                     Export Excel
                                 </a>
+                                <a href="{{ route('matakuliah.export.pdf') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Export PDF
+                                </a>
                             </div>
                         </div>
 
@@ -124,17 +137,17 @@
 
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto w-full">
                         <table class="min-w-full bg-white">
                             <thead class="bg-teal-800 text-white">
                                 <tr>
                                     <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Mata Kuliah</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode Matkul</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Jumlah SKS</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Tipe</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Semester</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kurikulum</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode Matkul</th>
                                     <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
                                 </tr>
                             </thead>
@@ -144,11 +157,11 @@
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                         <td class="text-left py-2 px-3 text-sm">{{ ($matkuls->currentPage() - 1) * $matkuls->perPage() + $index + 1 }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->nama_matkul }}</td>
+                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->sks }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->jenis }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->semester }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
                                         <td class="text-left py-2 px-3 text-sm">
                                             <div class="flex space-x-2">
                                                 <button 
@@ -200,7 +213,7 @@
 
     <!-- ===== AWAL MODAL TAMBAH MATA KULIAH ===== -->
     <!-- ===== AWAL MODAL TAMBAH MATA KULIAH ===== -->
-    <div x-show="showAddModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div x-show="showAddModal" class="fixed inset-0 z-[9999] overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
              <div x-show="showAddModal" @click="showAddModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
@@ -208,7 +221,7 @@
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showAddModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showAddModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h2 class="text-xl font-bold text-teal-800">Tambah Mata Kuliah</h2>
@@ -271,7 +284,7 @@
     <!-- ===== AKHIR MODAL TAMBAH ===== -->
 
     <!-- ===== AWAL MODAL EDIT MATA KULIAH ===== -->
-    <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div x-show="showEditModal" class="fixed inset-0 z-[9999] overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
              <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
@@ -279,7 +292,7 @@
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showEditModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showEditModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h2 class="text-xl font-bold text-teal-800">Edit Mata Kuliah</h2>

@@ -19,13 +19,10 @@ class JadwalOtomatisController extends Controller
 
         // Kurikulum Dummy
         $kurikulums = [
-            '2018' => [
-                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
-            ],
-            '2020' => [
-                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
-            ],
             '2023' => [
+                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
+            ],
+            '2025' => [
                 'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
             ]
         ];

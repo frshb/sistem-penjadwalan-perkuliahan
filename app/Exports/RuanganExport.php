@@ -3,44 +3,50 @@
 namespace App\Exports;
 
 use App\Models\Ruangan;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class RuanganExport implements FromCollection, WithHeadings, WithMapping
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+
+class RuanganExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWidths
 {
-    /**
-    * @return \Illuminate\Support\Collection
-    */
-    public function collection()
+    protected $isPdf;
+
+    public function __construct(bool $isPdf = false)
     {
-        return Ruangan::with('gedung')->get();
+        $this->isPdf = $isPdf;
     }
 
-    public function headings(): array
+    public function view(): View
+    {
+        return view('exports.ruangan', [
+            'ruangans' => Ruangan::with('gedung')->orderBy('id_gedung')->get(),
+            'isPdf' => $this->isPdf
+        ]);
+    }
+
+    public function columnWidths(): array
     {
         return [
-            'No',
-            'Nama Ruangan',
-            'Gedung',
-            'Lokasi',
-            'Fasilitas',
-            'Kapasitas',
+            'A' => 5,
+            'B' => 25, // Nama Ruangan
+            'C' => 20, // Gedung
+            'D' => 20, // Lokasi
+            'E' => 35, // Fasilitas
+            'F' => 12, // Kapasitas
         ];
     }
 
-    public function map($ruangan): array
+    public function registerEvents(): array
     {
-        static $no = 0;
-        $no++;
-
         return [
-            $no,
-            $ruangan->nama_ruang,
-            $ruangan->gedung->nama_gedung ?? '-',
-            $ruangan->gedung->lokasi ?? '-',
-            $ruangan->fasilitas,
-            $ruangan->kapasitas,
+            AfterSheet::class => function(AfterSheet $event) {
+                $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+            },
         ];
     }
 }

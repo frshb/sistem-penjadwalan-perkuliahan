@@ -22,7 +22,7 @@ class User extends Authenticatable
         'id_role',
         'id_dosen',
         'id_mhs',
-        // 'id_prodi'
+        'id_prodi'
     ];
 
     protected $hidden = [

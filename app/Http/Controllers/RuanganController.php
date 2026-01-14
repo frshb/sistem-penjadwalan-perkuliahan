@@ -126,4 +126,9 @@ class RuanganController extends Controller
     {
         return Excel::download(new RuanganExport, 'daftar-ruangan.xlsx');
     }
+
+    public function exportPdf()
+    {
+        return Excel::download(new RuanganExport(true), 'daftar-ruangan.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+    }
 }

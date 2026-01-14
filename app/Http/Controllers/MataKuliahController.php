@@ -44,8 +44,15 @@ class MataKuliahController extends Controller
             $query->where('id_kurikulum', $request->kurikulum);
         }
 
+        // Terapkan filter Prodi (jika ada input dari user)
+        if ($request->filled('prodi')) {
+            $query->where('id_prodi', $request->prodi);
+        }
+
 // Ambil semua kurikulum untuk dropdown
         $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA
+        // Ambil semua prodi untuk dropdown
+        $prodis = \App\Models\Prodi::all();
 
         // Paginate hasil query, dan tambahkan filter ke link pagination
         // USER REQUEST: Munculin semua data (limit diperbesar)
@@ -55,6 +62,7 @@ class MataKuliahController extends Controller
         return view('management.matakuliah.index', [
             'matkuls' => $matkuls,
             'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
+            'prodis' => $prodis,
             'userProdiName' => $userProdiName
         ]);
     }
@@ -132,12 +140,7 @@ class MataKuliahController extends Controller
      */
     public function exportPDF()
     {
-        // Note: Export ini belum menerapkan filter, Anda bisa tambahkan logika filter di sini jika perlu
-        $matkuls = MataKuliah::all();
-        $pdf = PDF::loadView('management.matakuliah.export_pdf', [
-            'matkuls' => $matkuls
-        ]);
-        return $pdf->download('daftar-mata-kuliah.pdf');
+        return Excel::download(new MataKuliahExport(true), 'daftar-mata-kuliah.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
     }
 
     /**
@@ -156,7 +159,6 @@ class MataKuliahController extends Controller
      */
     public function exportExcel()
     {
-        // Note: Export ini juga belum menerapkan filter
         return Excel::download(new MataKuliahExport, 'daftar-mata-kuliah.xlsx');
     }
 }

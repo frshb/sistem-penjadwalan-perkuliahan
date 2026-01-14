@@ -8,13 +8,15 @@ class CreateRuangTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('ruang', function (Blueprint $table) {
-            $table->integer('id_ruang')->autoIncrement()->primary();
-            $table->string('nama_ruang', 50)->unique();
-            $table->integer('kapasitas');
-            $table->text('fasilitas')->nullable();
-            $table->integer('id_gedung')->nullable(); // FK
-        });
+        if (!Schema::hasTable('ruang')) {
+            Schema::create('ruang', function (Blueprint $table) {
+                $table->integer('id_ruang')->primary();
+                $table->string('nama_ruang', 50)->unique();
+                $table->integer('kapasitas');
+                $table->text('fasilitas')->nullable();
+                $table->integer('id_gedung')->nullable(); // FK
+            });
+        }
     }
 
     public function down()

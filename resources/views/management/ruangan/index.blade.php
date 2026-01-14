@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Data | Data Ruangan</title>
+    <meta name="description" content="Management Data Ruangan Sistem Penjadwalan Perkuliahan">
     <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
@@ -14,10 +15,22 @@
         }
     </style>
 </head>
-<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, activeTab: 'all', editData: {}, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
+<body x-data="{ 
+    sidebarOpen: true, 
+    showAddModal: false, 
+    showEditModal: false, 
+    activeTab: 'all', 
+    editData: { id_ruang: null, nama_ruang: '', id_gedung: '', kapasitas: '', fasilitas: '' }, 
+    isLoading: true, 
+    init() { setTimeout(() => this.isLoading = false, 2000) },
+    openEdit(ruangan) {
+        this.editData = ruangan;
+        this.showEditModal = true;
+    } 
+}" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
         @include('components.sidebar')
 
-        <main id="main-content" :class="sidebarOpen ? 'ml-64' : 'ml-0'" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out">
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
                 <!-- Header Skeleton -->
@@ -70,6 +83,9 @@
                 <a href="{{ route('ruangan.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
                     Export Excel
                 </a>
+                <a href="{{ route('ruangan.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
+                    Export PDF
+                </a>
                 <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
                     Tambah Ruang Baru
                 </button>
@@ -94,7 +110,7 @@
                 </h3>
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto w-full">
                         <table class="min-w-full bg-white">
                             <thead class="bg-teal-700 text-white">
                                 <tr>
@@ -129,36 +145,16 @@
                                     </td>
                                     <td class="text-left py-2 px-3 text-sm">
                                         <div class="flex space-x-2">
-                                            <button @click="showEditModal = true; 
-                                                            editData = {
-                                                                id: '{{ $ruangan->id_ruang }}',
-                                                                nama: '{{ $ruangan->nama_ruang }}',
-                                                                gedung: '{{ $ruangan->id_gedung }}',
-                                                                kapasitas: '{{ $ruangan->kapasitas }}',
-                                                                fasilitas: `{{ $ruangan->fasilitas }}`
-                                                            };
-                                                            // We also need to set the form action dynamically or use x-bind in the form.
-                                                            // Let's rely on x-effect or just standard JS prop setting inside the modal x-data scope if possible.
-                                                            // Actually, let's just populate the form inputs manually via Alpine refs or x-model binding. 
-                                                            // Simpler: x-on:click opens modal and sets a temp variable.
-                                                            document.getElementById('form-edit').action = '/management/ruangan/' + '{{ $ruangan->id_ruang }}';
-                                                            document.getElementById('edit-nama').value = '{{ $ruangan->nama_ruang }}';
-                                                            document.getElementById('edit-gedung').value = '{{ $ruangan->id_gedung }}';
-                                                            document.getElementById('edit-kapasitas').value = '{{ $ruangan->kapasitas }}';
-                                                            document.getElementById('edit-fasilitas').value = `{{ $ruangan->fasilitas }}`;
-                                                            " 
+                                            <button @click='openEdit(@json($ruangan))' 
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                 Edit
                                             </button>
-                                            <form action="{{ route('ruangan.destroy', $ruangan->id_ruang) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ruangan ini?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                    Hapus
-                                                </button>
-                                            </form>
+                                            <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')" 
+                                                    class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                Hapus
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -178,18 +174,29 @@
         @else
 
             <div class="flex space-x-2 mb-6 border-b border-gray-300 overflow-x-auto">
-                <button class="building-tab px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-teal-700 active whitespace-nowrap" data-target="all">
+                <button 
+                    @click="activeTab = 'all'"
+                    class="building-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
+                    :class="activeTab === 'all' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-gray-600 hover:text-teal-700'">
                     Semua Gedung
                 </button>
                 @foreach ($ruangansByGedung as $namaGedung => $ruangansInGedung)
-                    <button class="building-tab px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-teal-700 whitespace-nowrap" data-target="#gedung-{{ Str::slug($namaGedung) }}">
+                    <button 
+                        @click="activeTab = '{{ Str::slug($namaGedung) }}'"
+                        class="building-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
+                        :class="activeTab === '{{ Str::slug($namaGedung) }}' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-gray-600 hover:text-teal-700'">
                         {{ $namaGedung }}
                     </button>
                 @endforeach
             </div>
 
             @forelse ($ruangansByGedung as $namaGedung => $ruangansInGedung)
-                <div class="building-content mb-8" id="gedung-{{ Str::slug($namaGedung) }}">
+                <div class="building-content mb-8" 
+                     id="gedung-{{ Str::slug($namaGedung) }}" 
+                     x-show="activeTab === 'all' || activeTab === '{{ Str::slug($namaGedung) }}'"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0">
 
                     <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
                         <h3 class="text-xl font-bold text-gray-700 mb-1">
@@ -198,10 +205,9 @@
                         <p class="text-sm text-gray-500 mb-6">{{ $ruangansInGedung->first()->gedung->lokasi ?? 'Lokasi tidak diketahui' }}</p>
 
                         <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                            <div class="overflow-x-auto">
+                            <div class="overflow-x-auto w-full">
                                 <table class="min-w-full bg-white">
                                     <thead class="bg-teal-700 text-white">
-                                        <tr>
                                         <tr>
                                             <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Nama Ruangan</th>
@@ -211,7 +217,6 @@
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Status</th>
                                             <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
-                                        </tr>
                                         </tr>
                                     </thead>
                                     <tbody class="text-gray-700">
@@ -233,18 +238,15 @@
                                             </td>
                                             <td class="text-left py-2 px-3 text-sm">
                                                 <div class="flex space-x-2">
-                                                    <button onclick='openEditModal(@json($ruangan))' class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
+                                                    <button @click='openEdit(@json($ruangan))' class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                         Edit
                                                     </button>
-                                                    <form action="{{ route('ruangan.destroy', $ruangan->id_ruang) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ruangan ini?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                            Hapus
-                                                        </button>
-                                                    </form>
+                                                    <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')" 
+                                                            class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                        Hapus
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -284,7 +286,7 @@
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showAddModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showAddModal" class="relative z-10 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="p-6">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h2 class="text-xl font-bold text-teal-800">Tambah Ruangan Baru</h2>
@@ -333,23 +335,23 @@
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showEditModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showEditModal" class="relative z-10 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="p-6">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h2 class="text-xl font-bold text-teal-800">Edit Ruangan</h2>
                         <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     </div>
                     
-                    <form id="form-edit" method="POST" class="mt-4 space-y-4">
+                    <form :action="`/management/ruangan/${editData.id_ruang}`" method="POST" class="mt-4 space-y-4">
                         @csrf
                         @method('PUT')
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Ruangan</label>
-                            <input type="text" id="edit-nama" name="nama_ruang" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" required>
+                            <input type="text" name="nama_ruang" x-model="editData.nama_ruang" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Gedung</label>
-                            <select id="edit-gedung" name="id_gedung" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" required>
+                            <select name="id_gedung" x-model="editData.id_gedung" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" required>
                                 <option value="">-- Pilih Gedung --</option>
                                 @foreach ($gedungs as $gedung)
                                     <option value="{{ $gedung->id_gedung }}">{{ $gedung->nama_gedung }} ({{ $gedung->lokasi }})</option>
@@ -358,11 +360,11 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Kapasitas</label>
-                            <input type="number" id="edit-kapasitas" name="kapasitas" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" required>
+                            <input type="number" name="kapasitas" x-model="editData.kapasitas" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Fasilitas</label>
-                            <textarea id="edit-fasilitas" name="fasilitas" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" placeholder="Contoh: AC, Proyektor, Papan Tulis"></textarea>
+                            <textarea name="fasilitas" x-model="editData.fasilitas" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500" placeholder="Contoh: AC, Proyektor, Papan Tulis"></textarea>
                         </div>
                         <div class="flex justify-end space-x-3 pt-4">
                             <button type="button" @click="showEditModal = false" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Batal</button>
@@ -375,5 +377,6 @@
     </div>
 
 
+    <x-delete-confirm-popup />
     </body>
 </html>

@@ -3,38 +3,47 @@
 namespace App\Exports;
 
 use App\Models\Prodi;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class ProdiExport implements FromCollection, WithHeadings, WithMapping
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+
+class ProdiExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWidths
 {
-    /**
-    * @return \Illuminate\Support\Collection
-    */
-    public function collection()
+    protected $isPdf;
+
+    public function __construct(bool $isPdf = false)
     {
-        return Prodi::all();
+        $this->isPdf = $isPdf;
     }
 
-    public function headings(): array
+    public function view(): View
+    {
+        return view('exports.prodi', [
+            'prodis' => Prodi::all(),
+            'isPdf' => $this->isPdf
+        ]);
+    }
+
+    public function columnWidths(): array
     {
         return [
-            'No',
-            'Nama Prodi',
-            'Kode Prodi',
+            'A' => 5,
+            'B' => 40, // Program Studi
+            'C' => 20, // Kode Prodi
         ];
     }
 
-    public function map($prodi): array
+    public function registerEvents(): array
     {
-        static $no = 0;
-        $no++;
-
         return [
-            $no,
-            $prodi->nama_prodi,
-            $prodi->kode_prodi,
+            AfterSheet::class => function(AfterSheet $event) {
+                $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+            },
         ];
     }
 }
