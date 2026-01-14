@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Prodi;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProdiExport;
 
 class ProdiController extends Controller
 {
@@ -13,6 +15,52 @@ class ProdiController extends Controller
         $prodis = Prodi::all();
         return view('management.prodi.index', [
             'prodis' => $prodis
+        ]);
+    }
+
+    public function show($id)
+    {
+        $prodi = Prodi::findOrFail($id);
+        
+
+
+        if (stripos($prodi->nama_prodi, 'Informatika') !== false) {
+            $generalInfo = [
+                'kode' => '55202',
+                'akreditasi' => 'Baik',
+                'rasio_dosen_mhs' => '1:8.88',
+                'sk_selenggara' => '42/A/O/2025',
+                'biaya_kuliah' => 'Rp300.000 - 6.250.000',
+                'akreditasi_int' => '-',
+                'rasio_terima_daftar' => '1:3',
+                'tgl_sk' => '10 Januari 2025',
+                'tgl_berdiri' => '10 Januari 2025',
+                'telp' => '0271-716500',
+            ];
+
+            $dosenHomebase = [];
+            $dosenRasio = [];
+        } else {
+
+            $generalInfo = [
+                'kode' => $prodi->kode_prodi ?? '-',
+                'akreditasi' => '-',
+                'rasio_dosen_mhs' => '-',
+                'sk_selenggara' => '-',
+                'biaya_kuliah' => '-',
+                'akreditasi_int' => '-',
+                'rasio_terima_daftar' => '-',
+                'tgl_sk' => '-',
+                'tgl_berdiri' => '-',
+                'telp' => '-',
+            ];
+            $dosenHomebase = [];
+            $dosenRasio = [];
+        }
+
+        return view('management.prodi.detail', [
+            'prodi' => $prodi,
+            'info' => $generalInfo
         ]);
     }
 
@@ -89,5 +137,15 @@ public function update(Request $request, $id)
         } catch (\Exception $e) {
             return redirect()->route('prodi.index')->with('error', 'Gagal menghapus data.');
         }
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new ProdiExport, 'daftar-prodi.xlsx');
+    }
+
+    public function exportPdf()
+    {
+        return Excel::download(new ProdiExport(true), 'daftar-prodi.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
     }
 }

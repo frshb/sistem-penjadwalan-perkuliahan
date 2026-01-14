@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Data | Edit Ruangan</title>
+    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100/50 overflow-x-hidden">
 
-    @include('management.ruangan.sidebar') <main id="main-content" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-64">
+    @include('management.ruangan.sidebar') <main id="main-content" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out lg:ml-64">
         <div class="flex items-center">
-             <h1 class="text-3xl font-bold text-gray-800 ml-3">Edit Data Ruangan</h1>
+             <h1 class="text-2xl font-bold text-gray-800 ml-3">Edit Data Ruangan</h1>
         </div>
 
         <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6">
@@ -58,11 +59,11 @@
 
                 <div class="mt-6 flex justify-end space-x-3">
                     <a href="{{ route('ruangan.index') }}"
-                       class="px-5 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75">
+                       class="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75">
                         Batal
                     </a>
                     <button type="submit"
-                            class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
+                            class="px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
                         Update Data
                     </button>
                 </div>

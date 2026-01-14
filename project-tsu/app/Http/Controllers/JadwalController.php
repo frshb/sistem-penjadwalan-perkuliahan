@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Jadwal;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Kurikulum;
 use App\Models\Ruangan;
 use App\Models\Dosen;
@@ -16,7 +17,16 @@ use PDF;
 
 class JadwalController extends Controller
 {
-    
+    /**
+     * Menampilkan halaman Penjadwalan Manual.
+     * (Preserved from local branch)
+     */
+    public function manual()
+    {
+        // dd('Manual Route Hit'); // Uncomment to debug
+        return view('penjadwalan.penjadwalan-manual');
+    }
+
     public function index(){
         $step = session('penjadwalan.current_step', 1);
         
@@ -35,21 +45,21 @@ class JadwalController extends Controller
     {
         $step = $r->step;
 
-        if ($step == 1) return $this->handleStep1($request);
-        if ($step == 2) return $this->handleStep2($request);
-        if ($step == 3) return $this->hanldeStep3($request);
-        if ($step == 4) return $this->hanldeStep4();
+        if ($step == 1) return $this->handleStep1($r);
+        if ($step == 2) return $this->handleStep2($r);
+        if ($step == 3) return $this->handleStep3($r);
+        if ($step == 4) return $this->handleStep4();
     }
 
     public function handleStep1(Request $r)
     {
-        $r->validated([
+        $r->validate([
             'semester' => 'required|array|min:1',
         ]);
 
         session([
             'penjadwalan.semester' => $r->semester,
-            'penjadwalan.prodi' => Prodi::all(),
+            'penjadwalan.prodi' => \App\Models\Prodi::all(), // Fixed missing import or use full path
             'penjadwalan.current_step' => 2,
         ]);
         
@@ -88,8 +98,13 @@ class JadwalController extends Controller
 
     public function handleStep4()
     {
+<<<<<<< HEAD
         $input = session('penjadwalan.step3', []);
         $ruanganDipilih = session('penjadwalan.ruangan', []);
+=======
+         $input = session('penjadwalan.step3_data', []); // Corrected key from step3 to step3_data based on handleStep3
+        $ruanganDipilih = session('penjadwalan.id_ruang', []); // Corrected key from ruangan/id_ruang
+>>>>>>> ed0ee6a531005f49075701a9ed6054ff1f219889
 
         $hari = Hari::all();
         $slot = Waktu::all();
@@ -158,7 +173,6 @@ class JadwalController extends Controller
         return back()->with('gagal', $gagal);
     }
     
-    
     //EXCEL
     //public function exportExcel()
     //{
@@ -173,4 +187,3 @@ class JadwalController extends Controller
     //    return $pdf->downloa('jadwal.pdf');
     //}
 }
-#belum selesai

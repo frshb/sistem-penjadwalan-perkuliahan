@@ -27,6 +27,11 @@ class MataKuliah extends Model
         'jenis',
         'id_prodi',
         'semester',
-        'kurikulum', // <-- Ini adalah kolom teks
+        'id_kurikulum', 
     ];
+
+    public function kurikulum()
+    {
+        return $this->belongsTo(Kurikulum::class, 'id_kurikulum', 'id_kurikulum');
+    }
 }

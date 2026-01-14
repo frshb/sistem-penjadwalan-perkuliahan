@@ -4,74 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Data | Program Studi</title>
+    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body class="bg-gray-100/50 overflow-x-hidden min-h-screen">
-
-    <!-- Hamburger -->
-    <button id="sidebar-open-btn" class="fixed top-6 left-6 z-20 text-gray-600 hover:text-gray-900 hidden transition-all duration-300 ease-in-out">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-    </button>
+<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
 
     <div class="flex min-h-screen">
-
-        <!-- Side bar aktif dosen -->
         @include('components.sidebar')
-        <main id="main-content" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-64">
-            <div class="flex items-center">
-                <div class="flex flex-col">
-                    <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
-                    <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+        <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
+            <!-- Skeleton Loader -->
+            <div x-show="isLoading" class="animate-pulse space-y-6">
+                <!-- Header Skeleton -->
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex items-center space-x-3 w-1/3">
+                        <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
+                        <div class="w-48 h-6 bg-gray-300 rounded"></div>
+                    </div>
+                    <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
                 </div>
-                <h1 class="text-3xl font-bold text-gray-800 ml-3">Management Data</h1>
+                
+                <!-- Filter/Add Bar Skeleton -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between gap-4">
+                        <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
+                        <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
+                    </div>
+                    
+                    <!-- Table Skeleton -->
+                    <div class="border rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
+                            <div class="w-10 h-4 bg-gray-300 rounded"></div>
+                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
+                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-700 mb-4 sm:mb-0">Daftar Program Studi</h2>
+            <div x-show="!isLoading">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="flex flex-col">
+                        <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
+                        <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800 ml-3">Management Data</h1>
+                </div>
+                @include('components.header-profile')
+            </div>
 
-                    <!-- Tombol Tambah -->
-                    <button id="open-modal-btn" class="flex items-center px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                        Tambah Prodi
-                    </button>
+            
+            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6 border border-transparent">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">Daftar Program Studi</h2>
+
+                    <div class="flex space-x-2">
+                        <a href="{{ route('prodi.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
+                            Export Excel
+                        </a>
+                        <a href="{{ route('prodi.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
+                            Export PDF
+                        </a>
+                        <button @click="showAddModal = true" class="flex items-center px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Tambah Prodi
+                        </button>
+                    </div>
                 </div>
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
                     <div class="overflow-x-auto">
-                        <table class="min-w-full bg-white">
+                        <table class="min-w-full bg-white whitespace-nowrap">
                             <thead class="bg-teal-800 text-white">
                                 <tr>
-                                    <th class="w-16 text-left py-3 px-4 uppercase font-semibold text-sm">No</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Program Studi</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-sm">Kode Prodi</th>
-                                    <th class="w-48 text-left py-3 px-4 uppercase font-semibold text-sm">Aksi</th>
+                                    <th class="w-16 text-left py-4 px-3 uppercase font-semibold text-xs">No</th>
+                                    <th class="text-left py-4 px-3 uppercase font-semibold text-xs">Program Studi</th>
+                                    <th class="text-left py-4 px-3 uppercase font-semibold text-xs">Kode Prodi</th>
+                                    <th class="w-48 text-left py-4 px-3 uppercase font-semibold text-xs">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700">
                                 @forelse ($prodis as $prodi)
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-                                        <td class="text-left py-3 px-4">{{ $loop->iteration }}</td>
-                                        <td class="text-left py-3 px-4">{{ $prodi->nama_prodi }}</td>
-                                        <td class="text-left py-3 px-4">{{ $prodi->kode_prodi }}</td>
-                                        <td class="text-left py-3 px-4">
+                                        <td class="text-left py-4 px-3 text-sm">{{ $loop->iteration }}</td>
+                                        <td class="text-left py-4 px-3 text-sm">{{ $prodi->nama_prodi }}</td>
+                                        <td class="text-left py-4 px-3 text-sm">{{ $prodi->kode_prodi }}</td>
+                                        <td class="text-left py-4 px-3 text-sm">
                                             <div class="flex space-x-2">
-                                                <!-- Tombol Edit -->
+
+                                                <a href="{{ route('prodi.show', $prodi->id_prodi) }}" class="flex items-center justify-center bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 text-xs font-medium transition duration-150">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                                    Detail
+                                                </a>
+
+
                                                 <button
-                                                    onclick="openEditModal('{{ $prodi->id_prodi }}', '{{ $prodi->nama_prodi }}', '{{ $prodi->kode_prodi }}')"
-                                                    class="flex items-center justify-center bg-yellow-400 text-gray-900 px-4 py-1.5 rounded-md hover:bg-yellow-500 text-sm font-medium transition duration-150">
-                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                                    @click="showEditModal = true;
+                                                            document.getElementById('edit_id_prodi').value = '{{ $prodi->id_prodi }}';
+                                                            document.getElementById('edit_nama_prodi').value = '{{ $prodi->nama_prodi }}';
+                                                            document.getElementById('edit_kode_prodi').value = '{{ $prodi->kode_prodi }}';
+                                                            document.getElementById('form-edit-prodi').action = '/management/prodi/{{ $prodi->id_prodi }}';
+                                                            "
+                                                    class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition duration-150">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
                                                 </button>
-
-                                                <form action="{{ route('prodi.destroy', $prodi->id_prodi) }}" method="POST" onsubmit="return confirm('Hapus prodi ini?');">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 text-sm font-medium transition duration-150">
-                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                        Hapus
-                                                    </button>
-                                                </form>
+                                                <button 
+                                                    onclick="confirmDelete('{{ route('prodi.destroy', $prodi->id_prodi) }}')"
+                                                    class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition duration-150">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    Hapus
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -89,7 +133,7 @@
     <!-- ===== MODAL TAMBAH PRODI ===== -->
     <div id="modal-overlay" class="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-40 hidden transition-opacity duration-300"></div>
 
-    <div id="tambah-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95">
+    <div id="tambah-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95 border">
         <div class="p-6">
             <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                 <h2 class="text-xl font-bold text-teal-800">Tambah Program Studi</h2>
@@ -115,7 +159,7 @@
     </div>
 
     <!-- ===== MODAL EDIT PRODI ===== -->
-    <div id="edit-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95">
+    <div id="edit-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95 border">
         <div class="p-6">
             <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                 <h2 class="text-xl font-bold text-teal-800">Edit Program Studi</h2>
@@ -146,87 +190,21 @@
 
     <!-- Include Popup Sukses -->
     @include('components.success-popup')
+    <!-- Include Popup Delete Confirm -->
+    @include('components.delete-confirm-popup')
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- Logic Sidebar ---
-            const closeBtn = document.getElementById('sidebar-toggle');
-            const openBtn = document.getElementById('sidebar-open-btn');
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('main-content');
-            if (closeBtn && openBtn && sidebar && mainContent) {
-                closeBtn.addEventListener('click', function() { sidebar.classList.add('-translate-x-full'); mainContent.classList.remove('ml-64'); openBtn.classList.remove('hidden'); });
-                openBtn.addEventListener('click', function() { sidebar.classList.remove('-translate-x-full'); mainContent.classList.add('ml-64'); openBtn.classList.add('hidden'); });
-            }
-
-            // --- Helper: Toggle Blur ---
-            function toggleBlur(isBlur) {
-                if (isBlur) mainContent.classList.add('filter', 'blur-sm', 'pointer-events-none');
-                else mainContent.classList.remove('filter', 'blur-sm', 'pointer-events-none');
-            }
-
-            // --- Logic Modal Tambah ---
-            const modalTambah = document.getElementById('tambah-prodi-modal');
-            const overlay = document.getElementById('modal-overlay');
-
-            document.getElementById('open-modal-btn').addEventListener('click', function() {
-                modalTambah.classList.remove('hidden');
-                modalTambah.classList.remove('scale-95');
-                modalTambah.classList.add('scale-100');
-                overlay.classList.remove('hidden');
-                toggleBlur(true);
-            });
-
-            // --- Logic Modal Edit ---
-            const modalEdit = document.getElementById('edit-prodi-modal');
-            const formEdit = document.getElementById('form-edit-prodi');
-            const inputEditId = document.getElementById('edit_id_prodi');
-            const inputEditNama = document.getElementById('edit_nama_prodi');
-            const inputEditKode = document.getElementById('edit_kode_prodi');
-
-            window.openEditModal = function(id, nama, kode) {
-                inputEditId.value = id;
-                inputEditNama.value = nama;
-                inputEditKode.value = kode;
-
-                // PENTING: URL Update Dinamis
-                formEdit.action = `/management/prodi/${id}`;
-
-                modalEdit.classList.remove('hidden');
-                modalEdit.classList.remove('scale-95');
-                modalEdit.classList.add('scale-100');
-                overlay.classList.remove('hidden');
-                toggleBlur(true);
-            };
-
-            // --- Fungsi Tutup Modal ---
-            window.closeModal = function(type) {
-                overlay.classList.add('hidden');
-                toggleBlur(false);
-
-                if (type === 'tambah') {
-                    modalTambah.classList.add('hidden');
-                    modalTambah.classList.remove('scale-100');
-                    modalTambah.classList.add('scale-95');
-                    document.getElementById('form-tambah-prodi').reset();
-                    document.getElementById('tambah-errors').classList.add('hidden');
-                } else if (type === 'edit') {
-                    modalEdit.classList.add('hidden');
-                    modalEdit.classList.remove('scale-100');
-                    modalEdit.classList.add('scale-95');
-                    document.getElementById('edit-errors').classList.add('hidden');
-                }
-            };
-
-            overlay.addEventListener('click', function() {
-                closeModal('tambah');
-                closeModal('edit');
-            });
+            // --- Handlers for Success Popups ---
+            // If checking specifically for Alpine.js state changes from outside, we might need dispatch events.
+            // But here the form submits via AJAX.
 
             // --- Handle Form Submit (AJAX) ---
-            function handleFormSubmit(formId, errorId) {
+            function handleFormSubmit(formId, errorId, modalType) {
                 const form = document.getElementById(formId);
                 const errorBox = document.getElementById(errorId);
+
+                if(!form) return;
 
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
@@ -255,11 +233,24 @@
                         }
                     })
                     .then(data => {
-                        if (formId === 'form-tambah-prodi') closeModal('tambah');
-                        else closeModal('edit');
+                        // Close Modal via Alpine.js
+                        if (modalType === 'add') {
+                            document.querySelector('[x-data]').__x.$data.showAddModal = false;
+                            document.getElementById('form-tambah-prodi').reset();
+                        } else {
+                            document.querySelector('[x-data]').__x.$data.showEditModal = false;
+                        }
 
                         // Tampilkan popup sukses
-                        window.showSuccessPopup(data.message || 'Berhasil!');
+                        if(window.showSuccessPopup) {
+                            window.showSuccessPopup(data.message || 'Berhasil!');
+                        } else {
+                            alert(data.message || 'Berhasil!');
+                            window.location.reload();
+                        }
+                        
+                        // Optional: reload table data or page
+                        setTimeout(() => window.location.reload(), 1000);
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -277,8 +268,8 @@
                 });
             }
 
-            handleFormSubmit('form-tambah-prodi', 'tambah-errors');
-            handleFormSubmit('form-edit-prodi', 'edit-errors');
+            handleFormSubmit('form-tambah-prodi', 'tambah-errors', 'add');
+            handleFormSubmit('form-edit-prodi', 'edit-errors', 'edit');
         });
     </script>
 </body>

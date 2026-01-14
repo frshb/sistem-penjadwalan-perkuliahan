@@ -16,10 +16,11 @@
                 {{ session('success') }}
             </p>
 
-            <!-- Tombol Tutup -->
             <button onclick="closePopup('session-success-popup')" class="w-full bg-teal-800 text-white font-semibold py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
                 OK, Lanjutkan
             </button>
+
+<!-- pop up sukses untuk form tampilan awal -->
         </div>
     </div>
 @endif
