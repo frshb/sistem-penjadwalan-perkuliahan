@@ -44,15 +44,19 @@ class MataKuliahController extends Controller
             $query->where('id_kurikulum', $request->kurikulum);
         }
 
-        // Terapkan filter Prodi (jika ada input dari user)
         if ($request->filled('prodi')) {
-            $query->where('id_prodi', $request->prodi);
+            $prodi = $request->prodi;
+            if ($prodi == 'informatika') {
+                $query->where('kode_matkul', 'like', '%INF%');
+            } elseif ($prodi == 'sistem_informasi') {
+                $query->where('kode_matkul', 'like', '%SIS%');
+            } elseif ($prodi == 'rekayasa_komputer') {
+                $query->where('kode_matkul', 'like', '%REK%');
+            }
         }
 
 // Ambil semua kurikulum untuk dropdown
         $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA
-        // Ambil semua prodi untuk dropdown
-        $prodis = \App\Models\Prodi::all();
 
         // Paginate hasil query, dan tambahkan filter ke link pagination
         // USER REQUEST: Munculin semua data (limit diperbesar)
@@ -62,7 +66,6 @@ class MataKuliahController extends Controller
         return view('management.matakuliah.index', [
             'matkuls' => $matkuls,
             'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
-            'prodis' => $prodis,
             'userProdiName' => $userProdiName
         ]);
     }

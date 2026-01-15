@@ -70,7 +70,10 @@
             
             <h2 class="text-xl font-bold text-gray-700 mb-4">Input Kelas</h2>
 
-            <div x-data="{ activeTab: 'Informatika' }">
+            <div x-data="{ 
+                activeTab: 'Informatika', 
+                allDosens: {{ $dosens->map(fn($d) => ['id' => $d->id, 'name' => $d->name])->values()->toJson() }} 
+            }">
                 
 
                 <div class="border-b border-gray-200 mb-6 font-medium text-sm flex space-x-8">
@@ -95,59 +98,128 @@
                              x-transition:enter-end="opacity-100 translate-y-0"
                              class="space-y-6">
                             
-                            @if(count($subjects) > 0)
-                                @foreach ($subjects as $index => $subject)
-                                    <!-- Subject Card with Local Data for classes -->
-                                    <div x-data="{ classes: [''] }" class="border border-gray-300 rounded-xl p-6 bg-white shadow-sm">
-                                        <h3 class="text-lg font-bold text-gray-800 mb-1">Kurikulum {{ $subject->kurikulum }}</h3>
-                                        <div class="text-sm text-gray-600 mb-4">Semester {{ $subject->semester }}</div>
-            
-                                        <div class="flex items-start space-x-4">
-                                            <!-- Dynamic Class Code Inputs Container -->
-                                            <div class="flex-1 space-y-3">
-                                                <!-- Loop through classes array -->
-                                                <template x-for="(kls, i) in classes" :key="i">
-                                                    <div class="relative">
-                                                        <input type="text" 
-                                                               name="data[{{ $prodiName }}][{{ $subject->code }}][classes][]" 
-                                                               placeholder="isi kode kelas" 
-                                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-600 italic">
+                            @php
+                                $groupedSubjects = collect($subjects)->groupBy(['kurikulum', 'semester']);
+                            @endphp
+
+                            @if($groupedSubjects->isNotEmpty())
+                                @foreach($groupedSubjects as $kurikulum => $semesters)
+                                    @foreach($semesters as $semester => $items)
+                                        <div class="mb-8">
+                                            <div class="flex items-center mb-4">
+                                                <div class="w-1 h-6 bg-teal-600 rounded-full mr-3"></div>
+                                                <h3 class="text-lg font-bold text-gray-700">
+                                                    Kurikulum {{ $kurikulum }} <span class="text-gray-400 mx-2">|</span> Semester {{ $semester }}
+                                                </h3>
+                                            </div>
+                                            
+                                            <div class="space-y-4">
+                                                @foreach ($items as $subject)
+                                                    <!-- Subject Card with Local Data for classes -->
+                                                    <div x-data="{ classes: [''] }" class="border border-gray-300 rounded-xl p-6 bg-white shadow-sm">
+                                                        
+                                                        <div class="flex items-start space-x-4">
+                                                            <!-- Dynamic Class Code Inputs Container -->
+                                                            <div class="flex-1 space-y-3">
+                                                                <!-- Loop through classes array -->
+                                                                <template x-for="(kls, i) in classes" :key="i">
+                                                                    <div class="relative">
+                                                                        <input type="text" 
+                                                                               name="data[{{ $prodiName }}][{{ $subject->code }}][classes][]" 
+                                                                               placeholder="isi kode kelas" 
+                                                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-600 italic">
+                                                                        <div class="mt-1 text-xs text-gray-400 italic">
+                                                                            Info: A1 (Sistem Informasi), A2 (Informatika), A3 (ReKom)
+                                                                        </div>
+                                                                    </div>
+                                                                </template>
+                                                            </div>
+
+                                                            <!-- Subject Name -->
+                                                            <div class="w-1/4">
+                                                                <div class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm flex items-center justify-between">
+                                                                    <span>{{ $subject->name }}</span>
+                                                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                                </div>
+                                                                <!-- Small Note for Sem/Kur info (optional since header exists, but good for context if item is isolated) -->
+                                                                <!-- Removing redundancy if header is clear, but keeping as per previous step preference? User said "samain sama yang kelas". -->
+                                                                <!-- Let's keep it minimal or remove if header covers it. 
+                                                                     The User asked to GROUP it. The item note is still useful for quick scanning. -->
+                                                                <div class="mt-1 text-xs text-gray-400 italic">
+                                                                    {{ $subject->code }}
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Lecturer Dropdown (Searchable) -->
+                                                            <div class="w-1/4">
+                                                                <div x-data="{
+                                                                        search: '',
+                                                                        open: false,
+                                                                        selectedId: null,
+                                                                        selectedName: '~ dosen pengampu ~',
+                                                                        get filteredDosens() {
+                                                                            if (this.search === '') return this.allDosens;
+                                                                            return this.allDosens.filter(d => d.name.toLowerCase().includes(this.search.toLowerCase()));
+                                                                        }
+                                                                     }" 
+                                                                     class="relative">
+                                                                    
+                                                                    <input type="hidden" name="data[{{ $prodiName }}][{{ $subject->code }}][lecturer]" :value="selectedId">
+                                                                    
+                                                                    <!-- Trigger -->
+                                                                    <button type="button" 
+                                                                            @click="open = !open; if(open) $nextTick(() => $refs.searchInput.focus())"
+                                                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-left text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 flex justify-between items-center min-h-[42px]">
+                                                                        <span x-text="selectedName" :class="selectedId ? 'text-gray-800' : 'text-gray-500'"></span>
+                                                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                                    </button>
+                                                                
+                                                                    <!-- Dropdown Menu -->
+                                                                    <div x-show="open" 
+                                                                         @click.outside="open = false" 
+                                                                         x-transition:enter="transition ease-out duration-100"
+                                                                         x-transition:enter-start="transform opacity-0 scale-95"
+                                                                         x-transition:enter-end="transform opacity-100 scale-100"
+                                                                         x-transition:leave="transition ease-in duration-75"
+                                                                         x-transition:leave-start="transform opacity-100 scale-100"
+                                                                         x-transition:leave-end="transform opacity-0 scale-95"
+                                                                         class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-hidden flex flex-col">
+                                                                        
+                                                                        <div class="p-2 border-b border-gray-100 bg-gray-50">
+                                                                            <input x-ref="searchInput" 
+                                                                                   x-model="search" 
+                                                                                   type="text" 
+                                                                                   placeholder="Cari dosen..." 
+                                                                                   class="w-full px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                                                                        </div>
+                                                                        
+                                                                        <ul class="overflow-y-auto flex-1 p-1">
+                                                                            <template x-for="dosen in filteredDosens" :key="dosen.id">
+                                                                                <li @click="selectedId = dosen.id; selectedName = dosen.name; open = false; search = ''" 
+                                                                                    class="px-3 py-2 hover:bg-teal-50 rounded text-sm cursor-pointer text-gray-700" 
+                                                                                    x-text="dosen.name"></li>
+                                                                            </template>
+                                                                            <li x-show="filteredDosens.length === 0" class="px-4 py-3 text-sm text-gray-400 italic text-center">
+                                                                                Tidak ditemukan
+                                                                            </li>
+                                                                        </ul>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Add Class Button -->
+                                                            <div>
+                                                                <button type="button" @click="classes.push('')" class="px-4 py-2 bg-yellow-400 text-gray-800 font-bold text-sm rounded-lg shadow hover:bg-yellow-500 transition duration-200 flex items-center whitespace-nowrap">
+                                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                                                    Tambah kelas
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </template>
-                                            </div>
-
-                                            <!-- Subject Name -->
-                                            <div class="w-1/4">
-                                                <div class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm flex items-center justify-between">
-                                                    <span>{{ $subject->name }}</span>
-                                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                </div>
-                                            </div>
-
-                                            <!-- Lecturer Dropdown -->
-                                            <div class="w-1/4">
-                                                <div class="relative">
-                                                    <select name="data[{{ $prodiName }}][{{ $subject->code }}][lecturer]" class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-600 appearance-none bg-white">
-                                                        <option value="">~ dosen pengampu ~</option>
-                                                        @foreach ($dosens as $dosen)
-                                                            <option value="{{ $dosen->id }}">{{ $dosen->name }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Add Class Button -->
-                                            <div>
-                                                <button type="button" @click="classes.push('')" class="px-4 py-2 bg-yellow-400 text-gray-800 font-bold text-sm rounded-lg shadow hover:bg-yellow-500 transition duration-200 flex items-center whitespace-nowrap">
-                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                                    Tambah kelas
-                                                </button>
+                                                @endforeach
                                             </div>
                                         </div>
-                                    </div>
+                                    @endforeach
                                 @endforeach
                             @else
                                 <div class="text-gray-500 text-center py-8">Tidak ada mata kuliah untuk semester yang dipilih di prodi ini.</div>

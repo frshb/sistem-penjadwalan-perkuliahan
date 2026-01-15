@@ -88,8 +88,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/management/dosen/export-excel', [DosenController::class, 'exportExcel'])->name('dosen.export.excel');
     Route::get('/management/dosen/export-pdf', [DosenController::class, 'exportPdf'])->name('dosen.export.pdf'); // New PDF Export Route
     Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
-    Route::put('/management/dosen/{nidn}', [DosenController::class, 'update'])->name('dosen.update');
-    Route::delete('/management/dosen/{dosen}', [DosenController::class, 'destroy'])->name('dosen.destroy');
+    Route::put('/management/dosen/{dosen:nidn}', [DosenController::class, 'update'])->name('dosen.update');
+    Route::delete('/management/dosen/{dosen:nidn}', [DosenController::class, 'destroy'])->name('dosen.destroy');
     
     Route::get('/management/matakuliah', [MataKuliahController::class, 'index'])->name('matakuliah.index');
     Route::post('/management/matakuliah', [MataKuliahController::class, 'store'])->name('matakuliah.store');

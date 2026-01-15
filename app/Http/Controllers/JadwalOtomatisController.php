@@ -167,6 +167,7 @@ class JadwalOtomatisController extends Controller
                             'subject_name' => $subjectInfo ? $subjectInfo['name'] : $code,
                             'subject_code' => $code,
                             'semester' => $subjectInfo ? $subjectInfo['semester'] : '-',
+                            'kurikulum' => $subjectInfo ? $subjectInfo['kurikulum'] : '-',
                             'lecturer' => $lecturerName,
                             'class_code' => $className,
                             'day' => $days[array_rand($days)],
@@ -184,32 +185,49 @@ class JadwalOtomatisController extends Controller
 
     private function getMasterSubjects()
     {
-        return [
+        $baseSubjects = [
             'Informatika' => [
-                ['code' => 'IF101', 'name' => 'Pemrograman Dasar', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'IF102', 'name' => 'Matematika Diskrit', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'IF201', 'name' => 'Algoritma & Struktur Data', 'semester' => 2, 'kurikulum' => '2020'],
-                ['code' => 'IF301', 'name' => 'Pemrograman Berorientasi Objek', 'semester' => 3, 'kurikulum' => '2020'],
-                ['code' => 'IF401', 'name' => 'Kecerdasan Buatan', 'semester' => 4, 'kurikulum' => '2020'],
-                ['code' => 'IF501', 'name' => 'Pemrograman Web', 'semester' => 5, 'kurikulum' => '2020'],
-                ['code' => 'IF601', 'name' => 'Pembelajaran Mesin', 'semester' => 6, 'kurikulum' => '2020'],
+                ['code' => 'IF101', 'name' => 'Pemrograman Dasar', 'semester' => 1],
+                ['code' => 'IF102', 'name' => 'Matematika Diskrit', 'semester' => 1],
+                ['code' => 'IF201', 'name' => 'Algoritma & Struktur Data', 'semester' => 2],
+                ['code' => 'IF301', 'name' => 'Pemrograman Berorientasi Objek', 'semester' => 3],
+                ['code' => 'IF401', 'name' => 'Kecerdasan Buatan', 'semester' => 4],
+                ['code' => 'IF501', 'name' => 'Pemrograman Web', 'semester' => 5],
+                ['code' => 'IF601', 'name' => 'Pembelajaran Mesin', 'semester' => 6],
             ],
             'Sistem Informasi' => [
-                ['code' => 'SI101', 'name' => 'Dasar Sistem Informasi', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'SI102', 'name' => 'Manajemen & Organisasi', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'SI201', 'name' => 'Analisis Proses Bisnis', 'semester' => 2, 'kurikulum' => '2020'],
-                ['code' => 'SI301', 'name' => 'Desain Basis Data', 'semester' => 3, 'kurikulum' => '2020'],
-                ['code' => 'SI401', 'name' => 'Manajemen Proyek TI', 'semester' => 4, 'kurikulum' => '2020'],
-                ['code' => 'SI501', 'name' => 'E-Business', 'semester' => 5, 'kurikulum' => '2020'],
+                ['code' => 'SI101', 'name' => 'Dasar Sistem Informasi', 'semester' => 1],
+                ['code' => 'SI102', 'name' => 'Manajemen & Organisasi', 'semester' => 1],
+                ['code' => 'SI201', 'name' => 'Analisis Proses Bisnis', 'semester' => 2],
+                ['code' => 'SI301', 'name' => 'Desain Basis Data', 'semester' => 3],
+                ['code' => 'SI401', 'name' => 'Manajemen Proyek TI', 'semester' => 4],
+                ['code' => 'SI501', 'name' => 'E-Business', 'semester' => 5],
             ],
             'Rekayasa Komputer' => [
-                ['code' => 'RK101', 'name' => 'Fisika Dasar', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'RK102', 'name' => 'Rangkaian Listrik', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'RK201', 'name' => 'Elektronika Digital', 'semester' => 2, 'kurikulum' => '2020'],
-                ['code' => 'RK301', 'name' => 'Sistem Tertanam', 'semester' => 3, 'kurikulum' => '2020'],
-                ['code' => 'RK401', 'name' => 'Jaringan Komputer', 'semester' => 4, 'kurikulum' => '2020'],
-                ['code' => 'RK501', 'name' => 'Robotika', 'semester' => 5, 'kurikulum' => '2020'],
+                ['code' => 'RK101', 'name' => 'Fisika Dasar', 'semester' => 1],
+                ['code' => 'RK102', 'name' => 'Rangkaian Listrik', 'semester' => 1],
+                ['code' => 'RK201', 'name' => 'Elektronika Digital', 'semester' => 2],
+                ['code' => 'RK301', 'name' => 'Sistem Tertanam', 'semester' => 3],
+                ['code' => 'RK401', 'name' => 'Jaringan Komputer', 'semester' => 4],
+                ['code' => 'RK501', 'name' => 'Robotika', 'semester' => 5],
             ]
         ];
+
+        $master = [];
+        foreach ($baseSubjects as $prodi => $subjects) {
+            foreach ($subjects as $sub) {
+                // Add for 2023
+                $sub2023 = $sub;
+                $sub2023['kurikulum'] = '2023';
+                $master[$prodi][] = $sub2023;
+
+                // Add for 2025
+                $sub2025 = $sub;
+                $sub2025['kurikulum'] = '2025';
+                $master[$prodi][] = $sub2025;
+            }
+        }
+
+        return $master;
     }
 }

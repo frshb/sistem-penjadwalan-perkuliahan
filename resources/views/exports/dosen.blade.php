@@ -12,7 +12,7 @@
             <th style="border: 1px solid #000; padding: 6px; text-align: left;">NIDN</th>
             <th style="border: 1px solid #000; padding: 6px; text-align: left;">Prodi</th>
             <th style="border: 1px solid #000; padding: 6px; text-align: left;">Fakultas</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: left;">Mata Kuliah</th>
+
         </tr>
     </thead>
     <tbody>
@@ -23,7 +23,7 @@
             <td style="border: 1px solid #000; padding: 5px;">{{ $dosen->nidn }}</td>
             <td style="border: 1px solid #000; padding: 5px;">Teknik Informatika</td> 
             <td style="border: 1px solid #000; padding: 5px;">Fakultas Teknik</td>
-            <td style="border: 1px solid #000; padding: 5px;">{{ $dosen->mata_kuliah }}</td>
+
         </tr>
         @endforeach
     </tbody>

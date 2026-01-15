@@ -37,7 +37,7 @@ class DosenExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
             'C' => 15, // NIDN
             'D' => 25, // Prodi
             'E' => 20, // Fakultas
-            'F' => 40, // Mata Kuliah
+
         ];
     }
 

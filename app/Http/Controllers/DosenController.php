@@ -11,9 +11,6 @@ use Illuminate\Support\Facades\Auth;
 
 class DosenController extends Controller
 {
-    /**
-     * Menampilkan halaman daftar dosen.
-     */
     public function index()
     {
         $user = Auth::user();
@@ -21,12 +18,10 @@ class DosenController extends Controller
         $query = Dosen::query();
 
         if ($user && $user->isKaprodi()) {
-            // Prioritize direct prodi link (new way)
             if ($user->id_prodi) {
                  $query->where('id_prodi', $user->id_prodi);
                  $userProdiName = $user->prodi->nama_prodi ?? '';
             } 
-            // Fallback to Dosen link (old way - backward compatibility)
             elseif ($user->dosen && $user->dosen->id_prodi) {
                 $query->where('id_prodi', $user->dosen->id_prodi);
                 $userProdiName = $user->dosen->prodi->nama_prodi ?? ''; 
@@ -40,9 +35,7 @@ class DosenController extends Controller
         ]);
     }
 
-    /**
-     * Menyimpan dosen baru ke database.
-     */
+
     public function store(Request $request)
     {
         // Validasi data
@@ -55,6 +48,7 @@ class DosenController extends Controller
                 Rule::unique('dosen', 'nidn') // Pastikan NIDN unik
             ],
             'mata_kuliah' => 'nullable|string',
+            'ketersediaan_waktu' => 'nullable|string',
         ]);
 
         // Simpan data
@@ -62,10 +56,45 @@ class DosenController extends Controller
             'nama_dosen' => $request->nama_dosen,
             'nidn' => $request->nidn,
             'mata_kuliah' => $request->mata_kuliah,
+            'ketersediaan_waktu' => $request->ketersediaan_waktu,
         ]);
 
         // Kembali ke halaman index
         return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil ditambahkan.');
+    }
+
+    /**
+     * Memperbarui data dosen.
+     */
+    public function update(Request $request, Dosen $dosen)
+    {
+        $request->validate([
+            'nama_dosen' => 'required|string|max:100',
+            'nidn' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('dosen', 'nidn')->ignore($dosen->id_dosen, 'id_dosen')
+            ],
+            'ketersediaan_waktu' => 'nullable|string',
+        ]);
+
+        $dosen->update([
+            'nama_dosen' => $request->nama_dosen,
+            'nidn' => $request->nidn,
+            'ketersediaan_waktu' => $request->ketersediaan_waktu,
+        ]);
+
+        return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil diperbarui.');
+    }
+
+    /**
+     * Menghapus data dosen.
+     */
+    public function destroy(Dosen $dosen)
+    {
+        $dosen->delete();
+        return redirect()->back()->with('success', 'Data dosen berhasil dihapus.');
     }
 
     /**
@@ -79,42 +108,5 @@ class DosenController extends Controller
     public function exportPdf()
     {
         return Excel::download(new DosenExport(true), 'daftar-dosen.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
-    }
-
-    /**
-     * Memperbarui data dosen.
-     */
-    public function update(Request $request, $nidn)
-    {
-        $dosen = Dosen::where('nidn', $nidn)->firstOrFail();
-
-        $request->validate([
-            'nama_dosen' => 'required|string|max:100',
-            'nidn' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('dosen', 'nidn')->ignore($dosen->nidn, 'nidn')
-            ],
-            // mata_kuliah removed as per previous request
-        ]);
-
-        $dosen->update([
-            'nama_dosen' => $request->nama_dosen,
-            'nidn' => $request->nidn,
-        ]);
-
-        return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil diperbarui.');
-    }
-
-    /**
-     * Menghapus data dosen.
-     */
-    public function destroy($nidn)
-    {
-        $dosen = Dosen::where('nidn', $nidn)->firstOrFail();
-        $dosen->delete();
-
-        return redirect()->route('dosen.index')->with('success', 'Data dosen berhasil dihapus.');
     }
 }

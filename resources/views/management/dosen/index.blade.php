@@ -9,7 +9,70 @@
 
 </head>
 
-<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
+<body x-data="{ 
+    sidebarOpen: true, 
+    showAddModal: false, 
+    showEditModal: false,
+    editNama: '',
+    editNidn: '',
+    editProdi: '',
+    editPrioritas: '',
+    editPrioritasList: [''], 
+    addPrioritasList: [''],
+    editUrl: '',
+    isLoading: true, 
+    init() { setTimeout(() => this.isLoading = false, 2000) },
+    addTimeSlot(type) {
+        if (type === 'add') this.addPrioritasList.push('');
+        if (type === 'edit') this.editPrioritasList.push('');
+    },
+    removeTimeSlot(index, type) {
+        if (type === 'add' && this.addPrioritasList.length > 1) this.addPrioritasList.splice(index, 1);
+        if (type === 'edit' && this.editPrioritasList.length > 1) this.editPrioritasList.splice(index, 1);
+    },
+    openEditModal(nidn, nama, prodi, prioritas) {
+        this.editNama = nama;
+        this.editNidn = nidn;
+        this.editProdi = prodi;
+        this.editPrioritas = prioritas;
+        
+        // Split priority string into array. Handle newlines predominantly, fallback to comma if no newline found (legacy support)
+        if (prioritas) {
+            if (prioritas.includes('\n')) {
+                this.editPrioritasList = prioritas.split('\n');
+            } else if (prioritas.includes(', ')) { 
+                 this.editPrioritasList = prioritas.split(', ');
+            } else {
+                 this.editPrioritasList = [prioritas];
+            }
+        } else {
+            this.editPrioritasList = [''];
+        }
+        
+        this.editUrl = '{{ route('dosen.index') }}/' + nidn; 
+        this.showEditModal = true;
+    },
+    confirmDelete(url) {
+        if (confirm('Apakah Anda yakin ingin menghapus dosen ini?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            const csrfToken = document.querySelector('meta[name=csrf-token]').content;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+}" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
     
     @include('components.sidebar')
 
@@ -98,33 +161,26 @@
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nama_dosen }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nidn }}</td>
 
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
-                                            @php
-                                                $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-                                                $times = ['08.00 - 11.40', '13.00 - 15.30', '09.00 - 12.00'];
-                                                echo $days[array_rand($days)] . ', ' . $times[array_rand($times)];
-                                            @endphp
+                                        <td class="text-left py-3 px-4 text-sm min-w-[200px]">
+                                            {{-- Display with newlines --}}
+                                            {!! nl2br(e($dosen->ketersediaan_waktu)) !!}
                                         </td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
                                             <div class="flex space-x-2">
-                                                <button onclick="openEditModal('{{ $dosen->nidn }}', '{{ $dosen->nama_dosen }}')" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
+                                                <button @click="openEditModal('{{ $dosen->nidn }}', '{{ $dosen->nama_dosen }}', '{{ $dosen->id_prodi }}', '{{ $dosen->ketersediaan_waktu }}')" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
                                                 </button>
-                                                <form action="{{ route('dosen.destroy', $dosen->nidn) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus dosen ini?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors">
-                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                        Hapus
-                                                    </button>
-                                                </form>
+                                                <button @click="confirmDelete('{{ route('dosen.destroy', $dosen->kode_dosen ?? $dosen->nidn) }}')" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    Hapus
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-gray-500">
+                                        <td colspan="8" class="text-center py-4 text-gray-500">
                                             Data dosen belum tersedia.
                                         </td>
                                     </tr>
@@ -152,7 +208,7 @@
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showAddModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showAddModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h3 class="text-xl font-bold text-teal-800" id="modal-title">Tambah Dosen</h3>
@@ -170,9 +226,26 @@
                             <label for="nidn" class="w-1/3 text-lg text-gray-700 font-medium">NIDN :</label>
                             <input type="text" id="nidn" name="nidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                         </div>
-                        <div class="flex items-center space-x-4">
-                            <label for="mata_kuliah" class="w-1/3 text-lg text-gray-700 font-medium">Mata Kuliah :</label>
-                            <input type="text" id="mata_kuliah" name="mata_kuliah" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Pisahkan dengan koma">
+                        <div class="space-y-2">
+                            <label class="block text-lg text-gray-700 font-medium">Prioritas Waktu :</label>
+                            <div class="space-y-2">
+                                <template x-for="(item, index) in addPrioritasList" :key="index">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="text" x-model="addPrioritasList[index]" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Contoh: Senin, 08.00 - 10.00">
+                                        <button type="button" @click="removeTimeSlot(index, 'add')" class="text-red-500 hover:text-red-700" x-show="addPrioritasList.length > 1">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                                <div class="flex justify-end">
+                                    <button type="button" @click="addTimeSlot('add')" class="text-sm text-teal-600 hover:text-teal-800 font-medium flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                        Tambah Waktu
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Hidden input to store joined string -->
+                            <input type="hidden" name="ketersediaan_waktu" :value="addPrioritasList.join('\n')">
                         </div>
                         <div class="flex justify-end space-x-4 pt-6">
                             <button type="button" @click="showAddModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
@@ -188,16 +261,18 @@
         </div>
     </div>
 
+    <!-- ===== AKHIR MODAL TAMBAH DOSEN ===== -->
+
     <!-- ===== AWAL MODAL EDIT DOSEN ===== -->
     <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
-            <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
+             <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showEditModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showEditModal" class="inline-block align-bottom bg-white relative z-50 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h3 class="text-xl font-bold text-teal-800">Edit Dosen</h3>
@@ -205,16 +280,38 @@
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
-                    <form id="form-edit-dosen" method="POST" class="mt-6 space-y-6">
+                    <form :action="editUrl" method="POST" class="mt-6 space-y-6">
                         @csrf
                         @method('PUT')
                         <div class="flex items-center space-x-4">
                             <label for="edit_nama_dosen" class="w-1/3 text-lg text-gray-700 font-medium">Nama Dosen :</label>
-                            <input type="text" id="edit_nama_dosen" name="nama_dosen" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                            <input type="text" id="edit_nama_dosen" name="nama_dosen" x-model="editNama" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                         </div>
                         <div class="flex items-center space-x-4">
                             <label for="edit_nidn" class="w-1/3 text-lg text-gray-700 font-medium">NIDN :</label>
-                            <input type="text" id="edit_nidn" name="nidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                            <input type="text" id="edit_nidn" name="nidn" x-model="editNidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                        </div>
+
+                         <div class="space-y-2">
+                            <label class="block text-lg text-gray-700 font-medium">Prioritas Waktu :</label>
+                            <div class="space-y-2">
+                                <template x-for="(item, index) in editPrioritasList" :key="index">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="text" x-model="editPrioritasList[index]" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Contoh: Senin, 08.00 - 10.00">
+                                        <button type="button" @click="removeTimeSlot(index, 'edit')" class="text-red-500 hover:text-red-700" x-show="editPrioritasList.length > 1">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                                <div class="flex justify-end">
+                                    <button type="button" @click="addTimeSlot('edit')" class="text-sm text-teal-600 hover:text-teal-800 font-medium flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                        Tambah Waktu
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Hidden input to store joined string -->
+                             <input type="hidden" name="ketersediaan_waktu" :value="editPrioritasList.join('\n')">
                         </div>
                         
                         <div class="flex justify-end space-x-4 pt-6">
@@ -230,19 +327,6 @@
             </div>
         </div>
     </div>
-
-    <script>
-        function openEditModal(nidn, nama) {
-            document.getElementById('edit_nidn').value = nidn;
-            document.getElementById('edit_nama_dosen').value = nama;
-            
-            // Set form action
-            document.getElementById('form-edit-dosen').action = '/management/dosen/' + nidn;
-
-            // Show modal via Alpine
-            document.querySelector('[x-data]').__x.$data.showEditModal = true;
-        }
-    </script>
-
+    <!-- ===== AKHIR MODAL EDIT ===== -->
 </body>
 </html>

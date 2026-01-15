@@ -42,7 +42,7 @@
 
             <div x-show="!isLoading">
             
-            <!-- HEADER MODUL PENJADWALAN ( BELUM FINAL) -->
+            <!-- Header -->
             <div class="flex justify-between items-center mb-8">
                 <div class="flex items-center">
                     <div class="flex flex-col">
@@ -54,7 +54,7 @@
                 @include('components.header-profile')
             </div>
 
-            <!-- FILTER DAN AKSI -->
+            <!-- Action Headers & Filters -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                  <h2 class="text-xl font-bold text-gray-700">Penjadwalan Manual</h2>
                  

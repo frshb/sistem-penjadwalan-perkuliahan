@@ -42,7 +42,7 @@ class ProdiExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
     {
         return [
             AfterSheet::class => function(AfterSheet $event) {
-                $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+                $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_PORTRAIT);
             },
         ];
     }
