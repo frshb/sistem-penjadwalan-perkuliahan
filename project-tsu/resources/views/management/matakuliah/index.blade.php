@@ -11,20 +11,20 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
 </head>
-<body x-data="{ 
-    sidebarOpen: true, 
-    showAddModal: false, 
-    showEditModal: false, 
-    showExportMenu: false, 
-    semesterType: 'ganjil', 
+<body x-data="{
+    sidebarOpen: true,
+    showAddModal: false,
+    showEditModal: false,
+    showExportMenu: false,
+    semesterType: 'ganjil',
     editNamaMatkul: '',
     editKodeMatkul: '',
     editSks: '',
     editSemester: '',
     editTipe: '',
     editKurikulum: '',
-    editUrl: '', 
-    isLoading: true, 
+    editUrl: '',
+    isLoading: true,
     init() { setTimeout(() => this.isLoading = false, 2000) },
     openEditModal(kode, nama, sks, jenis, semester, kurikulum) {
         this.editKodeMatkul = kode;
@@ -33,7 +33,7 @@
         this.editTipe = jenis.charAt(0).toUpperCase() + jenis.slice(1); // Capitalize first letter
         this.editSemester = semester;
         this.editKurikulum = kurikulum;
-        this.editUrl = '{{ route('matakuliah.index') }}/' + kode; 
+        this.editUrl = '{{ route('matakuliah.index') }}/' + kode;
         this.showEditModal = true;
     }
 }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
@@ -56,14 +56,14 @@
                     </div>
                     <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
                 </div>
-                
+
                 <!-- Filter/Add Bar Skeleton -->
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between gap-4">
                         <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
                         <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
                     </div>
-                    
+
                     <!-- Table Skeleton -->
                     <div class="border rounded-lg overflow-hidden">
                         <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
@@ -179,8 +179,8 @@
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
                                         <td class="text-left py-2 px-3 text-sm">
                                             <div class="flex space-x-2">
-                                                <button 
-                                                    @click="openEditModal('{{ $matkul->kode_matkul }}', '{{ $matkul->nama_matkul }}', '{{ $matkul->sks }}', '{{ $matkul->jenis }}', '{{ $matkul->semester }}', '{{ $matkul->id_kurikulum }}')" 
+                                                <button
+                                                    @click="openEditModal('{{ $matkul->kode_matkul }}', '{{ $matkul->nama_matkul }}', '{{ $matkul->sks }}', '{{ $matkul->jenis }}', '{{ $matkul->semester }}', '{{ $matkul->id_kurikulum }}')"
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
@@ -230,13 +230,13 @@
     <!-- ===== AWAL MODAL TAMBAH MATA KULIAH ===== -->
     <div x-show="showAddModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
-             <div x-show="showAddModal" @click="showAddModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
+             <div x-show="showAddModal" @click="showAddModal = false" class="fixed inset-0 z-40 transition-opacity" aria-hidden="true">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showAddModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showAddModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h2 class="text-xl font-bold text-teal-800">Tambah Mata Kuliah</h2>
@@ -301,13 +301,13 @@
     <!-- ===== AWAL MODAL EDIT MATA KULIAH ===== -->
     <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
-             <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
+             <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 z-40 transition-opacity" aria-hidden="true">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showEditModal" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="showEditModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h2 class="text-xl font-bold text-teal-800">Edit Mata Kuliah</h2>
@@ -435,7 +435,7 @@
                     e.preventDefault();
                     const formData = new FormData(form);
                     fetch(form.action, {
-                        method: 'POST', 
+                        method: 'POST',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
                              // Assuming csrf token is handled by input
@@ -454,7 +454,7 @@
                         }
                     })
                     .then(data => {
-                        window.location.reload(); 
+                        window.location.reload();
                     })
                     .catch(error => {
                         let errorMessage = 'Terjadi kesalahan.';

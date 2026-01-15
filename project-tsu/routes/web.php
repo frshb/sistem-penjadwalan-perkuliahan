@@ -28,7 +28,7 @@ Route::get('/', function () {
 Route::middleware(['guest', 'revalidate'])->group(function () {
     Route::get('/login', [AuthController::class, 'index'])->name('login');
     Route::post('/authenticate', [AuthController::class, 'authenticate'])->name('authenticate');
-    
+
     // Public Register (as requested to be accessible from login)
     Route::get('/users/register', [AuthController::class, 'register'])->name('users.register');
     Route::post('/users/store', [AuthController::class, 'storeUser'])->name('users.store');
@@ -76,11 +76,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/management/prodi/{prodi}', [ProdiController::class, 'destroy'])->name('prodi.destroy');
         Route::put('/management/prodi/{id}', [ProdiController::class, 'update'])->name('prodi.update');
     });
-    
-    
+
+
     // Additional grouping for other controllers...
     // For now applying broadly, logic inside controllers to filter data.
-    
+
     Route::get('/management/ruangan/export-excel', [RuanganController::class, 'exportExcel'])->name('ruangan.export.excel');
     Route::get('/management/ruangan/export-pdf', [RuanganController::class, 'exportPdf'])->name('ruangan.export.pdf'); // New PDF Export Route
     Route::get('/management/ruangan', [RuanganController::class, 'index'])->name('ruangan.index');
@@ -88,24 +88,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/management/dosen/export-excel', [DosenController::class, 'exportExcel'])->name('dosen.export.excel');
     Route::get('/management/dosen/export-pdf', [DosenController::class, 'exportPdf'])->name('dosen.export.pdf'); // New PDF Export Route
     Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
-    Route::put('/management/dosen/{dosen:nidn}', [DosenController::class, 'update'])->name('dosen.update');
-    Route::delete('/management/dosen/{dosen:nidn}', [DosenController::class, 'destroy'])->name('dosen.destroy');
-    
+    Route::put('/management/dosen/{dosen:nuptk}', [DosenController::class, 'update'])->name('dosen.update');
+    Route::delete('/management/dosen/{dosen:nuptk}', [DosenController::class, 'destroy'])->name('dosen.destroy');
+
     Route::get('/management/matakuliah', [MataKuliahController::class, 'index'])->name('matakuliah.index');
     Route::post('/management/matakuliah', [MataKuliahController::class, 'store'])->name('matakuliah.store');
     Route::put('/management/matakuliah/{kode_matkul}', [MataKuliahController::class, 'update'])->name('matakuliah.update');
     Route::delete('/management/matakuliah/{matakuliah}', [MataKuliahController::class, 'destroy'])->name('matakuliah.destroy');
     Route::get('/management/matakuliah/export-excel', [MataKuliahController::class, 'exportExcel'])->name('matakuliah.export.excel');
     Route::get('/management/matakuliah/export-pdf', [MataKuliahController::class, 'exportPDF'])->name('matakuliah.export.pdf'); // New PDF Export Route
-    
+
     Route::get('/management/mahasiswa/export-excel', [MahasiswaController::class, 'exportExcel'])->name('mahasiswa.export.excel');
     Route::get('/management/mahasiswa/export-pdf', [MahasiswaController::class, 'exportPdf'])->name('mahasiswa.export.pdf'); // New PDF Export Route
     Route::get('/management/mahasiswa', [MahasiswaController::class, 'index'])->name('mahasiswa.index');
-    
+
     Route::resource('/management/ruangan', RuanganController::class)
-        ->except(['show', 'index']) 
+        ->except(['show', 'index'])
         ->names('ruangan');
-        
+
     Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
     Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');

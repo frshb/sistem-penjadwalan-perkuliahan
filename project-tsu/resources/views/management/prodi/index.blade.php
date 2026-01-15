@@ -8,8 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
-
+<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, isLoading: true, editData: { id: '', nama: '', kode: '' }, init() { setTimeout(() => this.isLoading = false, 2000) } }"  @close-modal.window="showAddModal = false; showEditModal = false;" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
     <div class="flex min-h-screen">
         @include('components.sidebar')
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
@@ -23,14 +22,14 @@
                     </div>
                     <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
                 </div>
-                
+
                 <!-- Filter/Add Bar Skeleton -->
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between gap-4">
                         <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
                         <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
                     </div>
-                    
+
                     <!-- Table Skeleton -->
                     <div class="border rounded-lg overflow-hidden">
                         <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
@@ -54,7 +53,7 @@
                 @include('components.header-profile')
             </div>
 
-            
+
             <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6 border border-transparent">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">Daftar Program Studi</h2>
@@ -110,7 +109,7 @@
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
                                                 </button>
-                                                <button 
+                                                <button
                                                     onclick="confirmDelete('{{ route('prodi.destroy', $prodi->id_prodi) }}')"
                                                     class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition duration-150">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -131,9 +130,8 @@
     </div>
 
     <!-- ===== MODAL TAMBAH PRODI ===== -->
-    <div id="modal-overlay" class="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-40 hidden transition-opacity duration-300"></div>
-
-    <div id="tambah-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95 border">
+    <div id="modal-overlay" x-show="showAddModal || showEditModal" x-transition.opacity class="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-40" ></div>
+    <div id="tambah-prodi-modal" x-show="showAddModal" x-transition @click.away="showAddModal = false" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md border">
         <div class="p-6">
             <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                 <h2 class="text-xl font-bold text-teal-800">Tambah Program Studi</h2>
@@ -159,7 +157,7 @@
     </div>
 
     <!-- ===== MODAL EDIT PRODI ===== -->
-    <div id="edit-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95 border">
+    <div id="edit-prodi-modal" x-show="showEditModal" x-transition @click.away="showEditModal = false" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md border">
         <div class="p-6">
             <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                 <h2 class="text-xl font-bold text-teal-800">Edit Program Studi</h2>
@@ -248,7 +246,7 @@
                             alert(data.message || 'Berhasil!');
                             window.location.reload();
                         }
-                        
+
                         // Optional: reload table data or page
                         setTimeout(() => window.location.reload(), 1000);
                     })
@@ -265,6 +263,14 @@
                         errorBox.innerHTML = errorMessage;
                         errorBox.classList.remove('hidden');
                     });
+
+                    .then(data => {
+                        if (window.showSuccessPopup) {
+                            window.showSuccessPopup(data.message || 'Berhasil!');
+                        }
+                        setTimeout(() => window.location.reload(), 800);
+                    });
+
                 });
             }
 
