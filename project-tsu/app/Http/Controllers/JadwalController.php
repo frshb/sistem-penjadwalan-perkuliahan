@@ -98,13 +98,12 @@ class JadwalController extends Controller
 
     public function handleStep4()
     {
-<<<<<<< HEAD
         $input = session('penjadwalan.step3', []);
         $ruanganDipilih = session('penjadwalan.ruangan', []);
-=======
-         $input = session('penjadwalan.step3_data', []); // Corrected key from step3 to step3_data based on handleStep3
+
+        $input = session('penjadwalan.step3_data', []); // Corrected key from step3 to step3_data based on handleStep3
         $ruanganDipilih = session('penjadwalan.id_ruang', []); // Corrected key from ruangan/id_ruang
->>>>>>> ed0ee6a531005f49075701a9ed6054ff1f219889
+
 
         $hari = Hari::all();
         $slot = Waktu::all();

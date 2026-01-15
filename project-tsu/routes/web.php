@@ -9,6 +9,8 @@ use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\MahasiswaController;
 
 use App\Http\Controllers\KpSkripsiController;
+use App\Http\Controllers\JadwalOtomatisController;
+use App\Http\Controllers\JadwalManualController;
 
 
 use App\Http\Controllers\DashboardController;
@@ -111,31 +113,66 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
 
     // Automatic Scheduling Wizard Routes
-    Route::get('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'step1'])->name('jadwal.otomatis.step1');
-    Route::post('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep1'])->name('jadwal.otomatis.step1.store');
-    Route::get('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'step2'])->name('jadwal.otomatis.step2');
-    Route::post('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep2'])->name('jadwal.otomatis.step2.store');
-    Route::get('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'step3'])->name('jadwal.otomatis.step3');
-Route::post('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep3'])->name('jadwal.otomatis.step3.store');
-Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatisController::class, 'step4'])->name('jadwal.otomatis.step4');
+    Route::prefix('penjadwalan-otomatis')
+    ->middleware(['auth'])
+    ->name('jadwal.otomatis.')
+    ->group(function () {
+
+        // STEP 1 – Pilih Kurikulum & Semester
+        Route::get('/step-1', [JadwalOtomatisController::class, 'step1'])
+            ->name('step1');
+
+        Route::post('/step-1', [JadwalOtomatisController::class, 'storeStep1'])
+            ->name('step1.store');
+
+        // STEP 2 – Pilih Ruangan (by Gedung)
+        Route::get('/step-2', [JadwalOtomatisController::class, 'step2'])
+            ->name('step2');
+
+        Route::post('/step-2', [JadwalOtomatisController::class, 'storeStep2'])
+            ->name('step2.store');
+
+        // STEP 3 – Input Mata Kuliah & Kelas
+        Route::get('/step-3', [JadwalOtomatisController::class, 'step3'])
+            ->name('step3');
+
+        Route::post('/step-3', [JadwalOtomatisController::class, 'storeStep3'])
+            ->name('step3.store');
+
+        // STEP 4 – Hasil Jadwal
+        Route::get('/step-4', [JadwalOtomatisController::class, 'step4'])
+            ->name('step4');
+    });
 
 
+    Route::get('/penjadwalan', [JadwalController::class, 'index'])->name('penjadwalan.index');
+    Route::post('/penjadwalan/proses', [JadwalController::class, 'proses'])->name('penjadwalan.proses'); 
 
+
+    Route::prefix('penjadwalan-manual')
+    ->middleware(['auth'])
+    ->name('jadwal.manual.')
+    ->group(function () {
+
+        // Halaman utama penjadwalan manual
+        Route::get('/', [JadwalManualController::class, 'index'])
+            ->name('index');
+
+        // Simpan jadwal manual
+        Route::post('/store', [JadwalManualController::class, 'store'])
+            ->name('store');
+
+        // Edit jadwal
+        Route::get('/{jadwal}/edit', [JadwalManualController::class, 'edit'])
+            ->name('edit');
+
+        // Update jadwal
+        Route::put('/{jadwal}', [JadwalManualController::class, 'update'])
+            ->name('update');
+
+        // Hapus jadwal
+        Route::delete('/{jadwal}', [JadwalManualController::class, 'destroy'])
+            ->name('destroy');
+    });
 
 });
-
-<<<<<<< HEAD
-Route::get('/penjadwalan', [JadwalController::class, 'index'])->name('penjadwalan.index');
-Route::post('/penjadwalan/proses', [JadwalController::class, 'proses'])->name('penjadwalan.proses'); 
-
-
-Route::get('jadwal/manual', [JadwalManualController::class, 'index']);
-Route::get('jadwal/manual/{id}/edit', [JadwalManualController::class, 'edit']);
-Route::post('jadwal/manual/{id}', [JadwalManualController::class, 'update']);
-Route::post('jadwal/manual/{id}/validasi', function ($id) {
-    Jadwal::where('id_jadwal', $id)->update([
-        'status_validasi' => 1
-    ]);
-});
-=======
->>>>>>> ed0ee6a531005f49075701a9ed6054ff1f219889
