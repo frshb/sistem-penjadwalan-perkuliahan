@@ -23,16 +23,18 @@
     editSemester: '',
     editTipe: '',
     editKurikulum: '',
+    editProdi: '',
     editUrl: '', 
     isLoading: true, 
-    init() { setTimeout(() => this.isLoading = false, 2000) },
-    openEditModal(kode, nama, sks, jenis, semester, kurikulum) {
+    init() { setTimeout(() => this.isLoading = false) },
+    openEditModal(kode, nama, sks, jenis, semester, kurikulum, prodi) {
         this.editKodeMatkul = kode;
         this.editNamaMatkul = nama;
         this.editSks = sks;
         this.editTipe = jenis.charAt(0).toUpperCase() + jenis.slice(1); // Capitalize first letter
         this.editSemester = semester;
         this.editKurikulum = kurikulum;
+        this.editProdi = prodi;
         this.editUrl = '{{ route('matakuliah.index') }}/' + kode; 
         this.showEditModal = true;
     }
@@ -91,68 +93,73 @@
 
             <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6 border border-transparent">
 
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">
+                <div class="mb-4">
+                    <h2 class="text-xl font-bold text-gray-700">
                         Mata Kuliah
                     </h2>
-                    <div class="flex flex-wrap items-center gap-2">
+                </div>
 
-                        <!-- ===== AWAL FORM FILTER ===== -->
-                        <form action="{{ route('matakuliah.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
-                            <!-- Filter Semester (JS) -->
-                            <button id="btn-ganjil" type="button" class="px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md text-sm">
-                                Ganjil
-                            </button>
-                            <button id="btn-genap" type="button" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm">
-                                Genap
-                            </button>
-                            <select id="select-semester" name="semester" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <!-- Opsi diisi JavaScript -->
-                            </select>
+                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
+                    <!-- ===== AWAL FORM FILTER ===== -->
+                    <form action="{{ route('matakuliah.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                        <!-- Filter Semester (JS) -->
+                        <button id="btn-ganjil" type="button" class="px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md text-sm">
+                            Ganjil
+                        </button>
+                        <button id="btn-genap" type="button" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm">
+                            Genap
+                        </button>
+                        <select id="select-semester" name="semester" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <!-- Opsi diisi JavaScript -->
+                        </select>
 
-                            <!-- Filter Kurikulum (Dinamis dari Controller) -->
-                            <select name="kurikulum" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <option value="">Semua Kurikulum</option>
-                                @foreach ($kurikulums as $kurikulum)
-                                    <option value="{{ $kurikulum->id_kurikulum }}" {{ request('kurikulum') == $kurikulum->id_kurikulum ? 'selected' : '' }}>
-                                        {{ $kurikulum->nama_kurikulum }}
-                                    </option>
-                                @endforeach
-                            </select>
+                        <!-- Filter Kurikulum (Dinamis dari Controller) -->
+                        <select name="kurikulum" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="">Semua Kurikulum</option>
+                            @foreach ($kurikulums as $kurikulum)
+                                <option value="{{ $kurikulum->id_kurikulum }}" {{ request('kurikulum') == $kurikulum->id_kurikulum ? 'selected' : '' }}>
+                                    {{ $kurikulum->nama_kurikulum }}
+                                </option>
+                            @endforeach
+                        </select>
 
-                            <!-- Filter Prodi (Berdasarkan Kode) -->
-                            <select name="prodi" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <option value="">Semua Prodi</option>
-                                <option value="informatika" {{ request('prodi') == 'informatika' ? 'selected' : '' }}>Informatika (INF)</option>
-                                <option value="sistem_informasi" {{ request('prodi') == 'sistem_informasi' ? 'selected' : '' }}>Sistem Informasi (SIS)</option>
-                                <option value="rekayasa_komputer" {{ request('prodi') == 'rekayasa_komputer' ? 'selected' : '' }}>Rekayasa Komputer (REK)</option>
-                            </select>
+                        <!-- Filter Prodi (Berdasarkan Kode) -->
+                        <select name="prodi" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="">Semua Prodi</option>
+                            <option value="informatika" {{ request('prodi') == 'informatika' ? 'selected' : '' }}>Informatika (INF)</option>
+                            <option value="sistem_informasi" {{ request('prodi') == 'sistem_informasi' ? 'selected' : '' }}>Sistem Informasi (SIS)</option>
+                            <option value="rekayasa_komputer" {{ request('prodi') == 'rekayasa_komputer' ? 'selected' : '' }}>Rekayasa Komputer (REK)</option>
+                        </select>
 
-                            <!-- Tombol Submit Filter -->
-                            <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
-                                Filter
-                            </button>
-                        </form>
-                        <!-- ===== AKHIR FORM FILTER ===== -->
+                        <!-- Tombol Submit Filter -->
+                        <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
+                            Filter
+                        </button>
+                    </form>
+                    <!-- ===== AKHIR FORM FILTER ===== -->
 
+                    <div class="flex items-center gap-2 shrink-0">
                         <!-- Tombol Aksi -->
-                        <div class="relative" @click.away="showExportMenu = false">
-                            <button @click="showExportMenu = !showExportMenu" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 flex items-center">
-                                Export
-                                <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        <div x-data="{ exportOpen: false }" class="relative">
+                            <button @click="exportOpen = !exportOpen" @click.away="exportOpen = false" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Export Data
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </button>
-                            <div x-show="showExportMenu" x-transition class="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl z-20 border border-gray-200" style="display: none;">
-
-                                <a href="{{ route('matakuliah.export.excel') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <div x-show="exportOpen" x-transition class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 overflow-hidden border border-gray-100" style="display: none;">
+                                <a href="{{ route('matakuliah.export.excel') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     Export Excel
                                 </a>
-                                <a href="{{ route('matakuliah.export.pdf') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="{{ route('matakuliah.export.pdf') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                     Export PDF
                                 </a>
                             </div>
                         </div>
 
-                        <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
+                        <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             Tambah Matkul
                         </button>
                     </div>
@@ -161,48 +168,48 @@
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
                     <div class="overflow-x-auto w-full">
-                        <table class="min-w-full bg-white">
+                        <table class="min-w-full bg-white whitespace-nowrap">
                             <thead class="bg-teal-800 text-white">
                                 <tr>
-                                    <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Mata Kuliah</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode Matkul</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Jumlah SKS</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Tipe</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Semester</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kurikulum</th>
-                                    <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
+                                    <th class="w-16 text-center py-2 px-3 uppercase font-semibold text-xs">No</th>
+                                    <th class="text-center py-2 px-3 uppercase font-semibold text-xs">Program Studi</th>
+                                    <th class="text-center py-2 px-3 uppercase font-semibold text-xs">Mata Kuliah</th>
+                                    <th class="text-center py-2 px-3 uppercase font-semibold text-xs">Kode Matkul</th>
+                                    <th class="text-center py-2 px-3 uppercase font-semibold text-xs">Jumlah SKS</th>
+                                    <th class="text-center py-2 px-3 uppercase font-semibold text-xs">Tipe</th>
+                                    <th class="text-center py-2 px-3 uppercase font-semibold text-xs">Semester</th>
+                                    <th class="text-center py-2 px-3 uppercase font-semibold text-xs">Kurikulum</th>
+                                    <th class="w-24 text-center py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700">
 
                                 @forelse ($matkuls as $index => $matkul)
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-                                        <td class="text-left py-2 px-3 text-sm">{{ ($matkuls->currentPage() - 1) * $matkuls->perPage() + $index + 1 }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->nama_matkul }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->sks }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->jenis }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->semester }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">
-                                            <div class="flex space-x-2">
+                                        <td class="text-center py-2 px-3 text-sm">{{ ($matkuls->currentPage() - 1) * $matkuls->perPage() + $index + 1 }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">{{ $matkul->prodi->nama_prodi ?? '-' }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">{{ $matkul->nama_matkul }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">{{ $matkul->sks }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">{{ $matkul->jenis }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">{{ $matkul->semester }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
+                                        <td class="text-center py-2 px-3 text-sm">
+                                            <div class="flex justify-center space-x-2">
                                                 <button 
-                                                    @click="openEditModal('{{ $matkul->kode_matkul }}', '{{ $matkul->nama_matkul }}', '{{ $matkul->sks }}', '{{ $matkul->jenis }}', '{{ $matkul->semester }}', '{{ $matkul->id_kurikulum }}')" 
-                                                    class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                                    Edit
+                                                    @click="openEditModal('{{ $matkul->kode_matkul }}', '{{ $matkul->nama_matkul }}', '{{ $matkul->sks }}', '{{ $matkul->jenis }}', '{{ $matkul->semester }}', '{{ $matkul->id_kurikulum }}', '{{ $matkul->id_prodi }}')" 
+                                                    class="flex items-center justify-center bg-yellow-400 text-gray-900 p-1.5 rounded-md hover:bg-yellow-500 transition-colors" title="Edit">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                 </button>
-                                                <button onclick="confirmDelete('{{ route('matakuliah.destroy', $matkul->kode_matkul) }}')" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                    Hapus
+                                                <button onclick="confirmDelete('{{ route('matakuliah.destroy', $matkul->kode_matkul) }}')" class="flex items-center justify-center bg-red-600 text-white p-1.5 rounded-md hover:bg-red-700 transition-colors" title="Hapus">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-gray-500">
+                                        <td colspan="9" class="text-center py-4 text-gray-500">
                                             Data mata kuliah tidak ditemukan.
                                         </td>
                                     </tr>
@@ -289,6 +296,15 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div>
+                                <label for="id_prodi" class="block text-sm font-medium text-gray-700 mb-1">Program Studi</label>
+                                <select id="id_prodi" name="id_prodi" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                    <option value="">Pilih Program Studi</option>
+                                    @foreach ($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
 
                         <div class="flex justify-end space-x-4 pt-6">
@@ -361,6 +377,15 @@
                                     <option value="">Pilih Kurikulum</option>
                                     @foreach ($kurikulums as $kurikulum)
                                         <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label for="edit_id_prodi" class="block text-sm font-medium text-gray-700 mb-1">Program Studi</label>
+                                <select id="edit_id_prodi" name="id_prodi" x-model="editProdi" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                    <option value="">Pilih Program Studi</option>
+                                    @foreach ($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
                                     @endforeach
                                 </select>
                             </div>

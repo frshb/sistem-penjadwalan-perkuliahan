@@ -46,6 +46,11 @@ class MahasiswaController extends Controller
 
     public function exportPdf()
     {
-        return Excel::download(new MahasiswaExport(true), 'daftar-mahasiswa.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        $mahasiswa = collect();
+        $pdf = \PDF::loadView('exports.mahasiswa', [
+            'data' => $mahasiswa,
+            'isPdf' => true
+        ])->setPaper('a4', 'landscape');
+        return $pdf->download('daftar-mahasiswa.pdf');
     }
 }

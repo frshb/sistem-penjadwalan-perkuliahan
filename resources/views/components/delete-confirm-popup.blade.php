@@ -40,7 +40,6 @@
             form.action = actionUrl;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            // Animasi masuk
             modal.style.opacity = '0';
             setTimeout(() => {
                 modal.style.opacity = '1';

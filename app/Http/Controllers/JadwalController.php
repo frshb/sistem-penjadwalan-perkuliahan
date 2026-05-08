@@ -11,9 +11,9 @@ use App\Models\Waktu;
 use App\Models\Hari;
 use App\Models\MataKuliah;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facade\Excel;
-use App\Export\JadwalExport;
-use PDF;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\JadwalExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class JadwalController extends Controller
 {
@@ -33,11 +33,11 @@ class JadwalController extends Controller
         return view('penjadwalan.penjadwalan', [
             'step' => $step,
             'kurikulums' => Kurikulum::all(),
-            'ruangans' => Ruangan::all(),
-            'dosens' => Dosen::all(),
+            'ruangans' => Ruangan::with('gedung')->get(),
+            'dosens' => Dosen::with('prodi')->get(),
             'waktus' => Waktu::all(),
             'haris' => Hari::all(),
-            'matkuls' => MataKuliah::all(),
+            'matkuls' => MataKuliah::with(['kurikulum', 'prodi'])->get(),
         ]);
     }
 
@@ -59,7 +59,7 @@ class JadwalController extends Controller
 
         session([
             'penjadwalan.semester' => $r->semester,
-            'penjadwalan.prodi' => \App\Models\Prodi::all(), // Fixed missing import or use full path
+            'penjadwalan.prodi' => \App\Models\Prodi::all(),
             'penjadwalan.current_step' => 2,
         ]);
         
@@ -88,7 +88,6 @@ class JadwalController extends Controller
             'dosen' => 'required|array'
         ]);
 
-        //simpan di session
         session([
             'penjadwalan.step3_data' => $r->all(),
             'penjadwalan.current_step' => 4,
@@ -98,8 +97,8 @@ class JadwalController extends Controller
 
     public function handleStep4()
     {
-         $input = session('penjadwalan.step3_data', []); // Corrected key from step3 to step3_data based on handleStep3
-        $ruanganDipilih = session('penjadwalan.id_ruang', []); // Corrected key from ruangan/id_ruang
+         $input = session('penjadwalan.step3_data', []);
+        $ruanganDipilih = session('penjadwalan.id_ruang', []);
 
         $hari = Hari::all();
         $slot = Waktu::all();
@@ -119,8 +118,7 @@ class JadwalController extends Controller
 
             foreach ($hari as $h) {
                 foreach ($slot as $s) {
-
-                    // CEK BENTROK DOSEN / KELAS
+                    
                     $bentrok = Jadwal::where('id_hari', $h->id_hari)
                         ->where('id_slot', $s->id_slot)
                         ->where(function ($q) use ($id_dosen, $kelas) {
@@ -167,17 +165,23 @@ class JadwalController extends Controller
         return back()->with('gagal', $gagal);
     }
     
-    //EXCEL
-    //public function exportExcel()
-    //{
-    //    return Excel::donwload(new JadwalExport, 'jadwal.xlsx');
-    //}
+    public function hasil()
+    {
+        $jadwals = Jadwal::with(['matkul.kurikulum', 'matkul.prodi', 'dosen.prodi', 'ruang.gedung', 'hari', 'slot'])->orderBy('id_hari')->orderBy('id_slot')->get();
+        return view('penjadwalan.hasil', compact('jadwals'));
+    }
 
-    //PDF
-    //public function exportPDF()
-    //{
-    //    $jadwal = Jadwal::with(['matkul', 'dosen', 'kelas', 'ruang', 'hari', 'slot'])->get();
-    //    $pdf = PDF::loadView('jadwal.export_pdf', compact('jadwal'));
-    //    return $pdf->downloa('jadwal.pdf');
-    //}
+    // EXCEL
+    public function exportExcel()
+    {
+        return Excel::download(new JadwalExport, 'hasil_jadwal.xlsx');
+    }
+
+    // PDF
+    public function exportPDF()
+    {
+        $jadwal = Jadwal::with(['matkul.kurikulum', 'matkul.prodi', 'dosen.prodi', 'ruang.gedung', 'hari', 'slot'])->orderBy('id_hari')->orderBy('id_slot')->get();
+        $pdf = Pdf::loadView('penjadwalan.export_pdf', compact('jadwal'))->setPaper('a4', 'landscape');
+        return $pdf->download('hasil_jadwal.pdf');
+    }
 }

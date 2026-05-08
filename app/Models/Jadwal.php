@@ -23,10 +23,10 @@ class Jadwal extends Model
         'kelas',
     ];
     
-    public function matkul() { return $this->belongTo(Matkul::class, 'id_matkul'); }
-    public function dosen() { return $this->belongTo(Dosen::class, 'id_dosen'); }
-    public function ruang() { return $this->belongTo(Ruang::class, 'id_ruang'); }
-    public function hari() { return $this->belongTo(Hari::class, 'id_hari'); }
-    public function slot() { return $this->belongTo(Slot::class, 'id_slot'); }
+    public function matkul() { return $this->belongsTo(MataKuliah::class, 'id_matkul', 'kode_matkul'); }
+    public function dosen() { return $this->belongsTo(Dosen::class, 'id_dosen'); }
+    public function ruang() { return $this->belongsTo(Ruangan::class, 'id_ruang'); }
+    public function hari() { return $this->belongsTo(Hari::class, 'id_hari'); }
+    public function slot() { return $this->belongsTo(Waktu::class, 'id_slot'); }
 
 }

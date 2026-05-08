@@ -24,7 +24,7 @@ class MataKuliahExport implements FromView, ShouldAutoSize, WithEvents, WithColu
     public function view(): View
     {
         return view('exports.matakuliah', [
-            'matkuls' => MataKuliah::with('kurikulum')->get(),
+            'matkuls' => MataKuliah::with(['kurikulum', 'prodi'])->get(),
             'isPdf' => $this->isPdf
         ]);
     }
@@ -47,6 +47,11 @@ class MataKuliahExport implements FromView, ShouldAutoSize, WithEvents, WithColu
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+                
+                // Hapus border default dari PhpSpreadsheet untuk bagian header (baris 1 s/d 6)
+                if ($this->isPdf) {
+                    $event->sheet->getStyle('A1:G6')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE);
+                }
             },
         ];
     }

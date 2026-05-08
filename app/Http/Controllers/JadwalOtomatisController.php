@@ -104,7 +104,7 @@ class JadwalOtomatisController extends Controller
             'Rekayasa Komputer' => $getSubjects($masterSubjects['Rekayasa Komputer'], $step1),
         ];
 
-        $dosens = \App\Models\Dosen::all();
+        $dosens = \App\Models\Dosen::with('prodi')->get();
 
         return view('penjadwalan.otomatis.step3', compact('subjectsByProdi', 'dosens'));
     }
@@ -128,7 +128,7 @@ class JadwalOtomatisController extends Controller
 
         // Prepare Master Data for lookup
         $masterSubjects = $this->getMasterSubjects();
-        $dosens = \App\Models\Dosen::all()->keyBy('id');
+        $dosens = \App\Models\Dosen::with('prodi')->get()->keyBy('id');
         
         // Flatten available rooms from step2 structure: Gedung -> Lt -> [Rooms]
         $availableRooms = [];

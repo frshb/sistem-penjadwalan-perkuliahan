@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Prodi;
+use App\Models\Kurikulum;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
@@ -20,7 +21,7 @@ class ProdiController extends Controller
 
     public function show($id)
     {
-        $prodi = Prodi::findOrFail($id);
+        $prodi = Prodi::with('kurikulums')->findOrFail($id);
         
 
 
@@ -139,6 +140,51 @@ public function update(Request $request, $id)
         }
     }
 
+    public function storeKurikulum(Request $request, $id)
+    {
+        $prodi = Prodi::findOrFail($id);
+
+        $request->validate([
+            'nama_kurikulum' => 'required|string|max:50',
+            'status' => 'required|in:Aktif,Tidak Aktif',
+        ]);
+
+        Kurikulum::create([
+            'id_prodi' => $prodi->id_prodi,
+            'nama_kurikulum' => $request->nama_kurikulum,
+            'status' => $request->status,
+        ]);
+
+        return redirect()->route('prodi.show', $id)->with('success', 'Kurikulum berhasil ditambahkan.');
+    }
+
+    public function updateKurikulum(Request $request, $id, $id_kurikulum)
+    {
+        $prodi = Prodi::findOrFail($id);
+        $kurikulum = Kurikulum::where('id_prodi', $prodi->id_prodi)->findOrFail($id_kurikulum);
+
+        $request->validate([
+            'nama_kurikulum' => 'required|string|max:50',
+            'status' => 'required|in:Aktif,Tidak Aktif',
+        ]);
+
+        $kurikulum->update([
+            'nama_kurikulum' => $request->nama_kurikulum,
+            'status' => $request->status,
+        ]);
+
+        return redirect()->route('prodi.show', $id)->with('success', 'Kurikulum berhasil diperbarui.');
+    }
+
+    public function destroyKurikulum($id, $id_kurikulum)
+    {
+        $prodi = Prodi::findOrFail($id);
+        $kurikulum = Kurikulum::where('id_prodi', $prodi->id_prodi)->findOrFail($id_kurikulum);
+        $kurikulum->delete();
+
+        return redirect()->route('prodi.show', $id)->with('success', 'Kurikulum berhasil dihapus.');
+    }
+
     public function exportExcel()
     {
         return Excel::download(new ProdiExport, 'daftar-prodi.xlsx');
@@ -146,6 +192,11 @@ public function update(Request $request, $id)
 
     public function exportPdf()
     {
-        return Excel::download(new ProdiExport(true), 'daftar-prodi.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        $prodis = Prodi::all();
+        $pdf = \PDF::loadView('exports.prodi', [
+            'prodis' => $prodis,
+            'isPdf' => true
+        ])->setPaper('a4', 'portrait');
+        return $pdf->download('daftar-prodi.pdf');
     }
 }

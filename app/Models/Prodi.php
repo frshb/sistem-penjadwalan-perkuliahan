@@ -24,6 +24,10 @@ class Prodi extends Model
     ];
 
 
+    public function kurikulums()
+    {
+        return $this->hasMany(Kurikulum::class, 'id_prodi', 'id_prodi');
+    }
 
     /**
      * [BARU]

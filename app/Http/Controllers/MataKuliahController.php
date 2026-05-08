@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request; // Import Request
 use App\Models\MataKuliah;
 use App\Models\Kurikulum; // Import Kurikulum
+use App\Models\Prodi; // Import Prodi
 use Illuminate\Validation\Rule;
 use PDF; // Untuk export PDF
 use Maatwebsite\Excel\Facades\Excel; // Untuk export Excel
@@ -18,8 +19,8 @@ class MataKuliahController extends Controller
      */
     public function index(Request $request) // Tambahkan Request $request
     {
-        // Mulai query
-        $query = MataKuliah::query();
+        // Mulai query dengan eager loading untuk mencegah N+1
+        $query = MataKuliah::with(['kurikulum', 'prodi']);
 
         $user = Auth::user();
         $userProdiName = null;
@@ -57,15 +58,17 @@ class MataKuliahController extends Controller
 
 // Ambil semua kurikulum untuk dropdown
         $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA
+        $prodis = Prodi::all(); // Fetch prodis for dropdown
 
         // Paginate hasil query, dan tambahkan filter ke link pagination
-        // USER REQUEST: Munculin semua data (limit diperbesar)
-        $matkuls = $query->paginate(100)->appends($request->query());
+        // USER REQUEST: Munculin 25 data
+        $matkuls = $query->paginate(25)->appends($request->query());
 
         // Kirim data matkul DAN kurikulum ke view
         return view('management.matakuliah.index', [
             'matkuls' => $matkuls,
             'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
+            'prodis' => $prodis, // Send prodis to view
             'userProdiName' => $userProdiName
         ]);
     }
@@ -86,10 +89,11 @@ class MataKuliahController extends Controller
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string|in:Teori,Praktikum',
             'semester' => 'required|integer|min:1|max:8',
-            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum' // Validasi kurikulum
+            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum', // Validasi kurikulum
+            'id_prodi' => 'required|integer|exists:program_studi,id_prodi' // Validasi prodi
         ]);
 
-        // Simpan data (termasuk id_kurikulum)
+        // Simpan data (termasuk id_kurikulum dan id_prodi)
         MataKuliah::create([
             'nama_matkul' => $request->nama_matkul,
             'kode_matkul' => $request->kode_matkul,
@@ -97,6 +101,7 @@ class MataKuliahController extends Controller
             'jenis' => strtolower($request->tipe),
             'semester' => $request->semester,
             'id_kurikulum' => $request->id_kurikulum, 
+            'id_prodi' => $request->id_prodi,
         ]);
 
         return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil ditambahkan.');
@@ -122,7 +127,8 @@ class MataKuliahController extends Controller
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string', // strtolower nanti
             'semester' => 'required|integer|min:1|max:8',
-            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum'
+            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum',
+            'id_prodi' => 'required|integer|exists:program_studi,id_prodi'
         ]);
 
         // Update Data
@@ -133,6 +139,7 @@ class MataKuliahController extends Controller
             'jenis' => strtolower($request->tipe),
             'semester' => $request->semester,
             'id_kurikulum' => $request->id_kurikulum,
+            'id_prodi' => $request->id_prodi,
         ]);
 
         return response()->json(['message' => 'Mata kuliah berhasil diperbarui.']);
@@ -143,7 +150,12 @@ class MataKuliahController extends Controller
      */
     public function exportPDF()
     {
-        return Excel::download(new MataKuliahExport(true), 'daftar-mata-kuliah.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        $matkuls = MataKuliah::with(['kurikulum', 'prodi'])->get();
+        $pdf = PDF::loadView('exports.matakuliah', [
+            'matkuls' => $matkuls,
+            'isPdf' => true
+        ]);
+        return $pdf->download('daftar-mata-kuliah.pdf');
     }
 
     /**

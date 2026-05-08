@@ -13,6 +13,12 @@
     sidebarOpen: true, 
     showAddModal: false, 
     showEditModal: false,
+    showProfileModal: false,
+    profileData: null,
+    viewProfile(data) {
+        this.profileData = data;
+        this.showProfileModal = true;
+    },
     editNama: '',
     editNidn: '',
     editProdi: '',
@@ -125,13 +131,25 @@
                         Daftar Dosen
                     </h2>
                     <div class="flex space-x-2">
-                        <a href="{{ route('dosen.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
-                            Export Excel
-                        </a>
-                        <a href="{{ route('dosen.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
-                            Export PDF
-                        </a>
-                        <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
+                        <div x-data="{ exportOpen: false }" class="relative">
+                            <button @click="exportOpen = !exportOpen" @click.away="exportOpen = false" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Export Data
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <div x-show="exportOpen" x-transition class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 overflow-hidden border border-gray-100" style="display: none;">
+                                <a href="{{ route('dosen.export.excel') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Export Excel
+                                </a>
+                                <a href="{{ route('dosen.export.pdf') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    Export PDF
+                                </a>
+                            </div>
+                        </div>
+                        <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             Tambah Dosen
                         </button>
                     </div>
@@ -139,34 +157,48 @@
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
                     <div class="overflow-x-auto">
-                        <table class="w-full min-w-[1600px] bg-white">
+                        <table class="min-w-full bg-white">
                             <thead class="bg-teal-800 text-white">
                                 <tr>
-                                    <th class="w-16 text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">No</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Prodi</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Fakultas</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Nama Dosen</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">NIDN</th>
+                                    <th class="w-16 text-center py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">No</th>
+                                    <th class="text-center py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Prodi</th>
+                                    <th class="text-center py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Fakultas</th>
+                                    <th class="text-center py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Nama Dosen</th>
+                                    <th class="text-center py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">NIDN</th>
 
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Prioritas Waktu</th>
-                                    <th class="w-48 text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Aksi</th>
+                                    <th class="w-48 text-center py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700">
                                 @forelse ($dosens as $dosen)
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ ($dosens->currentPage() - 1) * $dosens->perPage() + $loop->iteration }}</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">Teknik Informatika</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">Fakultas Teknik</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nama_dosen }}</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nidn }}</td>
-
-                                        <td class="text-left py-3 px-4 text-sm min-w-[200px]">
-                                            {{-- Display with newlines --}}
-                                            {!! nl2br(e($dosen->ketersediaan_waktu)) !!}
+                                        <td class="text-center py-3 px-4 text-sm whitespace-nowrap">{{ ($dosens->currentPage() - 1) * $dosens->perPage() + $loop->iteration }}</td>
+                                        <td class="text-center py-3 px-4 text-sm whitespace-nowrap">Teknik Informatika</td>
+                                        <td class="text-center py-3 px-4 text-sm whitespace-nowrap">Fakultas Teknik</td>
+                                        <td class="text-center py-3 px-4 text-sm whitespace-nowrap">
+                                            <button @click="viewProfile({{ Js::from([
+                                                'nama_dosen' => $dosen->nama_dosen,
+                                                'nidn' => $dosen->nidn,
+                                                'prodi' => $dosen->prodi->nama_prodi ?? 'Teknik Informatika',
+                                                'fakultas' => 'Fakultas Teknik',
+                                                'jadwals' => $dosen->jadwals->map(function($j) {
+                                                    return [
+                                                        'matkul' => $j->matkul->nama_matkul ?? '-',
+                                                        'sks' => $j->matkul->sks ?? '-',
+                                                        'kelas' => $j->kelas ?? '-',
+                                                        'hari' => $j->hari->nama_hari ?? '-',
+                                                        'waktu' => ($j->slot->waktu_mulai ?? '-') . ' - ' . ($j->slot->waktu_selesai ?? '-'),
+                                                        'ruang' => $j->ruang->nama_ruang ?? '-',
+                                                    ];
+                                                })
+                                            ]) }})" class="font-semibold text-teal-600 hover:text-teal-800 hover:underline focus:outline-none transition-colors">
+                                                {{ $dosen->nama_dosen }}
+                                            </button>
                                         </td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
-                                            <div class="flex space-x-2">
+                                        <td class="text-center py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nidn }}</td>
+
+                                        <td class="text-center py-3 px-4 text-sm whitespace-nowrap">
+                                            <div class="flex justify-center space-x-2">
                                                 <button @click="openEditModal('{{ $dosen->nidn }}', '{{ $dosen->nama_dosen }}', '{{ $dosen->id_prodi }}', '{{ $dosen->ketersediaan_waktu }}')" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
@@ -219,33 +251,12 @@
                     <form action="{{ route('dosen.store') }}" method="POST" class="mt-6 space-y-6">
                         @csrf
                         <div class="flex items-center space-x-4">
-                            <label for="nama_dosen" class="w-1/3 text-lg text-gray-700 font-medium">Nama Dosen :</label>
+                            <label for="nama_dosen" class="w-1/3 text-lg text-gray-700 font-medium">Nama Dosen :</label>    
                             <input type="text" id="nama_dosen" name="nama_dosen" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                         </div>
                         <div class="flex items-center space-x-4">
                             <label for="nidn" class="w-1/3 text-lg text-gray-700 font-medium">NIDN :</label>
                             <input type="text" id="nidn" name="nidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="block text-lg text-gray-700 font-medium">Prioritas Waktu :</label>
-                            <div class="space-y-2">
-                                <template x-for="(item, index) in addPrioritasList" :key="index">
-                                    <div class="flex items-center space-x-2">
-                                        <input type="text" x-model="addPrioritasList[index]" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Contoh: Senin, 08.00 - 10.00">
-                                        <button type="button" @click="removeTimeSlot(index, 'add')" class="text-red-500 hover:text-red-700" x-show="addPrioritasList.length > 1">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                        </button>
-                                    </div>
-                                </template>
-                                <div class="flex justify-end">
-                                    <button type="button" @click="addTimeSlot('add')" class="text-sm text-teal-600 hover:text-teal-800 font-medium flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                        Tambah Waktu
-                                    </button>
-                                </div>
-                            </div>
-                            <!-- Hidden input to store joined string -->
-                            <input type="hidden" name="ketersediaan_waktu" :value="addPrioritasList.join('\n')">
                         </div>
                         <div class="flex justify-end space-x-4 pt-6">
                             <button type="button" @click="showAddModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
@@ -292,27 +303,6 @@
                             <input type="text" id="edit_nidn" name="nidn" x-model="editNidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                         </div>
 
-                         <div class="space-y-2">
-                            <label class="block text-lg text-gray-700 font-medium">Prioritas Waktu :</label>
-                            <div class="space-y-2">
-                                <template x-for="(item, index) in editPrioritasList" :key="index">
-                                    <div class="flex items-center space-x-2">
-                                        <input type="text" x-model="editPrioritasList[index]" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Contoh: Senin, 08.00 - 10.00">
-                                        <button type="button" @click="removeTimeSlot(index, 'edit')" class="text-red-500 hover:text-red-700" x-show="editPrioritasList.length > 1">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                        </button>
-                                    </div>
-                                </template>
-                                <div class="flex justify-end">
-                                    <button type="button" @click="addTimeSlot('edit')" class="text-sm text-teal-600 hover:text-teal-800 font-medium flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                        Tambah Waktu
-                                    </button>
-                                </div>
-                            </div>
-                            <!-- Hidden input to store joined string -->
-                             <input type="hidden" name="ketersediaan_waktu" :value="editPrioritasList.join('\n')">
-                        </div>
                         
                         <div class="flex justify-end space-x-4 pt-6">
                             <button type="button" @click="showEditModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
@@ -328,5 +318,7 @@
         </div>
     </div>
     <!-- ===== AKHIR MODAL EDIT ===== -->
+
+    @include('components.dosen-profile-modal')
 </body>
 </html>

@@ -28,7 +28,13 @@ class Kurikulum extends Model
      * Tentukan kolom yang bisa diisi (mass assignable).
      */
     protected $fillable = [
+        'id_prodi',
         'nama_kurikulum',
         'status',
     ];
+
+    public function prodi()
+    {
+        return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
+    }
 }

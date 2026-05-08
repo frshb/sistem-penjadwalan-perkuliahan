@@ -24,7 +24,7 @@ class DosenExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
     public function view(): View
     {
         return view('exports.dosen', [
-            'dosens' => Dosen::all(),
+            'dosens' => Dosen::with('prodi')->get(),
             'isPdf' => $this->isPdf
         ]);
     }
@@ -46,6 +46,10 @@ class DosenExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+                
+                if ($this->isPdf) {
+                    $event->sheet->getStyle('A1:G6')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE);
+                }
             },
         ];
     }

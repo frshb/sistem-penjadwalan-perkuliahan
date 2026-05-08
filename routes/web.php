@@ -72,9 +72,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/management/prodi/export-pdf', [ProdiController::class, 'exportPdf'])->name('prodi.export.pdf'); // New PDF Export Route
         Route::get('/management/prodi', [ProdiController::class, 'index'])->name('prodi.index');
     Route::get('/management/prodi/{id}', [ProdiController::class, 'show'])->name('prodi.show');
-    Route::post('/management/prodi', [ProdiController::class, 'store'])->name('prodi.store');
+        Route::post('/management/prodi', [ProdiController::class, 'store'])->name('prodi.store');
         Route::delete('/management/prodi/{prodi}', [ProdiController::class, 'destroy'])->name('prodi.destroy');
         Route::put('/management/prodi/{id}', [ProdiController::class, 'update'])->name('prodi.update');
+        
+        // Kurikulum Routes (nested under prodi)
+        Route::post('/management/prodi/{id}/kurikulum', [ProdiController::class, 'storeKurikulum'])->name('prodi.kurikulum.store');
+        Route::put('/management/prodi/{id}/kurikulum/{id_kurikulum}', [ProdiController::class, 'updateKurikulum'])->name('prodi.kurikulum.update');
+        Route::delete('/management/prodi/{id}/kurikulum/{id_kurikulum}', [ProdiController::class, 'destroyKurikulum'])->name('prodi.kurikulum.destroy');
     });
     
     
@@ -108,6 +113,9 @@ Route::middleware(['auth'])->group(function () {
         
     Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
     Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');
+    Route::get('/penjadwalan/hasil', [JadwalController::class, 'hasil'])->name('jadwal.hasil');
+    Route::get('/penjadwalan/hasil/export-excel', [JadwalController::class, 'exportExcel'])->name('jadwal.export.excel');
+    Route::get('/penjadwalan/hasil/export-pdf', [JadwalController::class, 'exportPDF'])->name('jadwal.export.pdf');
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
 
     // Automatic Scheduling Wizard Routes
@@ -116,8 +124,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'step2'])->name('jadwal.otomatis.step2');
     Route::post('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep2'])->name('jadwal.otomatis.step2.store');
     Route::get('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'step3'])->name('jadwal.otomatis.step3');
-Route::post('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep3'])->name('jadwal.otomatis.step3.store');
-Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatisController::class, 'step4'])->name('jadwal.otomatis.step4');
+    Route::post('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep3'])->name('jadwal.otomatis.step3.store');
+    Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatisController::class, 'step4'])->name('jadwal.otomatis.step4');
 
 
 

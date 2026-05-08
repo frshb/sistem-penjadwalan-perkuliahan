@@ -3,15 +3,15 @@
 namespace App\Exports;
 
 use App\Models\Jadwal;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class JadwalExport implements FromCollection
+class JadwalExport implements FromView, ShouldAutoSize
 {
-    /**
-    * @return \Illuminate\Support\Collection
-    */
-    public function collection()
+    public function view(): View
     {
-        return Jadwal::all();
+        $jadwal = Jadwal::with(['matkul.kurikulum', 'matkul.prodi', 'dosen.prodi', 'ruang.gedung', 'hari', 'slot'])->orderBy('id_hari')->orderBy('id_slot')->get();
+        return view('penjadwalan.export_excel', compact('jadwal'));
     }
 }

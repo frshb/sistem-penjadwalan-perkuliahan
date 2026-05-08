@@ -9,22 +9,21 @@
 </head>
 <body class="bg-gray-50 overflow-x-hidden min-h-screen font-sans transition-colors duration-300">
 
-    <div class="flex min-h-screen" x-data="{ 
-        sidebarOpen: true, 
-        isLoading: true, 
-        init() { setTimeout(() => this.isLoading = false, 2000) } 
+    <div class="flex min-h-screen" x-data="{
+        sidebarOpen: true,
+        isLoading: true,
+        init() { setTimeout(() => this.isLoading = false, 2000) }
     }">
         @include('components.sidebar')
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-10'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
-            
-            <!-- Skeleton Loader -->
+
             <div x-show="isLoading" class="animate-pulse space-y-8">
-                <!-- Title Skeleton -->
+
                 <div class="flex items-center mb-8">
                     <div class="w-16 h-8 bg-gray-300 rounded"></div>
                 </div>
 
-                <!-- Top Grid Skeleton -->
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                     <div class="col-span-1 lg:col-span-2 h-48 bg-gray-300 rounded-2xl"></div>
                     <div class="col-span-1 h-48 bg-gray-300 rounded-2xl"></div>
@@ -53,18 +52,17 @@
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <!-- Yellow Profile Box with View Profile & Logout -->
-                    <div class="col-span-1 lg:col-span-2 relative min-h-[160px] rounded-2xl shadow-2xl p-6 flex items-center cursor-pointer transition-transform transform hover:scale-[1.01]" 
-                        x-data="{ 
-                            open: false, 
+                    <div class="col-span-1 lg:col-span-2 relative min-h-[160px] rounded-2xl shadow-2xl p-6 flex items-center cursor-pointer transition-transform transform hover:scale-[1.01]"
+                        x-data="{
+                            open: false,
                             modalOpen: false,
                             editMode: false,
                             toggleDropdown() { this.open = !this.open },
                             closeDropdown() { this.open = false },
                             openProfile() { this.open = false; this.modalOpen = true; }
                         }">
-                        
-                        <!-- Background -->
+
+                        <!-- Background belakang Tsu-->
                         <div class="absolute inset-0 bg-gradient-to-r from-[#FAC435] to-[#A97B00] rounded-2xl overflow-hidden" @click="toggleDropdown()" @click.away="closeDropdown()">
                             <div class="absolute right-4 bottom-4 w-24 h-24 sm:w-32 sm:h-32 opacity-90 text-yellow-200">
                                 <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" class="w-full h-full fill-current">
@@ -89,21 +87,21 @@
                         </div>
 
                         <!-- Dropdown Menu -->
-                        <div x-show="open" 
-                            x-transition:enter="transition ease-out duration-200" 
-                            x-transition:enter-start="opacity-0 scale-95" 
-                            x-transition:enter-end="opacity-100 scale-100" 
-                            x-transition:leave="transition ease-in duration-75" 
-                            x-transition:leave-start="opacity-100 scale-100" 
-                            x-transition:leave-end="opacity-0 scale-95" 
-                            class="absolute top-auto right-4 mt-2 bg-white rounded-lg shadow-xl py-2 w-48 z-50 text-gray-800 border border-gray-100 origin-top-right top-[80%]" 
-                            style="display: none;" 
+                        <div x-show="open"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95"
+                            class="absolute top-auto right-4 mt-2 bg-white rounded-lg shadow-xl py-2 w-48 z-50 text-gray-800 border border-gray-100 origin-top-right top-[80%]"
+                            style="display: none;"
                             @click.stop> <!-- Prevents closing when clicking inside -->
-                            
+
                             <div class="px-4 py-2 border-b border-gray-100">
                                 <p class="text-xs text-gray-500 font-semibold uppercase">Menu Akun</p>
                             </div>
-                            
+
                             <!-- Lihat Profil -->
                             <a href="#" @click.prevent="openProfile()" class="flex items-center px-4 py-2 hover:bg-teal-50 hover:text-teal-600 transition-colors text-sm font-medium">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
@@ -130,12 +128,12 @@
 
                                     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-                                    <div x-show="modalOpen" 
+                                    <div x-show="modalOpen"
                                         x-transition:enter="ease-out duration-300"
                                         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                                         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
                                         class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative">
-                                        
+
                                         <div class="bg-gray-50 px-4 py-3 sm:px-6 border-b border-gray-200 flex justify-between items-center">
                                             <h3 class="text-lg leading-6 font-medium text-gray-900">Profil Pengguna</h3>
                                             <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-500 focus:outline-none">
@@ -151,7 +149,7 @@
                                                         {{ substr(Auth::user()->username ?? 'G', 0, 1) }}
                                                     </div>
                                                 </div>
-                                                
+
                                                 <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                                                     <div class="col-span-1">
                                                         <dt class="text-sm font-medium text-gray-500">Username</dt>
@@ -188,7 +186,7 @@
 
                                                     <div class="border-t border-gray-100 pt-4 mt-4">
                                                         <h4 class="text-sm font-medium text-gray-900 mb-3">Ubah Password <span class="text-gray-400 font-normal">(Opsional)</span></h4>
-                                                        
+
                                                         <div class="space-y-3">
                                                             <div>
                                                                 <label class="block text-xs font-medium text-gray-700">Password Saat Ini</label>
@@ -235,33 +233,33 @@
 
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    
+
 
                     <div class="col-span-1 lg:col-span-2 bg-white rounded-xl shadow-xl p-6 border border-gray-200">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">Jadwal</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-                            <!-- Informatika: Code/Terminal Icon -->
-                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
+                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-lg hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 border-b-2 border-b-yellow-400 group">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-yellow-600 group-hover:scale-110 transition-transform">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
                                 </div>
+                                <div class="w-12 h-[1px] bg-gray-200 mb-3 group-hover:bg-gray-300 group-hover:w-16 transition-all duration-300"></div>
                                 <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Informatika</span>
                             </div>
 
-                            <!-- Sistem Informasi: Database/Flow Icon -->
-                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
+                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-lg hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 border-b-2 border-b-purple-400 group">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-purple-600 group-hover:scale-110 transition-transform">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
                                 </div>
+                                <div class="w-12 h-[1px] bg-gray-200 mb-3 group-hover:bg-gray-300 group-hover:w-16 transition-all duration-300"></div>
                                 <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Sistem Informasi</span>
                             </div>
 
-                            <!-- Rekayasa Komputer: Chip/Hardware Icon -->
-                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
+                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-lg hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 border-b-2 border-b-blue-400 group">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-blue-600 group-hover:scale-110 transition-transform">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
                                 </div>
+                                <div class="w-12 h-[1px] bg-gray-200 mb-3 group-hover:bg-gray-300 group-hover:w-16 transition-all duration-300"></div>
                                 <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Rekayasa Komputer</span>
                             </div>
                         </div>
@@ -275,7 +273,7 @@
                                 Lihat Semua
                             </a>
                         </div>
-                        
+
                         <div class="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1" style="max-height: 180px;">
                             @if($kalenderAkademik->isEmpty())
                                 <div class="flex flex-col items-center justify-center h-40 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300 p-6">
@@ -292,7 +290,7 @@
                                         <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">{{ $event['date']->translatedFormat('M') }}</span>
                                         <span class="text-xl font-extrabold text-teal-600 leading-none">{{ $event['date']->format('d') }}</span>
                                     </div>
-                                    
+
                                     <!-- Event Details -->
                                     <div class="ml-4 flex-1 min-w-0">
                                         <div class="flex items-center gap-2 mb-0.5">
@@ -334,7 +332,7 @@
                         <div class="absolute right-[-10px] bottom-[-10px] w-24 h-24 bg-white opacity-20 rounded-full"></div>
                     </div>
                 </div>
-            </div>            
+            </div>
         </main>
     </div>
 
@@ -355,10 +353,10 @@
                     <div class="absolute inset-0 bg-teal-400 rounded-full animate-ping opacity-25"></div>
                 </div>
             </div>
-            
+
             <h3 class="text-2xl font-extrabold text-gray-800 mb-2">Welcome Back!</h3>
             <p class="text-gray-600 mb-8 font-medium">Login berhasil. Selamat beraktivitas kembali.</p>
-            
+
             <!-- Auto Dismiss Script -->
             <script>
                 setTimeout(function() {

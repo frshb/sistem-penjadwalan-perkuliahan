@@ -70,7 +70,7 @@ class DashboardController extends Controller
             });
 
         // 4. Merge, Sort, and Limit
-        $kalenderAkademik = $manualEvents->merge($processedApiEvents)
+        $kalenderAkademik = $manualEvents->toBase()->merge($processedApiEvents)
             ->sortBy('date')
             ->values()
             ->take(5);

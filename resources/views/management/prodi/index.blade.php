@@ -13,9 +13,7 @@
     <div class="flex min-h-screen">
         @include('components.sidebar')
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->
+            <div x-show="isLoading" class="animate-pulse space-y-6">+
                 <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex items-center space-x-3 w-1/3">
                         <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
@@ -23,8 +21,6 @@
                     </div>
                     <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
                 </div>
-                
-                <!-- Filter/Add Bar Skeleton -->
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between gap-4">
                         <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
@@ -54,20 +50,30 @@
                 @include('components.header-profile')
             </div>
 
-            
             <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6 border border-transparent">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">Daftar Program Studi</h2>
 
                     <div class="flex space-x-2">
-                        <a href="{{ route('prodi.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
-                            Export Excel
-                        </a>
-                        <a href="{{ route('prodi.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
-                            Export PDF
-                        </a>
-                        <button @click="showAddModal = true" class="flex items-center px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        <div x-data="{ exportOpen: false }" class="relative">
+                            <button @click="exportOpen = !exportOpen" @click.away="exportOpen = false" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Export Data
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <div x-show="exportOpen" x-transition class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 overflow-hidden border border-gray-100" style="display: none;">
+                                <a href="{{ route('prodi.export.excel') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Export Excel
+                                </a>
+                                <a href="{{ route('prodi.export.pdf') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    Export PDF
+                                </a>
+                            </div>
+                        </div>
+                        <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             Tambah Prodi
                         </button>
                     </div>
@@ -131,75 +137,84 @@
     </div>
 
     <!-- ===== MODAL TAMBAH PRODI ===== -->
-    <div id="modal-overlay" class="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-40 hidden transition-opacity duration-300"></div>
-
-    <div id="tambah-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95 border">
-        <div class="p-6">
-            <div class="flex justify-between items-center pb-3 border-b border-gray-200">
-                <h2 class="text-xl font-bold text-teal-800">Tambah Program Studi</h2>
-                <button onclick="closeModal('tambah')" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    <div x-show="showAddModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div x-show="showAddModal" @click="showAddModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-[rgba(0,0,0,0.5)] z-40 transition-opacity duration-300"></div>
             </div>
-            <form id="form-tambah-prodi" action="{{ route('prodi.store') }}" method="POST" class="mt-6 space-y-6">
-                @csrf
-                <div id="tambah-errors" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm"></div>
-                <div class="flex items-center space-x-4">
-                    <label for="nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Nama Prodi :</label>
-                    <input type="text" id="nama_prodi" name="nama_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div x-show="showAddModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border">
+                <div class="p-6">
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                        <h2 class="text-xl font-bold text-teal-800">Tambah Program Studi</h2>
+                        <button type="button" @click="showAddModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </div>
+                    <form id="form-tambah-prodi" action="{{ route('prodi.store') }}" method="POST" class="mt-6 space-y-6">
+                        @csrf
+                        <div id="tambah-errors" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm"></div>
+                        <div class="flex items-center space-x-4">
+                            <label for="nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Nama Prodi :</label>
+                            <input type="text" id="nama_prodi" name="nama_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <label for="kode_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Kode Prodi :</label>
+                            <input type="text" id="kode_prodi" name="kode_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+                        <div class="flex justify-end space-x-4 pt-6">
+                            <button type="button" @click="showAddModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
+                            <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">Simpan</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <label for="kode_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Kode Prodi :</label>
-                    <input type="text" id="kode_prodi" name="kode_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                </div>
-                <div class="flex justify-end space-x-4 pt-6">
-                    <button type="button" onclick="closeModal('tambah')" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
-                    <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">Simpan</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- ===== MODAL EDIT PRODI ===== -->
-    <div id="edit-prodi-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-md hidden transform transition-all duration-300 scale-95 border">
-        <div class="p-6">
-            <div class="flex justify-between items-center pb-3 border-b border-gray-200">
-                <h2 class="text-xl font-bold text-teal-800">Edit Program Studi</h2>
-                <button onclick="closeModal('edit')" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-[rgba(0,0,0,0.5)] z-40 transition-opacity duration-300"></div>
             </div>
-            <form id="form-edit-prodi" method="POST" class="mt-6 space-y-6">
-                @csrf
-                @method('PUT')
-                <input type="hidden" id="edit_id_prodi" name="id_prodi">
-                <div id="edit-errors" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm"></div>
 
-                <div class="flex items-center space-x-4">
-                    <label for="edit_nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Nama Prodi :</label>
-                    <input type="text" id="edit_nama_prodi" name="nama_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <label for="edit_kode_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Kode Prodi :</label>
-                    <input type="text" id="edit_kode_prodi" name="kode_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div x-show="showEditModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border">
+                <div class="p-6">
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                        <h2 class="text-xl font-bold text-teal-800">Edit Program Studi</h2>
+                        <button type="button" @click="showEditModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </div>
+                    <form id="form-edit-prodi" method="POST" class="mt-6 space-y-6">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" id="edit_id_prodi" name="id_prodi">
+                        <div id="edit-errors" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm"></div>
 
-                <div class="flex justify-end space-x-4 pt-6">
-                    <button type="button" onclick="closeModal('edit')" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
-                    <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">Update</button>
+                        <div class="flex items-center space-x-4">
+                            <label for="edit_nama_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Nama Prodi :</label>
+                            <input type="text" id="edit_nama_prodi" name="nama_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <label for="edit_kode_prodi" class="w-1/3 text-lg text-gray-700 font-medium">Kode Prodi :</label>
+                            <input type="text" id="edit_kode_prodi" name="kode_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <div class="flex justify-end space-x-4 pt-6">
+                            <button type="button" @click="showEditModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
+                            <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">Update</button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- Include Popup Sukses -->
     @include('components.success-popup')
-    <!-- Include Popup Delete Confirm -->
     @include('components.delete-confirm-popup')
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- Handlers for Success Popups ---
-            // If checking specifically for Alpine.js state changes from outside, we might need dispatch events.
-            // But here the form submits via AJAX.
-
-            // --- Handle Form Submit (AJAX) ---
             function handleFormSubmit(formId, errorId, modalType) {
                 const form = document.getElementById(formId);
                 const errorBox = document.getElementById(errorId);
@@ -241,7 +256,6 @@
                             document.querySelector('[x-data]').__x.$data.showEditModal = false;
                         }
 
-                        // Tampilkan popup sukses
                         if(window.showSuccessPopup) {
                             window.showSuccessPopup(data.message || 'Berhasil!');
                         } else {
@@ -249,7 +263,6 @@
                             window.location.reload();
                         }
                         
-                        // Optional: reload table data or page
                         setTimeout(() => window.location.reload(), 1000);
                     })
                     .catch(error => {

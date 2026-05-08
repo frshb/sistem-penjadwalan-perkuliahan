@@ -69,6 +69,11 @@
              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             Penjadwalan Manual
         </a>
+
+        <a href="{{ route('jadwal.hasil') }}" class="flex items-center {{ request()->routeIs('jadwal.hasil') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
+             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Hasil Penjadwalan
+        </a>
     </nav>
     <div class="px-4 py-4 border-t border-gray-200">
         @if(Auth::user()->isAdmin())

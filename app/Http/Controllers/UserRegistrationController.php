@@ -23,7 +23,7 @@ class UserRegistrationController extends Controller
         $roles = Role::whereIn('id_role', [User::ROLE_KAPRODI, User::ROLE_DEKAN, User::ROLE_DOSEN])->get();
         
         $prodis = Prodi::all();
-        $dosens = Dosen::all(); // Might be a long list, consider optimized loading or search later
+        $dosens = Dosen::with('prodi')->get(); // Might be a long list, consider optimized loading or search later
 
         return view('settings.users.create', compact('roles', 'prodis', 'dosens'));
     }

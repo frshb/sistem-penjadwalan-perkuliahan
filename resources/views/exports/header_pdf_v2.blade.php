@@ -10,11 +10,10 @@
             padding: 0;
         }
         
-        /* HEADER SECTION */
         .header-container {
             width: 100%;
             margin-bottom: 20px;
-            overflow: hidden; /* Clearfix */
+            overflow: hidden; 
         }
         
         .logo-wrapper {

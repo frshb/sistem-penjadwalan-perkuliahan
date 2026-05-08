@@ -33,8 +33,8 @@ class ProdiExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
     {
         return [
             'A' => 5,
-            'B' => 40, // Program Studi
-            'C' => 20, // Kode Prodi
+            'B' => 40, 
+            'C' => 20, 
         ];
     }
 
@@ -43,6 +43,10 @@ class ProdiExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_PORTRAIT);
+                
+                if ($this->isPdf) {
+                    $event->sheet->getStyle('A1:G6')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE);
+                }
             },
         ];
     }

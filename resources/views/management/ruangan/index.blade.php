@@ -33,7 +33,7 @@
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->
+                {{-- <!-- Header Skeleton --> --}}
                 <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex items-center space-x-3 w-1/3">
                         <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
@@ -42,14 +42,14 @@
                     <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
                 </div>
                 
-                <!-- Filter/Add Bar Skeleton -->
+                {{-- <!-- Filter/Add Bar Skeleton --> --}}
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between gap-4">
                         <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
                         <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
                     </div>
                     
-                    <!-- Table Skeleton -->
+                    {{-- <!-- Table Skeleton --> --}}
                     <div class="border rounded-lg overflow-hidden">
                         <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
                             <div class="w-10 h-4 bg-gray-300 rounded"></div>
@@ -80,13 +80,25 @@
                 Daftar Ruangan
             </h2>
             <div class="flex space-x-2">
-                <a href="{{ route('ruangan.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
-                    Export Excel
-                </a>
-                <a href="{{ route('ruangan.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
-                    Export PDF
-                </a>
-                <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
+                <div x-data="{ exportOpen: false }" class="relative">
+                    <button @click="exportOpen = !exportOpen" @click.away="exportOpen = false" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Export Data
+                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div x-show="exportOpen" x-transition class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 overflow-hidden border border-gray-100" style="display: none;">
+                        <a href="{{ route('ruangan.export.excel') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors">
+                            <svg class="w-5 h-5 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Export Excel
+                        </a>
+                        <a href="{{ route('ruangan.export.pdf') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors">
+                            <svg class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            Export PDF
+                        </a>
+                    </div>
+                </div>
+                <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     Tambah Ruang Baru
                 </button>
             </div>

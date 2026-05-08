@@ -14,7 +14,7 @@
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out">
             <!-- Skeleton Loader -->
             <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->
+                <!-- Header Skeleton -->    
                 <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div class="flex items-center space-x-3 w-1/3">
                         <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
@@ -22,7 +22,7 @@
                     </div>
                     <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
                 </div>
-                
+
                 <!-- Table Skeleton -->
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
                      <div class="flex justify-between mb-4">

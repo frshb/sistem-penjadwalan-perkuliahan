@@ -12,7 +12,7 @@
     @include('components.sidebar')
 
     <main :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-white min-h-screen">
-        
+
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
                 <a href="{{ route('settings.index') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-teal-700 transition-colors mb-3 group">
@@ -25,13 +25,10 @@
             @include('components.header-profile')
         </div>
 
-        <!-- Alpine Component for Tabs & Form -->
         <div x-data="{ activeTab: 'Super Admin' }" class="max-w-7xl mx-auto">
-            
-            <!-- Tabs Navigation -->
             <div class="flex space-x-4 mb-8 border-b border-gray-100 overflow-x-auto pb-1 custom-scrollbar">
                 @foreach(array_keys($rolesData) as $roleName)
-                    <button 
+                    <button
                         @click="activeTab = '{{ $roleName }}'"
                         :class="activeTab === '{{ $roleName }}' ? 'border-teal-600 text-teal-700 bg-teal-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
                         class="px-5 py-3 border-b-2 font-semibold text-sm transition-all duration-200 whitespace-nowrap rounded-t-lg focus:outline-none">
@@ -40,26 +37,23 @@
                 @endforeach
             </div>
 
-            <!-- Content Area -->
+{{-- Form  --}}
             <form action="{{ route('settings.roles.update') }}" method="POST">
                 @csrf
-                
                 @foreach($rolesData as $roleName => $permissions)
-                    <div x-show="activeTab === '{{ $roleName }}'" 
+                    <div x-show="activeTab === '{{ $roleName }}'"
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 translate-y-2"
                             x-transition:enter-end="opacity-100 translate-y-0"
                             style="display: none;">
 
                         <div class="space-y-6">
-
-                            <!-- Management Data Section -->
                             <div class="bg-white rounded-2xl mb-6 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
-                                    x-data="{ 
+                                    x-data="{
                                     enabled: {{ $permissions['management_data']['enabled'] ? 'true' : 'false' }},
                                     items: {{ json_encode($permissions['management_data']['items']) }}
                                     }">
-                                
+
                                 <div class="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center cursor-pointer" @click="enabled = !enabled">
                                     <div class="flex items-center space-x-3">
                                         <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
@@ -94,11 +88,11 @@
 
                             <!-- Modul Penjadwalan Section -->
                             <div class="bg-white rounded-2xl mb-6 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
-                                    x-data="{ 
+                                    x-data="{
                                     enabled: {{ $permissions['modul_penjadwalan']['enabled'] ? 'true' : 'false' }},
                                     items: {{ json_encode($permissions['modul_penjadwalan']['items']) }}
                                     }">
-                                
+
                                 <div class="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center cursor-pointer" @click="enabled = !enabled">
                                     <div class="flex items-center space-x-3">
                                         <div class="p-2 bg-yellow-50 rounded-lg text-yellow-600">
@@ -144,6 +138,6 @@
         </div>
 
     </main>
-    
+
 </body>
 </html>

@@ -15,7 +15,7 @@ class DosenController extends Controller
     {
         $user = Auth::user();
         $userProdiName = null;
-        $query = Dosen::query();
+        $query = Dosen::with(['jadwals.matkul', 'jadwals.ruang', 'jadwals.hari', 'jadwals.slot', 'prodi']);
 
         if ($user && $user->isKaprodi()) {
             if ($user->id_prodi) {
@@ -107,6 +107,11 @@ class DosenController extends Controller
 
     public function exportPdf()
     {
-        return Excel::download(new DosenExport(true), 'daftar-dosen.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        $dosens = Dosen::with('prodi')->get();
+        $pdf = \PDF::loadView('exports.dosen', [
+            'dosens' => $dosens,
+            'isPdf' => true
+        ])->setPaper('a4', 'landscape');
+        return $pdf->download('daftar-dosen.pdf');
     }
 }

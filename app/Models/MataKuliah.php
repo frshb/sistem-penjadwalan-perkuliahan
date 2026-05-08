@@ -34,4 +34,9 @@ class MataKuliah extends Model
     {
         return $this->belongsTo(Kurikulum::class, 'id_kurikulum', 'id_kurikulum');
     }
+
+    public function prodi()
+    {
+        return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
+    }
 }

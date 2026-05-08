@@ -46,6 +46,10 @@ class RuanganExport implements FromView, ShouldAutoSize, WithEvents, WithColumnW
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $event->sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+                
+                if ($this->isPdf) {
+                    $event->sheet->getStyle('A1:G6')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE);
+                }
             },
         ];
     }

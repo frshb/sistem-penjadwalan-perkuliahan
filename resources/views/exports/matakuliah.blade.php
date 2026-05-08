@@ -4,29 +4,34 @@
     @include('exports.header', ['title' => 'DAFTAR MATA KULIAH'])
 @endif
 
-<table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: sans-serif;">
+<table class="data-table">
     <thead>
-        <tr style="background-color: #f0f0f0;">
-            <th style="border: 1px solid #000; padding: 6px; width: 5%; text-align: center;">No</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: left;">Kode Matkul</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: left;">Mata Kuliah</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: center;">SKS</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: center;">Tipe</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: center;">Semester</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: left;">Kurikulum</th>
+        <tr>
+            <th style="width: 5%;">No</th>
+            <th>Kode Matkul</th>
+            <th>Mata Kuliah</th>
+            <th style="width: 10%;">SKS</th>
+            <th style="width: 15%;">Tipe</th>
+            <th style="width: 15%;">Semester</th>
+            <th>Kurikulum</th>
         </tr>
     </thead>
     <tbody>
         @foreach($matkuls as $index => $matkul)
         <tr>
-            <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $index + 1 }}</td>
-            <td style="border: 1px solid #000; padding: 5px;">{{ $matkul->kode_matkul }}</td>
-            <td style="border: 1px solid #000; padding: 5px;">{{ $matkul->nama_matkul }}</td>
-            <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $matkul->sks }}</td>
-            <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $matkul->jenis }}</td>
-            <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $matkul->semester }}</td>
-            <td style="border: 1px solid #000; padding: 5px;">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
+            <td style="text-align: center;">{{ $index + 1 }}</td>
+            <td>{{ $matkul->kode_matkul }}</td>
+            <td>{{ $matkul->nama_matkul }}</td>
+            <td style="text-align: center;">{{ $matkul->sks }}</td>
+            <td style="text-align: center;">{{ $matkul->jenis }}</td>
+            <td style="text-align: center;">{{ $matkul->semester }}</td>
+            <td>{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
         </tr>
         @endforeach
     </tbody>
 </table>
+
+@if(isset($isPdf) && $isPdf)
+</body>
+</html>
+@endif

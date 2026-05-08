@@ -129,6 +129,11 @@ class RuanganController extends Controller
 
     public function exportPdf()
     {
-        return Excel::download(new RuanganExport(true), 'daftar-ruangan.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        $ruangans = Ruangan::with('gedung')->orderBy('id_gedung')->get();
+        $pdf = \PDF::loadView('exports.ruangan', [
+            'ruangans' => $ruangans,
+            'isPdf' => true
+        ])->setPaper('a4', 'landscape');
+        return $pdf->download('daftar-ruangan.pdf');
     }
 }
