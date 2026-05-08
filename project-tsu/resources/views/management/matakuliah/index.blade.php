@@ -12,28 +12,73 @@
 
 </head>
 <body x-data="{
+    allRooms: @js($ruangans),
+
+    filteredRooms: @js($ruangans),
     sidebarOpen: true,
     showAddModal: false,
     showEditModal: false,
     showExportMenu: false,
+
     semesterType: 'ganjil',
+
+    editProdi: '',
     editNamaMatkul: '',
     editKodeMatkul: '',
     editSks: '',
     editSemester: '',
     editTipe: '',
     editKurikulum: '',
+    editRuanganIds: [],
+
     editUrl: '',
+
     isLoading: true,
-    init() { setTimeout(() => this.isLoading = false, 2000) },
-    openEditModal(kode, nama, sks, jenis, semester, kurikulum) {
+
+    init() {
+        setTimeout(() => this.isLoading = false, 2000)
+    },
+
+    filterRooms(tipe) {
+
+        if (tipe === 'Teori') {
+
+            this.filteredRooms = this.allRooms.filter(room =>
+                room.nama_ruang.startsWith('C')
+            );
+
+        } else if (tipe === 'Praktikum') {
+
+            this.filteredRooms = this.allRooms.filter(room =>
+                room.nama_ruang.toLowerCase().includes('lab')
+            );
+
+        } else {
+
+            this.filteredRooms = [];
+
+        }
+    },
+
+    openEditModal(kode, nama, sks, jenis, semester, kurikulum, prodi, ruanganIds) {
+
+        this.editProdi = prodi;
         this.editKodeMatkul = kode;
         this.editNamaMatkul = nama;
         this.editSks = sks;
-        this.editTipe = jenis.charAt(0).toUpperCase() + jenis.slice(1); // Capitalize first letter
+
+        this.editTipe = jenis.charAt(0).toUpperCase() + jenis.slice(1);
+
         this.editSemester = semester;
         this.editKurikulum = kurikulum;
+
+        this.editRuanganIds = ruanganIds;
+
         this.editUrl = '{{ route('matakuliah.index') }}/' + kode;
+
+        // FILTER RUANGAN BERDASARKAN TIPE
+        this.filterRooms(this.editTipe);
+
         this.showEditModal = true;
     }
 }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
@@ -158,11 +203,12 @@
                                 <tr>
                                     <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Mata Kuliah</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode Matkul</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Jumlah SKS</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Tipe</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Semester</th>
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kurikulum</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode Matkul</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Program Studi</th>
                                     <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
                                 </tr>
                             </thead>
@@ -172,15 +218,25 @@
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                         <td class="text-left py-2 px-3 text-sm">{{ ($matkuls->currentPage() - 1) * $matkuls->perPage() + $index + 1 }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->nama_matkul }}</td>
+                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->sks }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->jenis }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->semester }}</td>
                                         <td class="text-left py-2 px-3 text-sm">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
+                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->program_studi->nama_prodi ?? '-' }}</td>
                                         <td class="text-left py-2 px-3 text-sm">
                                             <div class="flex space-x-2">
                                                 <button
-                                                    @click="openEditModal('{{ $matkul->kode_matkul }}', '{{ $matkul->nama_matkul }}', '{{ $matkul->sks }}', '{{ $matkul->jenis }}', '{{ $matkul->semester }}', '{{ $matkul->id_kurikulum }}')"
+                                                    @click="openEditModal(
+                                                        '{{ $matkul->kode_matkul }}',
+                                                        '{{ $matkul->nama_matkul }}',
+                                                        '{{ $matkul->sks }}',
+                                                        '{{ $matkul->jenis }}',
+                                                        '{{ $matkul->semester }}',
+                                                        '{{ $matkul->id_kurikulum }}',
+                                                        '{{ $matkul->id_prodi }}',
+                                                        {{ json_encode($matkul->ruangans->pluck('id_ruang')) }}
+                                                    )"
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
@@ -249,8 +305,29 @@
                         @csrf
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
+                                <label for="id_prodi" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Program Studi
+                                </label>
+
+                                <select
+                                    id="id_prodi"
+                                    name="id_prodi"
+                                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    required
+                                >
+                                    <option value="">Pilih Prodi</option>
+
+                                    @foreach ($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}">
+                                            {{ $prodi->nama_prodi }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
                                 <label for="nama_matkul" class="block text-sm font-medium text-gray-700 mb-1">Nama Mata Kuliah</label>
-                                <input type="text" id="nama_matkul" name="nama_matkul" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <input type="text" id="nama_matkul" name="nama_matkul"
+                                "class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                             </div>
                             <div>
                                 <label for="kode_matkul" class="block text-sm font-medium text-gray-700 mb-1">Kode Matkul</label>
@@ -266,7 +343,8 @@
                             </div>
                             <div>
                                 <label for="tipe" class="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
-                                <select id="tipe" name="tipe" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <select id="tipe" name="tipe" @change="filterRooms( $event.target.value )
+                                "class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                                     <option value="">Pilih Tipe</option>
                                     <option value="Teori">Teori</option>
                                     <option value="Praktikum">Praktikum</option>
@@ -280,6 +358,42 @@
                                         <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Ruangan Yang Bisa Digunakan
+                                </label>
+
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3">
+
+                                <template x-for="ruangan in filteredRooms" :key="ruangan.id_ruang">
+
+                                    <label class="flex items-center space-x-2">
+
+                                        <input
+                                            type="checkbox"
+                                            name="ruangan_ids[]"
+                                            :value="ruangan.id_ruang"
+                                            class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                        >
+
+                                        <span
+                                            class="text-sm text-gray-700"
+                                            x-text="ruangan.nama_ruang"
+                                        ></span>
+
+                                    </label>
+
+                                </template>
+
+                                <div
+                                    x-show="filteredRooms.length === 0"
+                                    class="text-sm text-red-500"
+                                >
+                                    Tidak ada ruangan tersedia
+                                </div>
+
+                                </div>
                             </div>
                         </div>
 
@@ -324,6 +438,27 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
+                                <label for="edit_id_prodi" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Program Studi
+                                </label>
+
+                                <select
+                                    id="edit_id_prodi"
+                                    name="id_prodi"
+                                    x-model="editProdi"
+                                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    required
+                                >
+                                    <option value="">Pilih Prodi</option>
+
+                                    @foreach ($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}">
+                                            {{ $prodi->nama_prodi }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
                                 <label for="edit_nama_matkul" class="block text-sm font-medium text-gray-700 mb-1">Nama Mata Kuliah</label>
                                 <input type="text" id="edit_nama_matkul" name="nama_matkul" x-model="editNamaMatkul" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                             </div>
@@ -341,7 +476,14 @@
                             </div>
                             <div>
                                 <label for="edit_tipe" class="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
-                                <select id="edit_tipe" name="tipe" x-model="editTipe" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <select
+                                    id="edit_tipe"
+                                    name="tipe"
+                                    x-model="editTipe"
+                                    @change="filterRooms($event.target.value)"
+                                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    required
+                                >
                                     <option value="">Pilih Tipe</option>
                                     <option value="Teori">Teori</option>
                                     <option value="Praktikum">Praktikum</option>
@@ -355,6 +497,36 @@
                                         <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Ruangan Yang Bisa Digunakan
+                                </label>
+
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3">
+
+                                    <template x-for="ruangan in filteredRooms" :key="ruangan.id_ruang">
+
+                                        <label class="flex items-center space-x-2">
+
+                                            <input
+                                                type="checkbox"
+                                                name="ruangan_ids[]"
+                                                :value="ruangan.id_ruang"
+                                                :checked="editRuanganIds.includes(ruangan.id_ruang)"
+                                                class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                            >
+
+                                            <span
+                                                class="text-sm text-gray-700"
+                                                x-text="ruangan.nama_ruang"
+                                            ></span>
+
+                                        </label>
+
+                                    </template>
+
+                                </div>
                             </div>
                         </div>
 

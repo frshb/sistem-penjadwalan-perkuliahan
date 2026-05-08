@@ -23,4 +23,15 @@ class Ruangan extends Model
         // Parameter: (Model Tujuan, Foreign Key di tabel ini, Primary Key di tabel tujuan)
         return $this->belongsTo(Gedung::class, 'id_gedung', 'id_gedung');
     }
+        public function mata_kuliahs()
+    {
+        return $this->belongsToMany(
+            MataKuliah::class,
+            'matkul_ruang',
+            'id_ruang',
+            'kode_matkul',
+            'id_ruang',
+            'kode_matkul'
+        );
+    }
 }

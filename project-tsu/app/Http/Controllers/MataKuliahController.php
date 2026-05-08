@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request; // Import Request
 use App\Models\MataKuliah;
+use App\Models\Prodi;
 use App\Models\Kurikulum; // Import Kurikulum
+use App\Models\Ruangan;
 use Illuminate\Validation\Rule;
 use PDF; // Untuk export PDF
 use Maatwebsite\Excel\Facades\Excel; // Untuk export Excel
@@ -19,7 +21,7 @@ class MataKuliahController extends Controller
     public function index(Request $request) // Tambahkan Request $request
     {
         // Mulai query
-        $query = MataKuliah::query();
+        $query = MataKuliah::with(['kurikulum', 'program_studi','ruangans']); // Eager load relasi kurikulum, prodi, dan ruangans
 
         $user = Auth::user();
         $userProdiName = null;
@@ -50,11 +52,15 @@ class MataKuliahController extends Controller
         // Paginate hasil query, dan tambahkan filter ke link pagination
         // USER REQUEST: Munculin semua data (limit diperbesar)
         $matkuls = $query->paginate(100)->appends($request->query());
+        $prodis = Prodi::all();
+        $ruangans = Ruangan::all();
 
         // Kirim data matkul DAN kurikulum ke view
         return view('management.matakuliah.index', [
             'matkuls' => $matkuls,
             'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
+            'prodis' => $prodis,
+            'ruangans' => $ruangans,
             'userProdiName' => $userProdiName
         ]);
     }
@@ -71,22 +77,30 @@ class MataKuliahController extends Controller
                 'string',
                 'max:20',
                 Rule::unique('mata_kuliah', 'kode_matkul')
+
             ],
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string|in:Teori,Praktikum',
             'semester' => 'required|integer|min:1|max:8',
-            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum' // Validasi kurikulum
+            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum', // Validasi kurikulum
+            'id_prodi' => 'required|integer|exists:program_studi,id_prodi', // Validasi program studi
+            'ruangan_ids' => 'required|array',
+            'ruangan_ids.*' => 'exists:ruang,id_ruang',
         ]);
 
         // Simpan data (termasuk id_kurikulum)
-        MataKuliah::create([
+        $matkul = MataKuliah::create([
             'nama_matkul' => $request->nama_matkul,
             'kode_matkul' => $request->kode_matkul,
             'sks' => $request->jumlah_sks,
             'jenis' => strtolower($request->tipe),
             'semester' => $request->semester,
-            'id_kurikulum' => $request->id_kurikulum, 
+            'id_kurikulum' => $request->id_kurikulum,
+            'id_prodi' => $request->id_prodi,
         ]);
+         // SIMPAN RELASI RUANGAN
+        $matkul->ruangans()->sync($request->ruangan_ids);
+
 
         return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil ditambahkan.');
     }
@@ -111,7 +125,10 @@ class MataKuliahController extends Controller
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string', // strtolower nanti
             'semester' => 'required|integer|min:1|max:8',
-            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum'
+            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum',
+            'id_prodi' => 'required|integer|exists:program_studi,id_prodi',
+            'ruangan_ids' => 'required|array',
+            'ruangan_ids.*' => 'exists:ruang,id_ruang',
         ]);
 
         // Update Data
@@ -122,7 +139,9 @@ class MataKuliahController extends Controller
             'jenis' => strtolower($request->tipe),
             'semester' => $request->semester,
             'id_kurikulum' => $request->id_kurikulum,
+            'id_prodi' => $request->id_prodi,
         ]);
+        $matkul->ruangans()->sync($request->ruangan_ids);
 
         return response()->json(['message' => 'Mata kuliah berhasil diperbarui.']);
     }
