@@ -16,13 +16,23 @@ class Dosen extends Model
         'nama_dosen',
         'nuptk',
         'nidn',
-        'mata_kuliah',
         'id_prodi',
-        'ketersediaan_waktu',
     ];
 
     public function prodi()
     {
         return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
+    }
+
+    public function mataKuliahs()
+    {
+        return $this->belongsToMany(
+            MataKuliah::class,
+            'pengampu_matkul',
+            'id_dosen',
+            'kode_matkul',
+            'id_dosen',
+            'kode_matkul'
+        );
     }
 }

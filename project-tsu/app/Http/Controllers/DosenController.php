@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Dosen;
+use App\Models\Prodi;
+use App\Models\Kurikulum;
+use App\Models\MataKuliah;
+use App\Models\PengampuMatkul;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\DosenExport;
 use Illuminate\Support\Facades\Auth;
+
 
 class DosenController extends Controller
 {
@@ -18,7 +23,7 @@ class DosenController extends Controller
     {
         $user = Auth::user();
         $userProdiName = null;
-        $query = Dosen::query();
+        $query = Dosen::with(['prodi', 'mataKuliahs']);
 
         if ($user && $user->isKaprodi()) {
             if ($user->id_prodi) {
@@ -31,8 +36,11 @@ class DosenController extends Controller
         }
 
         $dosens = $query->paginate(10)->onEachSide(1);
+        $prodis = Prodi::all();
+        $kurikulums = Kurikulum::all();
+        $mataKuliahs = MataKuliah::orderBy('semester')->get();
 
-        return view('management.dosen.index', compact('dosens', 'userProdiName'));
+        return view('management.dosen.index', compact('dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs'));
     }
 
     /**
@@ -54,17 +62,29 @@ class DosenController extends Controller
                 'max:20',
                 Rule::unique('dosen', 'nuptk'),
             ],
-            'mata_kuliah' => 'nullable|string',
-            'ketersediaan_waktu' => 'nullable|string',
+            'id_prodi' => 'required|exists:program_studi,id_prodi',
+
+            'mata_kuliah' => 'nullable|array',
+            'mata_kuliah.*' => 'exists:mata_kuliah,kode_matkul',
         ]);
 
-        Dosen::create([
+        $dosen = Dosen::create([
             'nama_dosen' => $request->nama_dosen,
             'nidn' => $request->nidn,
             'nuptk' => $request->nuptk,
-            'mata_kuliah' => $request->mata_kuliah,
-            'ketersediaan_waktu' => $request->ketersediaan_waktu,
+            'id_prodi' => $request->id_prodi,
         ]);
+
+        if ($request->mata_kuliah) {
+
+            foreach ($request->mata_kuliah as $kodeMatkul) {
+
+                PengampuMatkul::create([
+                    'id_dosen' => $dosen->id_dosen,
+                    'kode_matkul' => $kodeMatkul,
+                ]);
+            }
+        }
 
         return redirect()
             ->route('dosen.index')
@@ -92,15 +112,35 @@ class DosenController extends Controller
                 Rule::unique('dosen', 'nuptk')
                     ->ignore($dosen->id_dosen, 'id_dosen'),
             ],
-            'ketersediaan_waktu' => 'nullable|string',
+
+            'id_prodi' => 'required|exists:program_studi,id_prodi',
+
+            'mata_kuliah' => 'nullable|array',
+            'mata_kuliah.*' => 'exists:mata_kuliah,kode_matkul',
         ]);
 
         $dosen->update([
             'nama_dosen' => $request->nama_dosen,
             'nidn' => $request->nidn,
             'nuptk' => $request->nuptk,
-            'ketersediaan_waktu' => $request->ketersediaan_waktu,
+            'id_prodi' => $request->id_prodi,
         ]);
+
+        PengampuMatkul::where(
+            'id_dosen',
+            $dosen->id_dosen
+        )->delete();
+
+        if ($request->mata_kuliah) {
+
+            foreach ($request->mata_kuliah as $kodeMatkul) {
+
+                PengampuMatkul::create([
+                    'id_dosen' => $dosen->id_dosen,
+                    'kode_matkul' => $kodeMatkul,
+                ]);
+            }
+        }
 
         return redirect()
             ->route('dosen.index')
@@ -112,6 +152,10 @@ class DosenController extends Controller
      */
     public function destroy(Dosen $dosen)
     {
+        PengampuMatkul::where(
+            'id_dosen',
+            $dosen->id_dosen
+        )->delete();
         $dosen->delete();
 
         return redirect()

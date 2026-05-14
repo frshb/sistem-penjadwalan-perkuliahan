@@ -45,6 +45,9 @@ class MataKuliahController extends Controller
         if ($request->filled('kurikulum')) {
             $query->where('id_kurikulum', $request->kurikulum);
         }
+        if ($request->filled('prodi')) {
+            $query->where('id_prodi', $request->prodi);
+        }
 
 // Ambil semua kurikulum untuk dropdown
         $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA

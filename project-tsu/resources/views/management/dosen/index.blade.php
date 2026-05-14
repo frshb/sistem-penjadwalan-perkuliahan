@@ -9,86 +9,85 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
 </head>
-
+<script>
+    window.mataKuliahs = @json($mataKuliahs);
+</script>
 <body x-data="{
     sidebarOpen: true,
     showAddModal: false,
     showEditModal: false,
     isLoading: true,
 
-    // State untuk Edit
+    // =========================
+    // ADD DOSEN
+    // =========================
+
+    addProdi: '',
+    addFilterProdi: '',
+    addKurikulum: '',
+    addSemester: '',
+    addSelectedMatkuls: [],
+
+    // =========================
+    // EDIT DOSEN
+    // =========================
+
     editNama: '',
     editNuptk: '',
     editNidn: '',
     editProdi: '',
-    editPrioritasList: [''],
+
+    editFilterProdi: '',
+    editKurikulum: '',
+    editSemester: '',
+    editSelectedMatkuls: [],
+
     editUrl: '',
 
-    // State untuk Add
-    addPrioritasList: [''],
-
-    init() { setTimeout(() => this.isLoading = false, 500) },
-
-    addTimeSlot(type) {
-        if (type === 'add') this.addPrioritasList.push('');
-        if (type === 'edit') this.editPrioritasList.push('');
+    init() {
+        setTimeout(() => this.isLoading = false, 500)
     },
 
-    removeTimeSlot(index, type) {
-        if (type === 'add' && this.addPrioritasList.length > 1) this.addPrioritasList.splice(index, 1);
-        if (type === 'edit' && this.editPrioritasList.length > 1) this.editPrioritasList.splice(index, 1);
-    },
-
-    openEditModal(nidn, nuptk, nama, prodi, prioritas) {
+    openEditModal(
+        nidn,
+        nuptk,
+        nama,
+        prodi,
+        matkuls = []
+    ) {
         this.editNama = nama;
         this.editNuptk = nuptk;
         this.editNidn = nidn;
         this.editProdi = prodi;
 
-        // Mengatur URL Update. Asumsi route resource: /dosen/{nidn}
-        // Pastikan nidn adalah primary key atau controller menangani binding 'nidn'
-        this.editUrl = '/management/dosen/' + nuptk;
+        this.editSelectedMatkuls = matkuls;
 
-        // Parsing Prioritas Waktu
-        if (prioritas) {
-            // Cek apakah ada baris baru (\n) atau koma
-            if (prioritas.includes('\n')) {
-                this.editPrioritasList = prioritas.split('\n');
-            } else if (prioritas.includes(', ')) {
-                this.editPrioritasList = prioritas.split(', ');
-            } else {
-                this.editPrioritasList = [prioritas];
-            }
-        } else {
-            this.editPrioritasList = [''];
-        }
+        this.editUrl = '/management/dosen/' + nuptk;
 
         this.showEditModal = true;
     },
 
     confirmDelete(url) {
         if (confirm('Apakah Anda yakin ingin menghapus dosen ini?')) {
+
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = url;
 
-            // Ambil token CSRF dari meta tag yang baru ditambahkan
             const tokenMeta = document.querySelector('meta[name=\'csrf-token\']');
-            if (!tokenMeta) {
-                alert('Error: CSRF Token tidak ditemukan. Refresh halaman.');
-                return;
-            }
 
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
             csrfInput.name = '_token';
             csrfInput.value = tokenMeta.content;
+
             form.appendChild(csrfInput);
 
             const methodInput = document.createElement('input');
             methodInput.type = 'hidden';
             methodInput.name = '_method';
             methodInput.value = 'DELETE';
+
             form.appendChild(methodInput);
 
             document.body.appendChild(form);
@@ -162,17 +161,14 @@
 
                 <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
                     <div class="overflow-x-auto">
-                        <table class="w-full min-w-[1600px] bg-white">
+                        <table class="w-full min-w-[1100px] bg-white">
                             <thead class="bg-teal-800 text-white">
                                 <tr>
                                     <th class="w-16 text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">No</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Prodi</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Fakultas</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Nama Dosen</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">NUPTK</th>
                                     <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">NIDN</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Mata Kuliah</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Prioritas Waktu</th>
                                     <th class="w-48 text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
@@ -180,16 +176,10 @@
                                 @forelse ($dosens as $dosen)
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ ($dosens->currentPage() - 1) * $dosens->perPage() + $loop->iteration }}</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">Teknik Informatika</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">Fakultas Teknik</td>
+                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->prodi->nama_prodi ?? 'Belum Dipilih' }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nama_dosen }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nuptk }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nidn }}</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->mata_kuliah }}</td>
-                                        <td class="text-left py-3 px-4 text-sm min-w-[200px]">
-                                            {{-- Display with newlines --}}
-                                            {!! nl2br(e($dosen->ketersediaan_waktu)) !!}
-                                        </td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
                                             <div class="flex space-x-2">
                                                 <button
@@ -198,7 +188,7 @@
                                                         '{{ $dosen->nuptk }}',
                                                         '{{ $dosen->nama_dosen }}',
                                                         '{{ $dosen->id_prodi }}',
-                                                        {{ json_encode($dosen->ketersediaan_waktu) }}
+                                                        {{ json_encode($dosen->mataKuliahs->pluck('kode_matkul')->toArray()) }}
                                                     )"
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -216,7 +206,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-gray-500">
+                                        <td colspan="6" class="text-center py-4 text-gray-500">
                                             Data dosen belum tersedia.
                                         </td>
                                     </tr>
@@ -244,7 +234,14 @@
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="showAddModal" class="relative z-50 inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div
+                    x-show="showAddModal"
+                    class="relative z-50 inline-block align-bottom
+                        bg-white rounded-xl text-left overflow-hidden
+                        shadow-xl transform transition-all
+                        sm:my-8 sm:align-middle
+                        w-auto min-w-[650px] max-w-[800px]"
+                >
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                         <h3 class="text-xl font-bold text-teal-800" id="modal-title">Tambah Dosen</h3>
@@ -252,50 +249,254 @@
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
-                    <form action="{{ route('dosen.store') }}" method="POST" class="mt-6 space-y-6">
-                        @csrf
-                        <div class="flex items-center space-x-4">
-                            <label for="nama_dosen" class="w-1/3 text-lg text-gray-700 font-medium">Nama Dosen :</label>
-                            <input type="text" id="nama_dosen" name="nama_dosen" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <label for="nuptk" class="w-1/3 text-lg text-gray-700 font-medium">NUPTK :</label>
-                            <input type="text" id="nuptk" name="nuptk" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <label for="nidn" class="w-1/3 text-lg text-gray-700 font-medium">NIDN :</label>
-                            <input type="text" id="nidn" name="nidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="block text-lg text-gray-700 font-medium">Prioritas Waktu :</label>
-                            <div class="space-y-2">
-                                <template x-for="(item, index) in addPrioritasList" :key="index">
-                                    <div class="flex items-center space-x-2">
-                                        <input type="text" x-model="addPrioritasList[index]" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Contoh: Senin, 08.00 - 10.00">
-                                        <button type="button" @click="removeTimeSlot(index, 'add')" class="text-red-500 hover:text-red-700" x-show="addPrioritasList.length > 1">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                        </button>
+                        <form action="{{ route('dosen.store') }}" method="POST" class="mt-6 space-y-6">
+                            @csrf
+
+                            {{-- NAMA --}}
+                            <div class="flex items-center space-x-4">
+                                <label class="w-1/3 text-lg text-gray-700 font-medium">
+                                    Nama Dosen :
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="nama_dosen"
+                                    class="w-2/3 border border-gray-300 rounded-lg px-4 py-2"
+                                    required
+                                >
+                            </div>
+
+                            {{-- NUPTK --}}
+                            <div class="flex items-center space-x-4">
+                                <label class="w-1/3 text-lg text-gray-700 font-medium">
+                                    NUPTK :
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="nuptk"
+                                    class="w-2/3 border border-gray-300 rounded-lg px-4 py-2"
+                                    required
+                                >
+                            </div>
+
+                            {{-- NIDN --}}
+                            <div class="flex items-center space-x-4">
+                                <label class="w-1/3 text-lg text-gray-700 font-medium">
+                                    NIDN :
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="nidn"
+                                    class="w-2/3 border border-gray-300 rounded-lg px-4 py-2"
+                                    required
+                                >
+                            </div>
+
+                            {{-- PRODI --}}
+                            <div class="flex items-center space-x-4">
+                                <label class="w-1/3 text-lg text-gray-700 font-medium">
+                                    Program Studi :
+                                </label>
+
+                                <select
+                                    name="id_prodi"
+                                    x-model="addProdi"
+                                    class="w-2/3 border border-gray-300 rounded-lg px-4 py-2"
+                                    required
+                                >
+                                    <option value="">Pilih Prodi</option>
+
+                                    @foreach($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}">
+                                            {{ $prodi->nama_prodi }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <label class="block text-lg font-medium text-gray-700 mb-2">
+                                Mata Kuliah Yang Diampu :
+                            </label>
+
+
+                            {{-- MATKUL --}}
+                            <div>
+
+                                <div class="border rounded-lg max-h-64 overflow-y-auto">
+                                    {{-- FILTER MATKUL --}}
+                                    <div class="sticky top-0 bg-white z-10 px-4 pt-4 pb-3 border-b border-gray-200 mb-4">
+                                        <div class="flex flex-wrap gap-4 items-end">
+                                            {{-- KURIKULUM --}}
+                                            <div class="w-40">
+                                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                    Kurikulum
+                                                </label>
+
+                                                <select
+                                                    x-model="addKurikulum"
+                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                >
+                                                    <option value="">Semua</option>
+
+                                                    @foreach($kurikulums as $kurikulum)
+                                                        <option value="{{ $kurikulum->id_kurikulum }}">
+                                                            {{ $kurikulum->nama_kurikulum }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            {{-- SEMESTER --}}
+                                            <div class="w-32">
+                                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                    Semester
+                                                </label>
+
+                                                <select
+                                                    x-model="addSemester"
+                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                >
+                                                    <option value="">Semua</option>
+
+                                                    @for($i = 1; $i <= 8; $i++)
+                                                        <option value="{{ $i }}">
+                                                            Semester {{ $i }}
+                                                        </option>
+                                                    @endfor
+                                                </select>
+                                            </div>
+
+                                            {{-- PRODI --}}
+                                            <div class="w-48">
+                                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                    Prodi
+                                                </label>
+
+                                                <select
+                                                    x-model="addFilterProdi"
+                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                >
+                                                    <option value="">Semua Prodi</option>
+
+                                                    @foreach($prodis as $prodi)
+                                                        <option value="{{ $prodi->id_prodi }}">
+                                                            {{ $prodi->nama_prodi }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
-                                </template>
-                                <div class="flex justify-end">
-                                    <button type="button" @click="addTimeSlot('add')" class="text-sm text-teal-600 hover:text-teal-800 font-medium flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                        Tambah Waktu
-                                    </button>
+
+                                    {{-- CHECKBOX MATKUL --}}
+                                    <div class="px-4 pb-4 space-y-2">
+
+                                        <template
+                                            x-for="matkul in window.mataKuliahs.filter(m =>
+                                                (!addFilterProdi || m.id_prodi == addFilterProdi) &&
+                                                (!addKurikulum || m.id_kurikulum == addKurikulum) &&
+                                                (!addSemester || m.semester == addSemester)
+                                            )"
+                                            :key="matkul.kode_matkul"
+                                        >
+
+                                            <label class="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+
+                                                <input
+                                                    type="checkbox"
+                                                    name="mata_kuliah[]"
+                                                    :value="matkul.kode_matkul"
+                                                    x-model="addSelectedMatkuls"
+                                                    class="mt-1"
+                                                >
+
+                                                <div>
+                                                    <div class="font-medium text-gray-800">
+                                                        <span x-text="matkul.nama_matkul"></span>
+                                                    </div>
+
+                                                    <div class="text-sm text-gray-500">
+                                                        <span x-text="matkul.kode_matkul"></span>
+                                                        • Semester
+                                                        <span x-text="matkul.semester"></span>
+                                                    </div>
+                                                </div>
+
+                                            </label>
+
+                                        </template>
+                                    </div>
+
                                 </div>
                             </div>
-                            <!-- Hidden input to store joined string -->
-                            <input type="hidden" name="ketersediaan_waktu" :value="addPrioritasList.join('\n')">
-                        </div>
-                        <div class="flex justify-end space-x-4 pt-6">
-                            <button type="button" @click="showAddModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
-                                Batal
-                            </button>
-                            <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">
-                                Simpan
-                            </button>
-                        </div>
-                    </form>
+                            {{-- MATKUL TERPILIH --}}
+                            <div class="mt-4" x-show="addSelectedMatkuls.length > 0">
+
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Mata Kuliah Terpilih
+                                </label>
+
+                                <div class="flex flex-wrap gap-2">
+
+                                    <template
+                                        x-for="kode in addSelectedMatkuls"
+                                        :key="kode"
+                                    >
+
+                                        <div
+                                            class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+                                        >
+
+                                            <span
+                                                x-text="
+                                                    (() => {
+                                                        let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
+                                                        return mk
+                                                            ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
+                                                            : kode;
+                                                    })()
+                                                "
+                                            ></span>
+
+                                            <button
+                                                type="button"
+                                                @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)"
+                                                class="text-red-500 hover:text-red-700 font-bold"
+                                            >
+                                                ×
+                                            </button>
+
+                                        </div>
+
+                                    </template>
+
+                                </div>
+
+                            </div>
+
+                            {{-- BUTTON --}}
+                            <div class="flex justify-end space-x-4 pt-6">
+
+                                <button
+                                    type="button"
+                                    @click="showAddModal = false"
+                                    class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg"
+                                >
+                                    Batal
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg"
+                                >
+                                    Simpan
+                                </button>
+
+                            </div>
+
+                        </form>
                 </div>
             </div>
         </div>
@@ -303,88 +504,331 @@
 
     <!-- ===== AKHIR MODAL TAMBAH DOSEN ===== -->
 
-    <!-- ===== AWAL MODAL EDIT DOSEN ===== -->
-    <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
-             <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
+<!-- ===== AWAL MODAL EDIT DOSEN ===== -->
+<div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
 
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
 
-            <div x-show="showEditModal" class="inline-block align-bottom bg-white relative z-50 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="flex justify-between items-center pb-3 border-b border-gray-200">
-                        <h3 class="text-xl font-bold text-teal-800">Edit Dosen</h3>
-                        <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
+        {{-- BACKDROP --}}
+        <div
+            x-show="showEditModal"
+            @click="showEditModal = false"
+            class="fixed inset-0 z-40 transition-opacity"
+            aria-hidden="true"
+        >
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
+            &#8203;
+        </span>
+
+        {{-- MODAL --}}
+        <div
+            x-show="showEditModal"
+            class="relative z-50 inline-block align-bottom
+                   bg-white rounded-xl text-left overflow-hidden
+                   shadow-xl transform transition-all
+                   sm:my-8 sm:align-middle
+                   w-auto min-w-[650px] max-w-[800px]"
+        >
+
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+
+                {{-- HEADER --}}
+                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                    <h3 class="text-xl font-bold text-teal-800">
+                        Edit Dosen
+                    </h3>
+
+                    <button
+                        @click="showEditModal = false"
+                        class="text-gray-400 hover:text-gray-600"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- FORM --}}
+                <form :action="editUrl" method="POST" class="mt-6 space-y-6">
+
+                    @csrf
+                    @method('PUT')
+
+                    {{-- NAMA --}}
+                    <div class="flex items-center space-x-4">
+
+                        <label class="w-1/3 text-lg text-gray-700 font-medium">
+                            Nama Dosen :
+                        </label>
+
+                        <input
+                            type="text"
+                            name="nama_dosen"
+                            x-model="editNama"
+                            class="w-2/3 border border-gray-300 rounded-lg px-4 py-2
+                                   focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            required
+                        >
                     </div>
-                    <form :action="editUrl" method="POST" class="mt-6 space-y-6">
-                        @csrf
-                        @method('PUT')
-                        <div class="flex items-center space-x-4">
-                            <label for="edit_nama_dosen" class="w-1/3 text-lg text-gray-700 font-medium">Nama Dosen :</label>
-                            <input type="text" id="edit_nama_dosen" name="nama_dosen" x-model="editNama" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                        </div>
 
-                        <div class="flex items-center space-x-4">
-                            <label for="edit_nuptk" class="w-1/3 text-lg text-gray-700 font-medium">
-                                NUPTK :
-                            </label>
-                            <input
-                                type="text"
-                                id="edit_nuptk"
-                                name="nuptk"
-                                x-model="editNuptk"
-                                class="w-2/3 border border-gray-300 rounded-lg px-4 py-2
-                                    focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                required
-                            >
-                        </div>
+                    {{-- NUPTK --}}
+                    <div class="flex items-center space-x-4">
 
+                        <label class="w-1/3 text-lg text-gray-700 font-medium">
+                            NUPTK :
+                        </label>
 
-                        <div class="flex items-center space-x-4">
-                            <label for="edit_nidn" class="w-1/3 text-lg text-gray-700 font-medium">NIDN :</label>
-                            <input type="text" id="edit_nidn" name="nidn" x-model="editNidn" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
-                        </div>
+                        <input
+                            type="text"
+                            name="nuptk"
+                            x-model="editNuptk"
+                            class="w-2/3 border border-gray-300 rounded-lg px-4 py-2
+                                   focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            required
+                        >
+                    </div>
 
-                         <div class="space-y-2">
-                            <label class="block text-lg text-gray-700 font-medium">Prioritas Waktu :</label>
-                            <div class="space-y-2">
-                                <template x-for="(item, index) in editPrioritasList" :key="index">
-                                    <div class="flex items-center space-x-2">
-                                        <input type="text" x-model="editPrioritasList[index]" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Contoh: Senin, 08.00 - 10.00">
-                                        <button type="button" @click="removeTimeSlot(index, 'edit')" class="text-red-500 hover:text-red-700" x-show="editPrioritasList.length > 1">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                        </button>
+                    {{-- NIDN --}}
+                    <div class="flex items-center space-x-4">
+
+                        <label class="w-1/3 text-lg text-gray-700 font-medium">
+                            NIDN :
+                        </label>
+
+                        <input
+                            type="text"
+                            name="nidn"
+                            x-model="editNidn"
+                            class="w-2/3 border border-gray-300 rounded-lg px-4 py-2
+                                   focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            required
+                        >
+                    </div>
+
+                    {{-- PRODI --}}
+                    <div class="flex items-center space-x-4">
+
+                        <label class="w-1/3 text-lg text-gray-700 font-medium">
+                            Program Studi :
+                        </label>
+
+                        <select
+                            name="id_prodi"
+                            x-model="editProdi"
+                            class="w-2/3 border border-gray-300 rounded-lg px-4 py-2"
+                            required
+                        >
+                            <option value="">Pilih Prodi</option>
+
+                            @foreach($prodis as $prodi)
+                                <option value="{{ $prodi->id_prodi }}">
+                                    {{ $prodi->nama_prodi }}
+                                </option>
+                            @endforeach
+
+                        </select>
+                    </div>
+
+                    {{-- JUDUL --}}
+                    <label class="block text-lg font-medium text-gray-700 mb-2">
+                        Mata Kuliah Yang Diampu :
+                    </label>
+
+                    {{-- MATKUL --}}
+                    <div>
+
+                        <div class="border rounded-lg max-h-64 overflow-y-auto">
+
+                            {{-- FILTER --}}
+                            <div class="sticky top-0 bg-white z-10 px-4 pt-4 pb-3 border-b border-gray-200 mb-4">
+
+                                <div class="flex flex-wrap gap-4 items-end">
+
+                                    {{-- KURIKULUM --}}
+                                    <div class="w-40">
+
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                                            Kurikulum
+                                        </label>
+
+                                        <select
+                                            x-model="editKurikulum"
+                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                        >
+                                            <option value="">Semua</option>
+
+                                            @foreach($kurikulums as $kurikulum)
+                                                <option value="{{ $kurikulum->id_kurikulum }}">
+                                                    {{ $kurikulum->nama_kurikulum }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
-                                </template>
-                                <div class="flex justify-end">
-                                    <button type="button" @click="addTimeSlot('edit')" class="text-sm text-teal-600 hover:text-teal-800 font-medium flex items-center">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                        Tambah Waktu
-                                    </button>
+
+                                    {{-- SEMESTER --}}
+                                    <div class="w-32">
+
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                                            Semester
+                                        </label>
+
+                                        <select
+                                            x-model="editSemester"
+                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                        >
+                                            <option value="">Semua</option>
+
+                                            @for($i = 1; $i <= 8; $i++)
+                                                <option value="{{ $i }}">
+                                                    Semester {{ $i }}
+                                                </option>
+                                            @endfor
+                                        </select>
+                                    </div>
+
+                                    {{-- PRODI --}}
+                                    <div class="w-48">
+
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                                            Prodi
+                                        </label>
+
+                                        <select
+                                            x-model="editFilterProdi"
+                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                        >
+                                            <option value="">Semua Prodi</option>
+
+                                            @foreach($prodis as $prodi)
+                                                <option value="{{ $prodi->id_prodi }}">
+                                                    {{ $prodi->nama_prodi }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
                                 </div>
                             </div>
-                            <!-- Hidden input to store joined string -->
-                             <input type="hidden" name="ketersediaan_waktu" :value="editPrioritasList.join('\n')">
-                        </div>
 
-                        <div class="flex justify-end space-x-4 pt-6">
-                            <button type="button" @click="showEditModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">
-                                Batal
-                            </button>
-                            <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">
-                                Update
-                            </button>
+                            {{-- LIST MATKUL --}}
+                            <div class="px-4 pb-4 space-y-2">
+
+                                <template
+                                    x-for="matkul in window.mataKuliahs.filter(m =>
+                                        (!editFilterProdi || m.id_prodi == editFilterProdi) &&
+                                        (!editKurikulum || m.id_kurikulum == editKurikulum) &&
+                                        (!editSemester || m.semester == editSemester)
+                                    )"
+                                    :key="matkul.kode_matkul"
+                                >
+
+                                    <label class="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+
+                                        <input
+                                            type="checkbox"
+                                            name="mata_kuliah[]"
+                                            :value="matkul.kode_matkul"
+                                            x-model="editSelectedMatkuls"
+                                            class="mt-1"
+                                        >
+
+                                        <div>
+                                            <div class="font-medium text-gray-800">
+                                                <span x-text="matkul.nama_matkul"></span>
+                                            </div>
+
+                                            <div class="text-sm text-gray-500">
+                                                <span x-text="matkul.kode_matkul"></span>
+                                                • Semester
+                                                <span x-text="matkul.semester"></span>
+                                            </div>
+                                        </div>
+
+                                    </label>
+
+                                </template>
+
+                            </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+
+                    {{-- MATKUL TERPILIH --}}
+                    <div class="mt-4" x-show="editSelectedMatkuls.length > 0">
+
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Mata Kuliah Terpilih
+                        </label>
+
+                        <div class="flex flex-wrap gap-2">
+
+                            <template
+                                x-for="kode in editSelectedMatkuls"
+                                :key="kode"
+                            >
+
+                                <div
+                                    class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+                                >
+
+                                    <span
+                                        x-text="
+                                            (() => {
+                                                let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
+                                                return mk
+                                                    ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
+                                                    : kode;
+                                            })()
+                                        "
+                                    ></span>
+
+                                    <button
+                                        type="button"
+                                        @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)"
+                                        class="text-red-500 hover:text-red-700 font-bold"
+                                    >
+                                        ×
+                                    </button>
+
+                                </div>
+
+                            </template>
+
+                        </div>
+                    </div>
+
+                    {{-- BUTTON --}}
+                    <div class="flex justify-end space-x-4 pt-6">
+
+                        <button
+                            type="button"
+                            @click="showEditModal = false"
+                            class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg"
+                        >
+                            Batal
+                        </button>
+
+                        <button
+                            type="submit"
+                            class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg"
+                        >
+                            Update
+                        </button>
+
+                    </div>
+
+                </form>
+
             </div>
         </div>
     </div>
-    <!-- ===== AKHIR MODAL EDIT ===== -->
+</div>
+
+<!-- ===== AKHIR MODAL EDIT ===== -->
 
         <!-- Include Popup Sukses -->
     @include('components.success-popup')

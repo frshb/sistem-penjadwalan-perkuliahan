@@ -13,8 +13,11 @@
 </head>
 <body x-data="{
     allRooms: @js($ruangans),
-
     filteredRooms: @js($ruangans),
+
+    selectedRooms: [],
+    editSelectedRooms: [],
+
     sidebarOpen: true,
     showAddModal: false,
     showEditModal: false,
@@ -53,6 +56,11 @@
                 room.nama_ruang.toLowerCase().includes('lab')
             );
 
+        } else if (tipe === 'Teori-Praktik') {
+
+            // tampilkan semua ruangan
+            this.filteredRooms = this.allRooms;
+
         } else {
 
             this.filteredRooms = [];
@@ -73,7 +81,7 @@
         this.editKurikulum = kurikulum;
 
         this.editRuanganIds = ruanganIds;
-
+        this.editSelectedRooms = ruanganIds;
         this.editUrl = '{{ route('matakuliah.index') }}/' + kode;
 
         // FILTER RUANGAN BERDASARKAN TIPE
@@ -161,6 +169,22 @@
                                 @foreach ($kurikulums as $kurikulum)
                                     <option value="{{ $kurikulum->id_kurikulum }}" {{ request('kurikulum') == $kurikulum->id_kurikulum ? 'selected' : '' }}>
                                         {{ $kurikulum->nama_kurikulum }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <!-- Filter Program Studi -->
+                            <select
+                                name="prodi"
+                                class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            >
+                                <option value="">Semua Prodi</option>
+
+                                @foreach ($prodis as $prodi)
+                                    <option
+                                        value="{{ $prodi->id_prodi }}"
+                                        {{ request('prodi') == $prodi->id_prodi ? 'selected' : '' }}
+                                    >
+                                        {{ $prodi->nama_prodi }}
                                     </option>
                                 @endforeach
                             </select>
@@ -348,6 +372,7 @@
                                     <option value="">Pilih Tipe</option>
                                     <option value="Teori">Teori</option>
                                     <option value="Praktikum">Praktikum</option>
+                                    <option value="Teori-Praktik">Teori-Praktik</option>
                                 </select>
                             </div>
                             <div>
@@ -364,34 +389,59 @@
                                     Ruangan Yang Bisa Digunakan
                                 </label>
 
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                                <div class="border border-gray-300 rounded-lg p-3">
 
-                                <template x-for="ruangan in filteredRooms" :key="ruangan.id_ruang">
+                                    <!-- CHECKBOX PILIH SEMUA -->
+                                    <div class="mb-3 border-b pb-2">
+                                        <label class="flex items-center space-x-2 font-semibold text-teal-700">
+                                            <input
+                                                type="checkbox"
 
-                                    <label class="flex items-center space-x-2">
+                                                @change="
+                                                    if($event.target.checked){
+                                                        selectedRooms = filteredRooms.map(r => r.id_ruang)
+                                                    }else{
+                                                        selectedRooms = []
+                                                    }
+                                                "
+                                            >
 
-                                        <input
-                                            type="checkbox"
-                                            name="ruangan_ids[]"
-                                            :value="ruangan.id_ruang"
-                                            class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                                        >
+                                            <span>Pilih Semua</span>
+                                        </label>
+                                    </div>
 
-                                        <span
-                                            class="text-sm text-gray-700"
-                                            x-text="ruangan.nama_ruang"
-                                        ></span>
+                                    <!-- LIST RUANGAN -->
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
 
-                                    </label>
+                                        <template x-for="ruangan in filteredRooms" :key="ruangan.id_ruang">
 
-                                </template>
+                                            <label class="flex items-center space-x-2">
 
-                                <div
-                                    x-show="filteredRooms.length === 0"
-                                    class="text-sm text-red-500"
-                                >
-                                    Tidak ada ruangan tersedia
-                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    name="ruangan_ids[]"
+                                                    :value="ruangan.id_ruang"
+                                                    x-model="selectedRooms"
+                                                    class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                                >
+
+                                                <span
+                                                    class="text-sm text-gray-700"
+                                                    x-text="ruangan.nama_ruang"
+                                                ></span>
+
+                                            </label>
+
+                                        </template>
+
+                                    </div>
+
+                                    <div
+                                        x-show="filteredRooms.length === 0"
+                                        class="text-sm text-red-500 mt-2"
+                                    >
+                                        Tidak ada ruangan tersedia
+                                    </div>
 
                                 </div>
                             </div>
@@ -487,6 +537,7 @@
                                     <option value="">Pilih Tipe</option>
                                     <option value="Teori">Teori</option>
                                     <option value="Praktikum">Praktikum</option>
+                                    <option value="Teori-Praktik">Teori-Praktik</option>
                                 </select>
                             </div>
                             <div>
@@ -503,28 +554,54 @@
                                     Ruangan Yang Bisa Digunakan
                                 </label>
 
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                                <div class="border border-gray-300 rounded-lg p-3">
 
-                                    <template x-for="ruangan in filteredRooms" :key="ruangan.id_ruang">
-
-                                        <label class="flex items-center space-x-2">
+                                    <!-- CHECKBOX PILIH SEMUA -->
+                                    <div class="mb-3 border-b pb-2">
+                                        <label class="flex items-center space-x-2 font-semibold text-teal-700">
 
                                             <input
                                                 type="checkbox"
-                                                name="ruangan_ids[]"
-                                                :value="ruangan.id_ruang"
-                                                :checked="editRuanganIds.includes(ruangan.id_ruang)"
-                                                class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+
+                                                @change="
+                                                    if($event.target.checked){
+                                                        editSelectedRooms = filteredRooms.map(r => r.id_ruang)
+                                                    }else{
+                                                        editSelectedRooms = []
+                                                    }
+                                                "
                                             >
 
-                                            <span
-                                                class="text-sm text-gray-700"
-                                                x-text="ruangan.nama_ruang"
-                                            ></span>
+                                            <span>Pilih Semua</span>
 
                                         </label>
+                                    </div>
 
-                                    </template>
+                                    <!-- LIST RUANGAN -->
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+
+                                        <template x-for="ruangan in filteredRooms" :key="ruangan.id_ruang">
+
+                                            <label class="flex items-center space-x-2">
+
+                                                <input
+                                                    type="checkbox"
+                                                    name="ruangan_ids[]"
+                                                    :value="ruangan.id_ruang"
+                                                    x-model="editSelectedRooms"
+                                                    class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                                >
+
+                                                <span
+                                                    class="text-sm text-gray-700"
+                                                    x-text="ruangan.nama_ruang"
+                                                ></span>
+
+                                            </label>
+
+                                        </template>
+
+                                    </div>
 
                                 </div>
                             </div>
