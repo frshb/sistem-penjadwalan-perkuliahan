@@ -19,13 +19,13 @@ class JadwalOtomatisController extends Controller
 
         // Kurikulum Dummy
         $kurikulums = [
-            '2018' => [
-                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
-            ],
             '2020' => [
                 'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
             ],
             '2023' => [
+                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
+            ],
+            '2025' => [
                 'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
             ]
         ];
@@ -97,10 +97,10 @@ class JadwalOtomatisController extends Controller
         $subjectsByProdi = [];
         // Map ID from step 1 checkbox/input to Name key in masterSubjects
         // Assuming step 1 input might just be implicit, but looking at step1 blade it sends 'kurikulum' array.
-        // It doesn't seem to send 'prodi'. But the previous code assumed prodi input. 
+        // It doesn't seem to send 'prodi'. But the previous code assumed prodi input.
         // Let's assume for this specific user request context we show all relevant prodis or defaults.
         // The previous step3 code had explicit keys. let's stick to that.
-        
+
         $subjectsByProdi = [
             'Informatika' => $getSubjects($masterSubjects['Informatika'], $step1),
             'Sistem Informasi' => $getSubjects($masterSubjects['Sistem Informasi'], $step1),
@@ -132,7 +132,7 @@ class JadwalOtomatisController extends Controller
         // Prepare Master Data for lookup
         $masterSubjects = $this->getMasterSubjects();
         $dosens = \App\Models\Dosen::all()->keyBy('id');
-        
+
         // Flatten available rooms from step2 structure: Gedung -> Lt -> [Rooms]
         $availableRooms = [];
         if (isset($step2['rooms'])) {
@@ -140,7 +140,7 @@ class JadwalOtomatisController extends Controller
              $availableRooms = $step2['rooms'];
         } else {
              // Fallback dummy
-             $availableRooms = ['Lab 1', 'Lab 2', 'Lab 5', 'C 3.3']; 
+             $availableRooms = ['Lab 1', 'Lab 2', 'Lab 5', 'C 3.3'];
         }
 
         $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
@@ -162,7 +162,7 @@ class JadwalOtomatisController extends Controller
                 // Filter out empty class names
                 if(is_array($classes)) {
                     $classes = array_filter($classes, fn($c) => !empty($c));
-                    
+
                     foreach ($classes as $className) {
                         $schedule[] = [
                             'no' => $no++,

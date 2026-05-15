@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Data | Data Kelas {{ $tahunAkademik->nama_tahunakademik }}</title>
+    <meta name="description" content="Management Data Kelas Sistem Penjadwalan Perkuliahan">
+    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <style>
+        .prodi-tab.active {
+            border-bottom-color: #0d9488;
+            color: #0d9488;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body x-data="{
+    sidebarOpen: true,
+    showAddModal: false,
+    showEditModal: false,
+    activeTab: 'all',
+    editData: {
+        id_kelas: null,
+        nama_kelas: '',
+        id_prodi: '',
+        id_tahunakademik: '',
+        kapasitas: ''
+    },
+    isLoading: true,
+    init() {
+        setTimeout(() => this.isLoading = false, 1500)
+    },
+    selectedProdi: '',
+    selectedSemester: '',
+    selectedKurikulum: '',
+    selectedSks: '',
+    mataKuliahs: @js($mataKuliahs),
+
+    filteredDosens: [],
+
+    selectMatkul(kode) {
+
+        let matkul = this.mataKuliahs.find(
+            item => item.kode_matkul == kode
+        );
+
+        if (matkul) {
+
+            this.selectedSks = matkul.sks;
+
+            this.filteredDosens = matkul.pengampus.map(
+                item => item.dosen
+            );
+
+        } else {
+
+            this.selectedSks = '';
+            this.filteredDosens = [];
+        }
+    },
+
+    filteredEditDosens: [],
+    selectEditMatkul(kode) {
+
+        let matkul = this.mataKuliahs.find(
+            item => item.kode_matkul == kode
+        );
+
+        if (matkul) {
+
+            this.editData.sks = matkul.sks;
+
+            this.filteredEditDosens = matkul.pengampus.map(
+                item => item.dosen
+            );
+
+        } else {
+
+            this.editData.sks = '';
+            this.filteredEditDosens = [];
+        }
+    },
+
+    openEdit(kelas) {
+
+        this.editData = {
+            ...kelas,
+            id_kurikulum: kelas.matakuliah?.id_kurikulum ?? '',
+            sks: kelas.matakuliah?.sks ?? ''
+        };
+
+        this.selectEditMatkul(kelas.kode_matkul);
+
+        this.showEditModal = true;
+    },
+
+    showGenerateModal: false,
+
+    selectedGenerateProdi: '',
+
+    selectedGenerateProdiName: '',
+
+    semesterOptions: @js(
+        str_contains(strtolower($tahunAkademik->nama_tahunakademik), 'genap')
+            ? [2,4,6,8]
+            : [1,3,5,7]
+    ),
+
+}" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
+
+@include('components.sidebar')
+
+<main id="main-content"
+      :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'"
+      class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div class="flex items-center">
+            <div class="flex flex-col">
+                <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
+                <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+            </div>
+
+            <div class="ml-3 flex items-center space-x-2 text-2xl font-bold">
+
+                <a href="{{ route('kelas.pilih-tahun') }}"
+                class="text-gray-800 hover:text-teal-600 transition">
+                    Management Data
+                </a>
+
+                <svg class="w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5l7 7-7 7"/>
+                </svg>
+
+                <span class="text-teal-700">
+                    {{ $tahunAkademik->nama_tahunakademik }}
+                </span>
+
+            </div>
+        </div>
+
+        @include('components.header-profile')
+    </div>
+
+    <!-- Title -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-6 mb-4">
+        <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">
+            Daftar Kelas
+        </h2>
+
+        <div class="flex space-x-2">
+            <a href="{{ route('kelas.export.excel') }}"
+               class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">
+                Export Excel
+            </a>
+
+            <a href="{{ route('kelas.export.pdf') }}"
+               class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700">
+                Export PDF
+            </a>
+
+            <button @click="showAddModal = true"
+                    class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700">
+                Tambah Kelas
+            </button>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="mb-6">
+
+        <form action="{{ route('kelas.index') }}" method="GET">
+
+            <!-- SIMPAN TAHUN AKADEMIK -->
+            <input type="hidden"
+                name="tahun"
+                value="{{ $tahunAkademik->id_tahunakademik }}">
+
+            <div class="relative">
+
+                <input type="text"
+                    name="search"
+                    value="{{ $searchTerm ?? '' }}"
+                    placeholder="Cari nama kelas..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+
+                <button type="submit"
+                        class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700">
+                    🔍
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- TAB PRODI -->
+    <div class="flex space-x-2 mb-6 border-b border-gray-300 overflow-x-auto">
+        <button
+            @click="activeTab = 'all'"
+            class="prodi-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
+            :class="activeTab === 'all'
+                ? 'border-teal-600 text-teal-700 font-bold'
+                : 'border-transparent text-gray-600 hover:text-teal-700'">
+            Semua Prodi
+        </button>
+
+        @foreach ($kelasByProdi as $namaProdi => $kelasGroup)
+            <button
+                @click="activeTab = '{{ Str::slug($namaProdi) }}'"
+                class="prodi-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
+                :class="activeTab === '{{ Str::slug($namaProdi) }}'
+                    ? 'border-teal-600 text-teal-700 font-bold'
+                    : 'border-transparent text-gray-600 hover:text-teal-700'">
+                {{ $namaProdi }}
+            </button>
+        @endforeach
+    </div>
+
+    <!-- DATA -->
+    @foreach ($prodis as $prodi)
+
+    @php
+        $kelasGroup = $kelasByProdi[$prodi->nama_prodi] ?? collect();
+        $namaProdi = $prodi->nama_prodi;
+    @endphp
+
+        <div class="mb-8"
+             x-show="activeTab === 'all' || activeTab === '{{ Str::slug($namaProdi) }}'">
+
+            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
+
+                 {{-- GENERATE --}}
+                <div class="flex justify-between items-center mb-6">
+
+                    <h3 class="text-xl font-bold text-gray-700">
+                        {{ $namaProdi }}
+                    </h3>
+
+                    <button
+                        @click="
+                            showGenerateModal = true;
+                            selectedGenerateProdi = '{{ $prodi->id_prodi }}';
+                            selectedGenerateProdiName = '{{ $namaProdi }}';
+                        "
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+
+                        Generate Kelas
+                    </button>
+
+                </div>
+
+                <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
+
+                    <div class="overflow-x-auto w-full">
+
+                        <table class="min-w-full bg-white">
+
+                            <thead class="bg-teal-700 text-white">
+                                <tr>
+
+                                    <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        No
+                                    </th>
+
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        Nama Kelas
+                                    </th>
+
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        Semester
+                                    </th>
+
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        Kode MK
+                                    </th>
+
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        Mata Kuliah
+                                    </th>
+
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        SKS
+                                    </th>
+
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        Dosen
+                                    </th>
+
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        Kapasitas
+                                    </th>
+
+                                    <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">
+                                        Aksi
+                                    </th>
+
+                                </tr>
+                            </thead>
+
+                            <tbody class="text-gray-700">
+
+                                @forelse ($kelasGroup as $kelas)
+
+                                <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
+
+                                    <td class="text-left py-2 px-3 text-sm">
+                                        {{ $loop->iteration }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm font-medium">
+                                        {{ $kelas->nama_kelas }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm">
+                                        {{ $kelas->semester ?? '-' }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm">
+                                        {{ $kelas->kode_matkul ?? '-' }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm">
+                                        {{ $kelas->matakuliah->nama_matkul ?? '-' }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm">
+                                        {{ $kelas->matakuliah->sks ?? '-' }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm">
+                                        {{ $kelas->dosen->nama_dosen ?? '-' }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm">
+                                        {{ $kelas->kapasitas }}
+                                    </td>
+
+                                    <td class="text-left py-2 px-3 text-sm">
+
+                                        <div class="flex space-x-2">
+
+                                            <button
+                                                @click='openEdit(@json($kelas))'
+                                                class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
+
+                                                Edit
+                                            </button>
+
+                                            <button
+                                                onclick="confirmDelete('{{ route('kelas.destroy', $kelas->id_kelas) }}')"
+                                                class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+
+                                                Hapus
+                                            </button>
+
+                                        </div>
+
+                                    </td>
+
+                                </tr>
+
+                                @empty
+
+                                <tr>
+                                    <td colspan="9"
+                                        class="text-center py-4 text-gray-500">
+                                        Data kelas belum tersedia.
+                                    </td>
+                                </tr>
+
+                                @endforelse
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    @endforeach
+
+</main>
+
+<!-- MODAL TAMBAH -->
+<div x-show="showAddModal"
+     class="fixed inset-0 z-50 overflow-y-auto"
+     style="display: none;">
+
+    <div class="flex items-center justify-center min-h-screen px-4">
+
+        <div class="bg-white rounded-lg shadow-xl sm:max-w-lg sm:w-full p-6">
+
+            <div class="flex justify-between items-center border-b pb-3">
+                <h2 class="text-xl font-bold text-teal-800">
+                    Tambah Kelas Baru
+                </h2>
+
+                <button @click="showAddModal = false">
+                    ✕
+                </button>
+            </div>
+
+                <form action="{{ route('kelas.store') }}"
+                    method="POST"
+                    class="mt-4 space-y-4">
+
+                    @csrf
+
+                    <!-- hidden tahun akademik -->
+                    <input type="hidden"
+                        name="id_tahunakademik"
+                        value="{{ $tahunAkademik->id_tahunakademik }}">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <!-- Nama Kelas -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Nama Kelas
+                            </label>
+
+                            <input type="text"
+                                name="nama_kelas"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                required>
+                        </div>
+
+                        <!-- Semester -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Semester
+                            </label>
+
+                            <select name="semester"
+                                    x-model="selectedSemester"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                    required>
+
+                                <option value="">-- Pilih Semester --</option>
+
+                                @for ($i = 1; $i <= 8; $i++)
+                                    <option value="{{ $i }}">
+                                        Semester {{ $i }}
+                                    </option>
+                                @endfor
+
+                            </select>
+                        </div>
+
+                        <!-- Prodi -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Program Studi
+                            </label>
+
+                            <select
+                                name="id_prodi"
+                                x-model="selectedProdi"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                required>
+
+                                <option value="">-- Pilih Prodi --</option>
+
+                                @foreach ($prodis as $prodi)
+                                    <option value="{{ $prodi->id_prodi }}">
+                                        {{ $prodi->nama_prodi }}
+                                    </option>
+                                @endforeach
+
+                            </select>
+                        </div>
+
+                        <!-- Kurikulum -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Kurikulum
+                            </label>
+
+                            <select
+                                x-model="selectedKurikulum"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+
+                                <option value="">-- Pilih Kurikulum --</option>
+
+                                @foreach ($kurikulums as $kurikulum)
+                                    <option value="{{ $kurikulum->id_kurikulum }}">
+                                        {{ $kurikulum->nama_kurikulum }}
+                                    </option>
+                                @endforeach
+
+                            </select>
+                        </div>
+
+                        <!-- Mata Kuliah -->
+                        <div class="md:col-span-2">
+
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Mata Kuliah
+                            </label>
+
+                            <select
+                                name="kode_matkul"
+                                @change="selectMatkul($event.target.value)"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                required>
+
+                                <option value="">-- Pilih Mata Kuliah --</option>
+
+                                <template
+                                    x-for="matkul in mataKuliahs.filter(m =>
+                                        (!selectedProdi || m.id_prodi == selectedProdi) &&
+                                        (!selectedSemester || m.semester == selectedSemester) &&
+                                        (!selectedKurikulum || m.id_kurikulum == selectedKurikulum)
+                                    )"
+                                    :key="matkul.kode_matkul">
+
+                                    <option
+                                        :value="matkul.kode_matkul"
+                                        x-text="`${matkul.kode_matkul} - ${matkul.nama_matkul}`">
+                                    </option>
+
+                                </template>
+
+                            </select>
+
+                        </div>
+
+                        <!-- SKS otomatis -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                SKS
+                            </label>
+
+                            <input type="text"
+                                x-model="selectedSks"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                                readonly>
+                        </div>
+
+                        <!-- Dosen -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Dosen Pengampu
+                            </label>
+
+                            <select
+                                name="id_dosen"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                required>
+
+                                <option value="">-- Pilih Dosen --</option>
+
+                                <template
+                                    x-for="dosen in filteredDosens"
+                                    :key="dosen.id_dosen">
+
+                                    <option
+                                        :value="dosen.id_dosen"
+                                        x-text="dosen.nama_dosen">
+                                    </option>
+
+                                </template>
+
+                            </select>
+                        </div>
+
+                        <!-- Kapasitas -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Kapasitas
+                            </label>
+
+                            <input type="number"
+                                name="kapasitas"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                required>
+                        </div>
+
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+
+                        <button type="button"
+                                @click="showAddModal = false"
+                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                            Batal
+                        </button>
+
+                        <button type="submit"
+                                class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">
+                            Simpan
+                        </button>
+
+                    </div>
+
+                </form>
+
+        </div>
+
+    </div>
+
+</div>
+{{-- AKHIR MODAL TAMBAH --}}
+
+<!-- MODAL EDIT -->
+<div x-show="showEditModal"
+     class="fixed inset-0 z-50 overflow-y-auto"
+     style="display: none;">
+
+    <div class="flex items-center justify-center min-h-screen px-4">
+
+        <div class="bg-white rounded-lg shadow-xl sm:max-w-lg sm:w-full p-6">
+
+            <div class="flex justify-between items-center border-b pb-3">
+
+                <h2 class="text-xl font-bold text-teal-800">
+                    Edit Kelas
+                </h2>
+
+                <button @click="showEditModal = false">
+                    ✕
+                </button>
+
+            </div>
+
+            <form :action="`/management/kelas/${editData.id_kelas}`"
+                  method="POST"
+                  class="mt-4 space-y-4">
+
+                @csrf
+                @method('PUT')
+
+                <!-- hidden tahun -->
+                <input type="hidden"
+                       name="id_tahunakademik"
+                       :value="editData.id_tahunakademik">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <!-- Nama Kelas -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Nama Kelas
+                        </label>
+
+                        <input type="text"
+                               name="nama_kelas"
+                               x-model="editData.nama_kelas"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                               required>
+                    </div>
+
+                    <!-- Semester -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Semester
+                        </label>
+
+                        <select
+                            name="semester"
+                            x-model="editData.semester"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+
+                            <option value="">-- Pilih Semester --</option>
+
+                            @for ($i = 1; $i <= 8; $i++)
+                                <option value="{{ $i }}">
+                                    Semester {{ $i }}
+                                </option>
+                            @endfor
+
+                        </select>
+                    </div>
+
+                    <!-- Prodi -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Program Studi
+                        </label>
+
+                        <select
+                            name="id_prodi"
+                            x-model="editData.id_prodi"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+
+                            <option value="">-- Pilih Prodi --</option>
+
+                            @foreach ($prodis as $prodi)
+                                <option value="{{ $prodi->id_prodi }}">
+                                    {{ $prodi->nama_prodi }}
+                                </option>
+                            @endforeach
+
+                        </select>
+                    </div>
+
+                    <!-- Kurikulum -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Kurikulum
+                        </label>
+
+                        <select
+                            x-model="editData.id_kurikulum"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+
+                            <option value="">-- Pilih Kurikulum --</option>
+
+                            @foreach ($kurikulums as $kurikulum)
+                                <option value="{{ $kurikulum->id_kurikulum }}">
+                                    {{ $kurikulum->nama_kurikulum }}
+                                </option>
+                            @endforeach
+
+                        </select>
+                    </div>
+
+                    <!-- Mata Kuliah -->
+                    <div class="md:col-span-2">
+
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Mata Kuliah
+                        </label>
+
+                        <select
+                            name="kode_matkul"
+                            x-model="editData.kode_matkul"
+                            @change="selectEditMatkul($event.target.value)"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+
+                            <option value="">-- Pilih Mata Kuliah --</option>
+
+                            <template
+                                x-for="matkul in mataKuliahs.filter(m =>
+                                    (!editData.id_prodi || m.id_prodi == editData.id_prodi) &&
+                                    (!editData.semester || m.semester == editData.semester) &&
+                                    (!editData.id_kurikulum || m.id_kurikulum == editData.id_kurikulum)
+                                )"
+                                :key="matkul.kode_matkul">
+
+                                <option
+                                    :value="matkul.kode_matkul"
+                                    x-text="`${matkul.kode_matkul} - ${matkul.nama_matkul}`">
+                                </option>
+
+                            </template>
+
+                        </select>
+
+                    </div>
+
+                    <!-- SKS -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            SKS
+                        </label>
+
+                        <input type="text"
+                               x-model="editData.sks"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                               readonly>
+                    </div>
+
+                    <!-- Dosen -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Dosen Pengampu
+                        </label>
+
+                        <select
+                            name="id_dosen"
+                            x-model="editData.id_dosen"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+
+                            <option value="">-- Pilih Dosen --</option>
+
+                            <template
+                                x-for="dosen in filteredEditDosens"
+                                :key="dosen.id_dosen">
+
+                                <option
+                                    :value="dosen.id_dosen"
+                                    x-text="dosen.nama_dosen">
+                                </option>
+
+                            </template>
+
+                        </select>
+                    </div>
+
+                    <!-- Kapasitas -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Kapasitas
+                        </label>
+
+                        <input type="number"
+                               name="kapasitas"
+                               x-model="editData.kapasitas"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                               required>
+                    </div>
+
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4">
+
+                    <button type="button"
+                            @click="showEditModal = false"
+                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                        Batal
+                    </button>
+
+                    <button type="submit"
+                            class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">
+                        Simpan Perubahan
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+<!-- AKHIR MODAL EDIT -->
+
+<!-- MODAL GENERATE -->
+<div x-show="showGenerateModal"
+     class="fixed inset-0 z-50 overflow-y-auto"
+     style="display:none;">
+
+    <div class="flex items-center justify-center min-h-screen px-4">
+
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+
+            <div class="flex justify-between items-center border-b pb-3">
+
+                <div>
+
+                    <h2 class="text-xl font-bold text-teal-800">
+                        Generate Kelas
+                    </h2>
+
+                    <p class="text-sm text-gray-500 mt-1"
+                       x-text="selectedGenerateProdiName">
+                    </p>
+
+                </div>
+
+                <button @click="showGenerateModal = false">
+                    ✕
+                </button>
+
+            </div>
+
+            <form action="{{ route('kelas.generate') }}"
+                  method="POST"
+                  class="mt-6 space-y-4">
+
+                @csrf
+
+                <input type="hidden"
+                       name="id_prodi"
+                       :value="selectedGenerateProdi">
+
+                <input type="hidden"
+                       name="id_tahunakademik"
+                       value="{{ $tahunAkademik->id_tahunakademik }}">
+
+                <!-- KURIKULUM -->
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Kurikulum
+                    </label>
+
+                    <select name="id_kurikulum"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+
+                        <option value="">
+                            -- Pilih Kurikulum --
+                        </option>
+
+                        @foreach ($kurikulums as $kurikulum)
+
+                            <option value="{{ $kurikulum->id_kurikulum }}">
+                                {{ $kurikulum->nama_kurikulum }}
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
+                </div>
+
+                <!-- semester -->
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Semester
+                    </label>
+
+                    <select name="semester"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+
+                        <option value="">
+                            -- Pilih Semester --
+                        </option>
+
+                        <template x-for="semester in semesterOptions">
+
+                            <option
+                                :value="semester"
+                                x-text="'Semester ' + semester">
+                            </option>
+
+                        </template>
+
+                    </select>
+
+                </div>
+
+                <!-- jumlah mahasiswa -->
+                <div>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Jumlah Mahasiswa
+                    </label>
+
+                    <input type="number"
+                           name="jumlah_mahasiswa"
+                           min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                           required>
+
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4">
+
+                    <button type="button"
+                            @click="showGenerateModal = false"
+                            class="px-4 py-2 bg-gray-200 rounded-lg">
+
+                        Batal
+                    </button>
+
+                    <button type="submit"
+                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+
+                        Generate
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+<!-- AKHIR MODAL GENERATE -->
+
+<x-delete-confirm-popup />
+
+</body>
+</html>

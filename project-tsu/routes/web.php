@@ -7,7 +7,7 @@ use App\Http\Controllers\DosenController;
 use App\Http\Controllers\MataKuliahController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\MahasiswaController;
-
+use App\Http\Controllers\KelasController;
 use App\Http\Controllers\KpSkripsiController;
 
 
@@ -105,6 +105,31 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('/management/ruangan', RuanganController::class)
         ->except(['show', 'index'])
         ->names('ruangan');
+
+    // ========================
+    // KELAS
+    // ========================
+
+    // Pilih tahun akademik
+    Route::get('/management/kelas/pilih-tahun', [KelasController::class, 'pilihTahun'])
+        ->name('kelas.pilih-tahun');
+
+    // Index kelas
+    Route::get('/management/kelas', [KelasController::class, 'index'])
+        ->name('kelas.index');
+
+    // Export
+    Route::get('/management/kelas/export/excel', [KelasController::class, 'exportExcel'])
+        ->name('kelas.export.excel');
+
+    Route::get('/management/kelas/export/pdf', [KelasController::class, 'exportPdf'])
+        ->name('kelas.export.pdf');
+
+    // Resource selain index & show
+    Route::resource('/management/kelas', KelasController::class)
+        ->except(['show', 'index']);
+    Route::post('/management/kelas/generate', [KelasController::class, 'generate'])
+    ->name('kelas.generate');
 
     Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
     Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');

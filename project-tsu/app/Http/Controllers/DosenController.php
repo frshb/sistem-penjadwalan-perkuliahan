@@ -143,7 +143,7 @@ class DosenController extends Controller
         }
 
         return redirect()
-            ->route('dosen.index')
+            ->route('dosen.index', ['page' => $request->page])
             ->with('success', 'Data dosen berhasil diperbarui.');
     }
 
@@ -159,7 +159,7 @@ class DosenController extends Controller
         $dosen->delete();
 
         return redirect()
-            ->back()
+            ->route('dosen.index', ['page' => $request->page])
             ->with('success', 'Data dosen berhasil dihapus.');
     }
 

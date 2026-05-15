@@ -60,7 +60,9 @@
         this.editNidn = nidn;
         this.editProdi = prodi;
 
-        this.editSelectedMatkuls = matkuls;
+        this.editSelectedMatkuls = Array.isArray(matkuls)
+        ? matkuls.map(m => String(m).trim())
+        : [];
 
         this.editUrl = '/management/dosen/' + nuptk;
 
@@ -196,7 +198,10 @@
                                                 </button>
 
                                                 <button
-                                                    @click="confirmDelete('{{ route('dosen.destroy', $dosen->nuptk) }}')"
+                                                    @click="confirmDelete('{{ route('dosen.destroy',[
+                                                        $dosen->nuptk,
+                                                        'page' => request('page', 1)
+                                                    ]) }}')"
                                                     class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                     Hapus
@@ -406,8 +411,7 @@
 
                                                 <input
                                                     type="checkbox"
-                                                    name="mata_kuliah[]"
-                                                    :value="matkul.kode_matkul"
+                                                    :value="String(matkul.kode_matkul).trim()"
                                                     x-model="addSelectedMatkuls"
                                                     class="mt-1"
                                                 >
@@ -444,30 +448,33 @@
                                         x-for="kode in addSelectedMatkuls"
                                         :key="kode"
                                     >
+                                        <div>
+                                            <input type="hidden" name="mata_kuliah[]" :value="kode">
 
-                                        <div
-                                            class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
-                                        >
-
-                                            <span
-                                                x-text="
-                                                    (() => {
-                                                        let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
-                                                        return mk
-                                                            ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
-                                                            : kode;
-                                                    })()
-                                                "
-                                            ></span>
-
-                                            <button
-                                                type="button"
-                                                @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)"
-                                                class="text-red-500 hover:text-red-700 font-bold"
+                                            <div
+                                                class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
                                             >
-                                                ×
-                                            </button>
 
+                                                <span
+                                                    x-text="
+                                                        (() => {
+                                                            let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
+                                                            return mk
+                                                                ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
+                                                                : kode;
+                                                        })()
+                                                    "
+                                                ></span>
+
+                                                <button
+                                                    type="button"
+                                                    @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)"
+                                                    class="text-red-500 hover:text-red-700 font-bold"
+                                                >
+                                                    ×
+                                                </button>
+
+                                            </div>
                                         </div>
 
                                     </template>
@@ -558,6 +565,8 @@
 
                     @csrf
                     @method('PUT')
+
+                    <input type="hidden" name="page" value="{{ request('page', 1) }}">
 
                     {{-- NAMA --}}
                     <div class="flex items-center space-x-4">
@@ -729,13 +738,12 @@
 
                                     <label class="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
 
-                                        <input
-                                            type="checkbox"
-                                            name="mata_kuliah[]"
-                                            :value="matkul.kode_matkul"
-                                            x-model="editSelectedMatkuls"
-                                            class="mt-1"
-                                        >
+                                    <input
+                                        type="checkbox"
+                                        :value="String(matkul.kode_matkul).trim()"
+                                        x-model="editSelectedMatkuls"
+                                        class="mt-1"
+                                    >
 
                                         <div>
                                             <div class="font-medium text-gray-800">
@@ -770,30 +778,33 @@
                                 x-for="kode in editSelectedMatkuls"
                                 :key="kode"
                             >
+                                <div>
+                                    <input type="hidden" name="mata_kuliah[]" :value="kode">
 
-                                <div
-                                    class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
-                                >
+                                        <div
+                                                class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+                                            >
 
-                                    <span
-                                        x-text="
-                                            (() => {
-                                                let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
-                                                return mk
-                                                    ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
-                                                    : kode;
-                                            })()
-                                        "
-                                    ></span>
+                                            <span
+                                                x-text="
+                                                    (() => {
+                                                        let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
+                                                        return mk
+                                                            ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
+                                                            : kode;
+                                                    })()
+                                                "
+                                            ></span>
 
-                                    <button
-                                        type="button"
-                                        @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)"
-                                        class="text-red-500 hover:text-red-700 font-bold"
-                                    >
-                                        ×
-                                    </button>
+                                            <button
+                                                type="button"
+                                                @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)"
+                                                class="text-red-500 hover:text-red-700 font-bold"
+                                            >
+                                                ×
+                                            </button>
 
+                                        </div>
                                 </div>
 
                             </template>

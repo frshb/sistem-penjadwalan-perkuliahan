@@ -35,4 +35,12 @@ class Dosen extends Model
             'kode_matkul'
         );
     }
+
+        public function pengampus()
+    {
+        return $this->hasMany(
+            PengampuMatkul::class,
+            'id_dosen'
+        );
+    }
 }

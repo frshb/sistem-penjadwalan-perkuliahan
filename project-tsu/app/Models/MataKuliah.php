@@ -51,4 +51,25 @@ class MataKuliah extends Model
             'id_ruang'
         );
     }
+
+        public function dosens()
+    {
+        return $this->belongsToMany(
+            Dosen::class,
+            'dosen_matakuliah',
+            'kode_matkul',
+            'nuptk',
+            'kode_matkul',
+            'nuptk'
+        );
+    }
+
+        public function pengampus()
+    {
+        return $this->hasMany(
+            PengampuMatkul::class,
+            'kode_matkul',
+            'kode_matkul'
+        );
+    }
 }
