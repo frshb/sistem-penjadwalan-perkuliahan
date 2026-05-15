@@ -298,4 +298,19 @@ class KelasController extends Controller
             'Generate kelas berhasil.'
         );
     }
+
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:kelas,id_kelas'
+        ]);
+
+        Kelas::whereIn('id_kelas', $request->ids)->delete();
+
+        return back()->with(
+            'success',
+            'Data kelas berhasil dihapus.'
+        );
+    }
 }

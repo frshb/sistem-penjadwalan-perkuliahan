@@ -33,6 +33,7 @@
     init() {
         setTimeout(() => this.isLoading = false, 1500)
     },
+    selectedKelas: [],
     selectedProdi: '',
     selectedSemester: '',
     selectedKurikulum: '',
@@ -269,7 +270,6 @@
 
                             <thead class="bg-teal-700 text-white">
                                 <tr>
-
                                     <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">
                                         No
                                     </th>
@@ -314,9 +314,21 @@
                                 @forelse ($kelasGroup as $kelas)
 
                                 <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-
                                     <td class="text-left py-2 px-3 text-sm">
-                                        {{ $loop->iteration }}
+
+                                        <div class="flex items-center space-x-3">
+
+                                            <input
+                                                type="checkbox"
+                                                value="{{ $kelas->id_kelas }}"
+                                                class="checkbox-kelas-{{ $prodi->id_prodi }} rounded border-gray-300 text-red-600 focus:ring-red-500">
+
+                                            <span>
+                                                {{ $loop->iteration }}
+                                            </span>
+
+                                        </div>
+
                                     </td>
 
                                     <td class="text-left py-2 px-3 text-sm font-medium">
@@ -374,7 +386,7 @@
                                 @empty
 
                                 <tr>
-                                    <td colspan="9"
+                                    <td colspan="10"
                                         class="text-center py-4 text-gray-500">
                                         Data kelas belum tersedia.
                                     </td>
@@ -387,6 +399,45 @@
                         </table>
 
                     </div>
+
+                </div>
+
+                <!-- BULK ACTION -->
+                <div class="flex items-center justify-between mt-4">
+
+                    <div class="flex items-center space-x-2">
+
+                        <!-- PILIH SEMUA -->
+                        <button
+                            type="button"
+                            @click="
+                                let checkboxes = document.querySelectorAll('.checkbox-kelas-{{ $prodi->id_prodi }}');
+
+                                let allChecked = [...checkboxes].every(cb => cb.checked);
+
+                                checkboxes.forEach(cb => {
+                                    cb.checked = !allChecked;
+                                });
+                            "
+                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+
+                            Pilih Semua
+                        </button>
+
+                        <!-- HAPUS SEMUA -->
+                        <button
+                            type="button"
+                            onclick="deleteSelected('{{ $prodi->id_prodi }}')"
+                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+
+                            Hapus Semua
+                        </button>
+
+                    </div>
+
+                    <span class="text-sm text-gray-500">
+                        Centang data yang ingin dihapus
+                    </span>
 
                 </div>
 
@@ -988,6 +1039,47 @@
 <!-- AKHIR MODAL GENERATE -->
 
 <x-delete-confirm-popup />
+
+<script>
+
+function deleteSelected(prodiId)
+{
+    let checked = document.querySelectorAll(
+        `.checkbox-kelas-${prodiId}:checked`
+    );
+
+    if (checked.length === 0) {
+        alert('Pilih minimal 1 kelas.');
+        return;
+    }
+
+    if (!confirm('Yakin ingin menghapus kelas terpilih?')) {
+        return;
+    }
+
+    let ids = [];
+
+    checked.forEach(item => {
+        ids.push(item.value);
+    });
+
+    fetch("{{ route('kelas.bulk-delete') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            ids: ids
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        location.reload();
+    });
+}
+
+</script>
 
 </body>
 </html>
