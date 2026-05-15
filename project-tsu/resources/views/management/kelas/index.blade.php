@@ -1063,23 +1063,25 @@ function deleteSelected(prodiId)
         ids.push(item.value);
     });
 
-    fetch("{{ route('kelas.bulk-delete') }}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({
-            ids: ids
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        location.reload();
-    });
+    document.getElementById('bulkDeleteIds').value = ids.join(',');
+
+    document.getElementById('bulkDeleteForm').submit();
 }
 
 </script>
+
+<form id="bulkDeleteForm"
+      action="{{ route('kelas.bulk-delete') }}"
+      method="POST"
+      style="display:none;">
+
+    @csrf
+
+    <input type="hidden"
+           name="ids"
+           id="bulkDeleteIds">
+
+</form>
 
 </body>
 </html>

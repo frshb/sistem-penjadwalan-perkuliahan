@@ -301,16 +301,11 @@ class KelasController extends Controller
 
     public function bulkDelete(Request $request)
     {
-        $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:kelas,id_kelas'
-        ]);
+        $ids = explode(',', $request->ids);
 
-        Kelas::whereIn('id_kelas', $request->ids)->delete();
+        Kelas::whereIn('id_kelas', $ids)->delete();
 
-        return back()->with(
-            'success',
-            'Data kelas berhasil dihapus.'
-        );
+        return redirect()->back()
+            ->with('success', 'Data kelas berhasil dihapus.');
     }
 }

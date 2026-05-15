@@ -131,10 +131,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/management/kelas/generate', [KelasController::class, 'generate'])
     ->name('kelas.generate');
 
-    Route::delete(
-        '/management/kelas/bulk-delete',
-        [KelasController::class, 'bulkDelete']
-    )->name('kelas.bulk-delete');
+    Route::post('/management/kelas/bulk-delete', [KelasController::class, 'bulkDelete'])
+        ->name('kelas.bulk-delete');
 
     Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
     Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');
