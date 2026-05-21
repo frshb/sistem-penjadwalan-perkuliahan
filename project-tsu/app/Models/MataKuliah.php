@@ -72,4 +72,11 @@ class MataKuliah extends Model
             'kode_matkul'
         );
     }
+
+        protected static function booted()
+    {
+        static::deleting(function ($matkul) {
+            $matkul->ruangans()->detach();
+        });
+    }
 }

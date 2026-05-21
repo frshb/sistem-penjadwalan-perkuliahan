@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pilih Tahun Akademik | Data Kelas</title>
+    <title>Pilih Tahun Akademik | Penjadwalan</title>
 
-    <meta name="description" content="Pilih Tahun Akademik Sistem Penjadwalan Perkuliahan">
+    <meta name="description"
+          content="Pilih Tahun Akademik Penjadwalan Perkuliahan">
 
-    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    <link rel="icon"
+          href="{{ asset('favicon_square.png') }}"
+          type="image/png">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -16,6 +19,7 @@
     x-data="{
         sidebarOpen: true,
         isLoading: true,
+
         init() {
             setTimeout(() => this.isLoading = false, 1200)
         }
@@ -33,26 +37,39 @@
     <div x-show="isLoading" class="animate-pulse space-y-6">
 
         <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+
             <div class="flex items-center space-x-3 w-1/3">
+
                 <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
+
                 <div class="w-48 h-6 bg-gray-300 rounded"></div>
+
             </div>
 
             <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
+
         </div>
 
         <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 @for ($i = 0; $i < 6; $i++)
+
                     <div class="border border-gray-200 rounded-2xl p-6 space-y-4">
+
                         <div class="w-32 h-5 bg-gray-300 rounded"></div>
+
                         <div class="w-48 h-4 bg-gray-200 rounded"></div>
+
                         <div class="w-full h-10 bg-gray-300 rounded-xl"></div>
+
                     </div>
+
                 @endfor
 
             </div>
+
         </div>
 
     </div>
@@ -66,12 +83,15 @@
             <div class="flex items-center">
 
                 <div class="flex flex-col">
+
                     <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
+
                     <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+
                 </div>
 
                 <h1 class="text-2xl font-bold text-gray-800 ml-3">
-                    Management Kelas
+                    Modul Penjadwalan
                 </h1>
 
             </div>
@@ -88,7 +108,7 @@
             </h2>
 
             <p class="text-gray-500 mt-1">
-                Silakan pilih tahun akademik untuk melihat data kelas.
+                Silakan pilih tahun akademik untuk menyusun jadwal perkuliahan.
             </p>
 
         </div>
@@ -101,7 +121,7 @@
                 <div
                     class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
 
-                    <!-- Header Card -->
+                    <!-- Header -->
                     <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-5">
 
                         <div class="flex items-center justify-between">
@@ -142,6 +162,7 @@
                         <div class="flex items-center justify-between mb-6">
 
                             <div>
+
                                 <p class="text-sm text-gray-500">
                                     Semester
                                 </p>
@@ -149,9 +170,11 @@
                                 <p class="font-semibold text-gray-700">
                                     {{ $tahun->nama_tahunakademik }}
                                 </p>
+
                             </div>
 
                             <div>
+
                                 <p class="text-sm text-gray-500">
                                     Tahun
                                 </p>
@@ -159,15 +182,16 @@
                                 <p class="font-semibold text-gray-700">
                                     {{ $tahun->tahun_ajaran }}
                                 </p>
+
                             </div>
 
                         </div>
 
                         <!-- Button -->
-                        <a href="{{ route('kelas.index', ['tahun' => $tahun->id_tahunakademik]) }}"
+                        <a href="{{ route('jadwal.manual', ['tahun' => $tahun->id_tahunakademik]) }}"
                            class="w-full inline-flex items-center justify-center px-4 py-3 bg-yellow-500 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-600 transition duration-200">
 
-                            Lihat Data Kelas
+                            Susun Jadwal
 
                             <svg class="w-5 h-5 ml-2"
                                  fill="none"
@@ -197,7 +221,7 @@
                         <div class="flex justify-center mb-4">
 
                             <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-3xl">
-                                📚
+                                📅
                             </div>
 
                         </div>

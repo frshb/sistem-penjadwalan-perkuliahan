@@ -25,6 +25,7 @@ class MataKuliahController extends Controller
 
         $user = Auth::user();
         $userProdiName = null;
+        $searchTerm = $request->input('search');
 
         if ($user && $user->isKaprodi()) {
             if ($user->id_prodi) {
@@ -49,7 +50,37 @@ class MataKuliahController extends Controller
             $query->where('id_prodi', $request->prodi);
         }
 
-// Ambil semua kurikulum untuk dropdown
+        // SEARCH
+        if ($searchTerm) {
+
+            $query->where(function ($q) use ($searchTerm) {
+
+                // nama matkul
+                $q->where(
+                    'nama_matkul',
+                    'like',
+                    '%' . $searchTerm . '%'
+                )
+
+                // kode matkul
+                ->orWhere(
+                    'kode_matkul',
+                    'like',
+                    '%' . $searchTerm . '%'
+                )
+
+                // jenis matkul
+                ->orWhere(
+                    'jenis',
+                    'like',
+                    '%' . $searchTerm . '%'
+                );
+
+            });
+
+        }
+
+        // Ambil semua kurikulum untuk dropdown
         $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA
 
         // Paginate hasil query, dan tambahkan filter ke link pagination
@@ -64,7 +95,8 @@ class MataKuliahController extends Controller
             'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
             'prodis' => $prodis,
             'ruangans' => $ruangans,
-            'userProdiName' => $userProdiName
+            'userProdiName' => $userProdiName,
+            'searchTerm' => $searchTerm
         ]);
     }
     /**
@@ -160,12 +192,15 @@ class MataKuliahController extends Controller
     /**
      * Menghapus mata kuliah dari database.
      */
-    public function destroy($id)
+    public function destroy($kode_matkul)
     {
-        $matkul = MataKuliah::findOrFail($id);
+        $matkul = MataKuliah::where('kode_matkul', $kode_matkul)->firstOrFail();
+
         $matkul->delete();
 
-        return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil dihapus.');
+        return redirect()
+            ->route('matakuliah.index')
+            ->with('success', 'Mata kuliah berhasil dihapus.');
     }
 
     /**

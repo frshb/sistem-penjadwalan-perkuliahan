@@ -134,8 +134,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/management/kelas/bulk-delete', [KelasController::class, 'bulkDelete'])
         ->name('kelas.bulk-delete');
 
-    Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
-    Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');
+    // MODUL PENJADWALAN
+    Route::get('/modul-penjadwalan',[JadwalController::class, 'index'])->name('jadwal.index');
+
+    // PILIH TAHUN AKADEMIK PENJADWALAN
+    Route::get('/penjadwalan/pilih-tahun',[JadwalController::class, 'pilihTahun'])->name('jadwal.pilih-tahun');
+
+    // WORKSPACE PENJADWALAN MANUAL
+    Route::get('/penjadwalan/manual',[JadwalController::class, 'manual'])->name('jadwal.manual');
+
+    Route::post('/jadwal/simpan-slot', [JadwalController::class, 'simpanSlot'])->name('jadwal.simpan-slot');
+    Route::delete('/jadwal/hapus-slot/{id}', [JadwalController::class, 'hapusSlot'])->name('jadwal.hapus-slot');
+
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
 
     // Automatic Scheduling Wizard Routes

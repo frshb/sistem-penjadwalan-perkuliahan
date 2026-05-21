@@ -6,9 +6,11 @@ use App\Models\Jadwal;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Kurikulum;
 use App\Models\Ruangan;
+use App\Models\Kelas;
 use App\Models\Dosen;
-use App\Models\Waktu;
+use App\Models\Slot_waktu;
 use App\Models\Hari;
+use App\Models\TahunAkademik;
 use App\Models\MataKuliah;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facade\Excel;
@@ -17,19 +19,89 @@ use PDF;
 
 class JadwalController extends Controller
 {
+
+
+    /**
+     * Halaman pilih tahun akademik penjadwalan
+     */
+    public function pilihTahun()
+    {
+        $tahunAkademiks = \App\Models\TahunAkademik::orderBy(
+            'tahun_ajaran',
+            'desc'
+        )->get();
+
+        return view(
+            'penjadwalan.pilih-tahun',
+            compact('tahunAkademiks')
+        );
+    }
+
     /**
      * Menampilkan halaman Penjadwalan Manual.
      * (Preserved from local branch)
      */
-    public function manual()
+    public function manual(Request $request)
     {
-        // dd('Manual Route Hit'); // Uncomment to debug
-        return view('penjadwalan.penjadwalan-manual');
+        $idTahun = $request->tahun;
+
+        if (!$idTahun) {
+            return redirect()->route('jadwal.pilih-tahun');
+        }
+
+        $tahunAkademik = TahunAkademik::findOrFail($idTahun);
+
+        $kelas = Kelas::with([
+            'matakuliah.ruangans',
+            'prodi',
+            'dosen',
+            'matakuliah',
+            'jadwals'
+        ])
+        ->where('id_tahunakademik', $idTahun)
+        ->orderBy('semester')
+        ->get();
+
+        $hari = Hari::all();
+
+        $slotWaktu = Slot_waktu::orderBy('jam_ke')->get();
+
+        $ruangan = Ruangan::all();
+
+        $jadwals = Jadwal::with([
+            'kelas.prodi',
+            'dosen',
+            'matakuliah',
+            'ruangan',
+            'hari',
+            'slot'
+        ])->get();
+
+        $jadwalTersimpan = Jadwal::with([
+            'kelas.matakuliah',
+            'kelas.dosen',
+            'kelas.prodi',
+            'slotMulai',
+            'hari',
+        ])
+        ->whereHas('kelas', fn($q) => $q->where('id_tahunakademik', $idTahun))
+        ->where('is_manual', 1)
+        ->get();
+
+        return view('penjadwalan.penjadwalan-manual', compact(
+            'tahunAkademik',
+            'kelas',
+            'hari',
+            'slotWaktu',
+            'ruangan',
+            'jadwals',
+            'jadwalTersimpan'
+        ));
     }
 
     public function index(){
         $step = session('penjadwalan.current_step', 1);
-        
+
         return view('penjadwalan.penjadwalan', [
             'step' => $step,
             'kurikulums' => Kurikulum::all(),
@@ -41,132 +113,63 @@ class JadwalController extends Controller
         ]);
     }
 
-    public function proses(Request $r)
+    public function simpanSlot(Request $request)
     {
-        $step = $r->step;
-
-        if ($step == 1) return $this->handleStep1($r);
-        if ($step == 2) return $this->handleStep2($r);
-        if ($step == 3) return $this->handleStep3($r);
-        if ($step == 4) return $this->handleStep4();
-    }
-
-    public function handleStep1(Request $r)
-    {
-        $r->validate([
-            'semester' => 'required|array|min:1',
+        $request->validate([
+            'kelas_id'   => 'required|integer',
+            'slot_id'    => 'required|integer',
+            'hari_id'    => 'required|integer',
+            'ruang_id'   => 'nullable|integer',
+            'durasi_sks' => 'required|integer',
+            'dosen_id'   => 'nullable|integer',  // ← ubah jadi nullable
         ]);
 
-        session([
-            'penjadwalan.semester' => $r->semester,
-            'penjadwalan.prodi' => \App\Models\Prodi::all(), // Fixed missing import or use full path
-            'penjadwalan.current_step' => 2,
-        ]);
-        
-        return back();
-    }
+        $kelas      = \App\Models\Kelas::with(['matakuliah', 'dosen'])->findOrFail($request->kelas_id);
+        $kodeMatkul = $kelas->matakuliah->kode_matkul ?? null;
 
-    public function handleStep2(Request $r)
-    {
-        $r->validate([
-            'id_ruang' => 'required|array',
-        ]);
+        // Fallback: ambil dosen dari relasi kelas jika frontend tidak kirim
+        $dosenId = $request->dosen_id ?? $kelas->dosen->id_dosen ?? null;
 
-        session([
-            'penjadwalan.id_ruang' => $r->id_ruang,
-            'penjadwalan.current_step' => 3,
-        ]);
+        // Fallback ruangan: pakai yang dikirim, atau ambil ruang pertama dari DB
+        $ruangId = $request->ruang_id
+            ?: \App\Models\Ruangan::orderBy('id_ruang')->value('id_ruang');
 
-        return back();
-    }
-
-    public function handleStep3(Request $r)
-    {
-        $r->validate([
-            'kelas' => 'required|array',
-            'matkul' => 'required|array',
-            'dosen' => 'required|array'
-        ]);
-
-        //simpan di session
-        session([
-            'penjadwalan.step3_data' => $r->all(),
-            'penjadwalan.current_step' => 4,
-        ]);
-        return back();
-    }
-
-    public function handleStep4()
-    {
-         $input = session('penjadwalan.step3_data', []); // Corrected key from step3 to step3_data based on handleStep3
-        $ruanganDipilih = session('penjadwalan.id_ruang', []); // Corrected key from ruangan/id_ruang
-
-        $hari = Hari::all();
-        $slot = Waktu::all();
-        $ruangan = Ruangan::whereIn('id_ruang', $ruanganDipilih)->get();
-
-        $gagal = [];
-
-        foreach ($input['kelas'] as $index => $kelas) {
-
-            $id_matkul = $input['matkul'][$index];
-            $id_dosen = $input['dosen'][$index];
-
-            $mk = MataKuliah::find($id_matkul);
-            if (!$mk) continue;
-
-            $sukses = false;
-
-            foreach ($hari as $h) {
-                foreach ($slot as $s) {
-
-                    // CEK BENTROK DOSEN / KELAS
-                    $bentrok = Jadwal::where('id_hari', $h->id_hari)
-                        ->where('id_slot', $s->id_slot)
-                        ->where(function ($q) use ($id_dosen, $kelas) {
-                            $q->where('id_dosen', $id_dosen)
-                              ->orWhere('kelas', $kelas);
-                        })
-                        ->exists();
-
-                    if ($bentrok) continue;
-
-                    // CEK RUANGAN KOSONG
-                    $ruangKosong = $ruangan->filter(function($r) use ($h, $s) {
-                        return !Jadwal::where('id_ruang', $r->id_ruang)
-                            ->where('id_hari', $h->id_hari)
-                            ->where('id_slot', $s->id_slot)
-                            ->exists();
-                    })->first();
-
-                    if (!$ruangKosong) continue;
-
-                    // SIMPAN JADWAL
-                    Jadwal::create([
-                        'id_matkul' => $id_matkul,
-                        'id_dosen' => $id_dosen,
-                        'kelas' => $kelas,
-                        'id_ruang' => $ruangKosong->id_ruang,
-                        'id_hari' => $h->id_hari,
-                        'id_slot' => $s->id_slot,
-                        'status_validasi' => 0
-                    ]);
-
-                    $sukses = true;
-                    break;
-                }
-
-                if ($sukses) break;
-            }
-
-            if (!$sukses) {
-                $gagal[] = $mk->nama_matkul." - kelas ".$kelas;
-            }
+        if (!$kodeMatkul) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mata kuliah tidak ditemukan untuk kelas ini.',
+            ], 422);
         }
 
-        return back()->with('gagal', $gagal);
+        $jadwal = Jadwal::updateOrCreate(
+            ['id_kelas' => $request->kelas_id],
+            [
+                'kode_matkul'     => $kodeMatkul,
+                'id_slot_mulai'   => $request->slot_id,
+                'durasi_sks'      => $request->durasi_sks,
+                'id_hari'         => $request->hari_id,
+                'id_ruang'        => $request->ruang_id ?? 1,
+                'id_dosen'        => $dosenId,
+                'is_manual'       => 1,
+                'status_validasi' => 0,
+                'jenis_jadwal'    => 'kuliah',
+            ]
+        );
+
+        return response()->json([
+            'success'   => true,
+            'jadwal_id' => $jadwal->id_jadwal,
+        ]);
     }
-    
+
+    public function hapusSlot($id)
+    {
+        Jadwal::where('id_jadwal', $id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+
+
     //EXCEL
     //public function exportExcel()
     //{

@@ -130,7 +130,7 @@
 
                 <a href="{{ route('kelas.pilih-tahun') }}"
                 class="text-gray-800 hover:text-teal-600 transition">
-                    Management Data
+                    Management Kelas
                 </a>
 
                 <svg class="w-5 h-5 text-gray-400"
@@ -192,12 +192,12 @@
                 <input type="text"
                     name="search"
                     value="{{ $searchTerm ?? '' }}"
-                    placeholder="Cari nama kelas..."
+                    placeholder="Cari kelas, kode MK, mata kuliah, atau dosen..."
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
 
                 <button type="submit"
                         class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700">
-                    🔍
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </button>
 
             </div>
@@ -311,7 +311,31 @@
 
                             <tbody class="text-gray-700">
 
-                                @forelse ($kelasGroup as $kelas)
+                                @php
+
+                                    $kelasSorted = $kelasGroup->sortBy(function ($kelas) {
+
+                                        $semester = $kelas->semester ?? 999;
+
+                                        $namaMatkul = $kelas->matakuliah->nama_matkul ?? '';
+
+                                        // Ambil suffix kelas (A/B/C)
+                                        preg_match('/-([A-Z])$/', $kelas->nama_kelas, $match);
+
+                                        $suffix = $match[1] ?? 'Z';
+
+                                        return sprintf(
+                                            '%02d-%s-%s',
+                                            $semester,
+                                            $namaMatkul,
+                                            $suffix
+                                        );
+
+                                    });
+
+                                @endphp
+
+                                @forelse ($kelasSorted as $kelas)
 
                                 <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                     <td class="text-left py-2 px-3 text-sm">
