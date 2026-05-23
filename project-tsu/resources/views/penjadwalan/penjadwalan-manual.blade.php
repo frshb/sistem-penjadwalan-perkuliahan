@@ -137,6 +137,17 @@
 @include('components.sidebar')
 
 {{-- ============================================================ --}}
+{{-- DATA JADWAL TERSIMPAN — dibaca JS saat halaman load           --}}
+{{-- ============================================================ --}}
+
+<script id="existing-jadwal-data" type="application/json">
+    {!! $jadwalJson !!}
+</script>
+<script id="all-ruangan-data" type="application/json">
+    {!! $ruangan->map(fn($r) => ['id' => $r->id_ruang, 'nama' => $r->nama_ruang])->toJson() !!}
+</script>
+
+{{-- ============================================================ --}}
 {{-- MODAL KONFIGURASI GENERATE                                    --}}
 {{-- ============================================================ --}}
 <div id="modal-generate-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -242,8 +253,27 @@
                 </svg>
                 Generate Jadwal
             </button>
-            <button class="px-5 py-3 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl font-medium">
+            {{-- Ganti tombol Lihat Bentrok yang lama --}}
+            <button
+                id="btn-lihat-bentrok"
+                onclick="lihatBentrok()"
+                class="px-5 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-2 transition"
+            >
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
                 Lihat Bentrok
+            </button>
+            {{-- Setelah tombol "Lihat Bentrok" --}}
+            <button
+                onclick="resetWorkspace()"
+                class="px-5 py-3 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl font-semibold flex items-center gap-2 transition"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Reset Jadwal
             </button>
 
             <button
@@ -433,19 +463,33 @@
 
                 <div class="relative flex-1 overflow-auto">
                     @foreach ($slotWaktu as $slot)
-                    <div class="grid grid-cols-12 border-b border-gray-200 h-[120px]">
-                        <div class="col-span-2 bg-white border-r border-gray-200 px-3 py-2">
-                            <div class="text-[13px] font-bold text-gray-900">{{ $slot->waktu_mulai }}</div>
-                            <div class="mt-1">
-                                <div class="text-[12px] font-semibold text-gray-700">Slot {{ $loop->iteration }}</div>
-                                <div class="text-[11px] text-gray-400 mt-0.5">{{ $slot->waktu_mulai }} - {{ $slot->waktu_selesai }}</div>
+                    <div class="grid grid-cols-12 border-b border-gray-200 h-[120px]
+                    {{ $loop->iteration === 6 ? 'bg-amber-50 border-l-4 border-l-amber-400' : '' }}">
+                        <div class="col-span-2 border-r border-gray-200 px-3 py-3 flex flex-col justify-start
+                            {{ $loop->iteration === 6 ? 'bg-amber-50' : 'bg-white' }}">
+
+                            {{-- Waktu mulai --}}
+                            <div class="text-[14px] font-bold text-gray-900">
+                                {{ \Carbon\Carbon::parse($slot->waktu_mulai)->format('H:i') }}
                             </div>
+
+                            {{-- Slot label --}}
+                            <div class="text-[13px] text-gray-800 mt-1">
+                                {{ $loop->iteration === 6 ? '🕐 Istirahat' : 'Slot ' . $loop->iteration }}
+                            </div>
+
+                            {{-- Range waktu --}}
+                            <div class="text-[12px] text-gray-700">
+                                {{ \Carbon\Carbon::parse($slot->waktu_mulai)->format('H:i') }} - {{ \Carbon\Carbon::parse($slot->waktu_selesai)->format('H:i') }}
+                            </div>
+
                         </div>
                         <div
                             class="col-span-10 border-r border-gray-100"
                             data-slot-line="{{ $slot->id_slot }}"
                             data-jam-mulai="{{ $slot->waktu_mulai }}"
                             data-jam-selesai="{{ $slot->waktu_selesai }}"
+                            data-is-istirahat="{{ $loop->iteration === 6 ? '1' : '0' }}"
                         ></div>
                     </div>
                     @endforeach
@@ -517,8 +561,25 @@
                     <p class="text-sm text-gray-500 mt-1">Konversi workspace menjadi format tabel export.</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Export Excel</button>
-                    <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">Export PDF</button>
+                    <a href="{{ route('jadwal.export.excel', $tahunAkademik->id_tahunakademik) }}"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center gap-2 transition"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Export Excel
+                    </a>
+
+                    <a href="{{ route('jadwal.export.pdf', $tahunAkademik->id_tahunakademik) }}"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2 transition"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        Export PDF
+                    </a>
                 </div>
             </div>
         </div>
@@ -558,6 +619,7 @@ const CARD_GAP       = 12;
 const CSRF_TOKEN     = document.querySelector('meta[name="csrf-token"]').content;
 const TAHUN_AKADEMIK = document.querySelector('meta[name="tahun-akademik-id"]').content;
 
+let ALL_RUANGAN = [];
 let activeTab        = 'belum';
 let activeDetailCard = null;
 let draggedCard      = null;
@@ -858,6 +920,7 @@ function removeCard(btn) {
     updateCounter();
     applyFilter();
     renderTablePreview();
+    updateBentrokButton();
     if (activeDetailCard === card) closeDetailPanel();
 }
 
@@ -886,8 +949,8 @@ function openDetailPanel(card) {
 
     const select   = document.getElementById('dp-ruangan-select');
     select.innerHTML = '<option value="">-- Pilih Ruangan --</option>';
-    const ruangans = JSON.parse(sidebarEl?.dataset.ruangans || '[]');
-    ruangans.forEach(r => {
+    // ✅ BARU — semua ruangan, ruangan terkait MK ditandai
+    ALL_RUANGAN.forEach(r => {
         const opt    = document.createElement('option');
         opt.value    = r.id;
         opt.text     = r.nama;
@@ -918,6 +981,7 @@ function updateCardRuangan(ruanganId, ruanganNama) {
     const el = activeDetailCard.querySelector('.ruangan-text');
     if (el) el.innerText = ruanganNama || '-';
     renderTablePreview();
+    updateBentrokButton();
 }
 
 // ============================================================
@@ -944,28 +1008,32 @@ function renderTablePreview() {
         const sesi      = slotId <= 4 ? 'Pagi' : slotId <= 8 ? 'Siang' : 'Malam';
         const hariLabel = card.dataset.day.charAt(0).toUpperCase() + card.dataset.day.slice(1);
 
-        kelasList.forEach(kelas => {
-            const sidebarEl = document.querySelector(`.kelas-item[data-kelas="${kelas}"]`);
-            const prodi     = sidebarEl?.querySelector('.bg-purple-100')?.innerText?.trim() || '-';
-            const semester  = sidebarEl?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '-';
-            const tr        = document.createElement('tr');
-            tr.className    = 'hover:bg-gray-50 border-b border-gray-100';
-            tr.innerHTML    = `
-                <td class="px-4 py-3 text-sm">${hariLabel}</td>
-                <td class="px-4 py-3 text-sm">${prodi}</td>
-                <td class="px-4 py-3 text-sm">${semester}</td>
-                <td class="px-4 py-3 text-sm">${sesi}</td>
-                <td class="px-4 py-3 text-sm font-medium">${kelas}</td>
-                <td class="px-4 py-3 text-sm font-mono text-teal-700">${card.dataset.kodeMk || '-'}</td>
-                <td class="px-4 py-3 text-sm">${card.dataset.nama || '-'}</td>
-                <td class="px-4 py-3 text-sm">Teori</td>
-                <td class="px-4 py-3 text-sm">${card.dataset.sks} SKS</td>
-                <td class="px-4 py-3 text-sm">${card.dataset.dosen || '-'}</td>
-                <td class="px-4 py-3 text-sm">${card.dataset.ruangan || '-'}</td>
-                <td class="px-4 py-3 text-sm">${card.dataset.jamMulai || '-'}</td>
-                <td class="px-4 py-3 text-sm">${card.dataset.jamSelesai || '-'}</td>`;
-            tbody.appendChild(tr);
-        });
+        const kelasPertama = kelasList[0];
+        const sidebarEl    = document.querySelector(`.kelas-item[data-kelas="${kelasPertama}"]`);
+        const prodi        = sidebarEl?.querySelector('.bg-purple-100')?.innerText?.trim() || '-';
+        const semester     = sidebarEl?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '-';
+        const namaKelas    = kelasList.length > 1
+            ? kelasList.join(' + ') + ' <span class="text-xs px-1.5 py-0.5 bg-pink-100 text-pink-700 rounded font-semibold">Gabungan</span>'
+            : kelasPertama;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 border-b border-gray-100';
+        tr.innerHTML = `
+            <td class="px-4 py-3 text-sm">${hariLabel}</td>
+            <td class="px-4 py-3 text-sm">${prodi}</td>
+            <td class="px-4 py-3 text-sm">${semester}</td>
+            <td class="px-4 py-3 text-sm">${sesi}</td>
+            <td class="px-4 py-3 text-sm font-medium">${namaKelas}</td>
+            <td class="px-4 py-3 text-sm font-mono text-teal-700">${card.dataset.kodeMk || '-'}</td>
+            <td class="px-4 py-3 text-sm">${card.dataset.nama || '-'}</td>
+            <td class="px-4 py-3 text-sm">Teori</td>
+            <td class="px-4 py-3 text-sm">${card.dataset.sks} SKS</td>
+            <td class="px-4 py-3 text-sm">${card.dataset.dosen || '-'}</td>
+            <td class="px-4 py-3 text-sm">${card.dataset.ruangan || '-'}</td>
+            <td class="px-4 py-3 text-sm">${card.dataset.jamMulai || '-'}</td>
+            <td class="px-4 py-3 text-sm">${card.dataset.jamSelesai || '-'}</td>`;
+        tbody.appendChild(tr);
+
     });
 }
 
@@ -1034,41 +1102,72 @@ function createCard(data, skipSave = false) {
     document.getElementById('jadwal-layer').appendChild(card);
     enableCardDrag(card);
     enableMerge(card);
+    updateBentrokButton();
 
     return card;
 }
 
+// Load semua ruangan
+try {
+    const rawRuangan = document.getElementById('all-ruangan-data');
+    if (rawRuangan) ALL_RUANGAN = JSON.parse(rawRuangan.textContent.trim());
+} catch(e) {
+    console.error('Gagal parse all-ruangan-data:', e);
+}
 // ============================================================
-// LOAD DATA JADWAL DARI DATABASE SAAT HALAMAN PERTAMA DIBUKA
+// LOAD JADWAL TERSIMPAN DARI DATABASE
 // ============================================================
 function loadExistingJadwals() {
     const raw = document.getElementById('existing-jadwal-data');
     if (!raw) return;
+
     let jadwals = [];
-    try { jadwals = JSON.parse(raw.textContent.trim()); } catch (e) { console.error('Gagal parse data jadwal:', e); return; }
+    try {
+        jadwals = JSON.parse(raw.textContent.trim());
+    } catch (e) {
+        console.error('Gagal parse existing-jadwal-data:', e);
+        return;
+    }
     if (!jadwals.length) return;
 
     jadwals.forEach(j => {
-        const slotEl    = document.querySelector(`[data-slot-line="${j.slot_id}"]`);
-        const endSlotEl = document.querySelector(`[data-slot-line="${parseInt(j.slot_id) + parseInt(j.sks) - 1}"]`);
-        if (!slotEl) { console.warn('Slot tidak ditemukan:', j.slot_id); return; }
+        const slotIdInt = parseInt(j.slot_id);   // ← parseInt, bukan string
+        const sksInt    = parseInt(j.sks);
+
+        const infoStart = slotElMap[slotIdInt];
+        const infoEnd   = slotElMap[slotIdInt + sksInt - 1];
+
+        if (!infoStart) {
+            console.warn('Slot tidak ditemukan:', slotIdInt, '| Tersedia:', Object.keys(slotElMap));
+            return;
+        }
+
+        // Ambil prodi dari sidebar jika ada
+        const sidebarEl = document.querySelector(`.kelas-item[data-id="${j.kelas_id}"]`);
+        const prodi     = sidebarEl?.dataset.prodi || '-';
+
         createCard({
-            sks:        parseInt(j.sks),
+            sks:        sksInt,
             nama:       j.nama,
             kelas:      j.nama_kelas,
-            kelasId:    j.kelas_id,
+            kelasId:    parseInt(j.kelas_id),
             dosen:      j.dosen,
             kodeMk:     j.kode_mk,
             ruangan:    j.ruangan    || '',
             ruanganId:  j.ruangan_id || '',
-            slotId:     parseInt(j.slot_id),
+            slotId:     slotIdInt,
             day:        j.hari,
-            jamMulai:   slotEl.dataset.jamMulai,
-            jamSelesai: endSlotEl?.dataset.jamSelesai || '-',
+            jamMulai:   infoStart.jamMulai,
+            jamSelesai: infoEnd?.jamSelesai || '-',
             jadwalIds:  [j.jadwal_id],
+            prodi:      prodi,
         }, true);
+
         setSidebarStatus(j.kelas_id, 'sudah');
     });
+
+    updateCounter();
+    renderTablePreview();
 }
 
 function enableCardDrag(card) {
@@ -1078,7 +1177,10 @@ function enableCardDrag(card) {
         ['start','sks','nama','kelas','dosen','kodeMk','ruangan'].forEach(k =>
             e.dataTransfer.setData(k, card.dataset[k] || '')
         );
-        e.dataTransfer.setData('kelas_id', card.dataset.kelasId || '');
+        e.dataTransfer.setData('kelas_id',     card.dataset.kelasId     || '');
+        e.dataTransfer.setData('kelas_list',   card.dataset.kelasList   || '[]');
+        e.dataTransfer.setData('kelas_id_list',card.dataset.kelasIdList || '[]');
+        e.dataTransfer.setData('jadwal_ids',   card.dataset.jadwalIds   || '[]');
     });
     card.addEventListener('click', e => {
         if (e.target.closest('button')) return;
@@ -1107,17 +1209,23 @@ function enableMerge(card) {
             <div>
                 <div class="flex items-start justify-between">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-bold text-[13px] text-gray-800">${merged.join(' + ')}</span>
+                        <span class="font-bold text-[13px] ${color.text}">${merged.join(' + ')}</span>
                         <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan</span>
                     </div>
                     <button class="text-gray-400 hover:text-red-500 transition ml-2" onclick="removeCard(this)">✕</button>
                 </div>
-                <div class="mt-3 flex items-center justify-between text-[11px] text-gray-600">
-                    <div>${card.dataset.dosen}</div>
-                    <div class="font-semibold">${card.dataset.sks} SKS</div>
+                <div class="mt-1">
+                    <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${card.dataset.kodeMk || '-'}</span>
+                </div>
+                <h3 class="mt-1 text-[13px] leading-snug font-bold text-gray-800">${card.dataset.nama || '-'}</h3>
+                <div class="mt-2 space-y-1">
+                    <p class="text-sm text-gray-700 font-medium">${card.dataset.dosen}</p>
+                    <p class="text-sm text-gray-700 font-semibold ruangan-text">${card.dataset.ruangan || '-'} <span class="mx-1 text-gray-300">|</span> ${card.dataset.sks} SKS</p>
                 </div>
             </div>`;
         src.remove();
+        renderTablePreview();
+        updateBentrokButton();
     });
 }
 
@@ -1208,6 +1316,30 @@ function generateJadwal() {
     const mkProdiPerHari = {};
     hariListBase.forEach(h => { mkProdiPerHari[h] = {}; });
 
+    // ── STATE C9: slot akhir per MK per hari ─────────────────
+    // mkSlotAkhirPerHari[hariId][namaMK] = slotId terakhir yang dipakai MK itu
+    // Dipakai untuk mengutamakan penempatan berdekatan
+    const mkSlotAkhirPerHari = {};
+    hariListBase.forEach(h => { mkSlotAkhirPerHari[h] = {}; });
+
+    // Helper C9: susun ulang slotList agar slot yang berdekatan dengan MK
+    // sejenis di hari ini diprioritaskan di depan
+    function prioritaskanSlotBerdekatan(slotList, hariId, namaMK, sks) {
+        const slotAkhir = mkSlotAkhirPerHari[hariId][namaMK];
+        if (slotAkhir === undefined) return slotList; // belum ada MK ini di hari ini
+
+        // Slot ideal: tepat setelah MK sebelumnya selesai, atau tepat sebelum MK berikutnya mulai
+        const slotIdeal = new Set([
+            slotAkhir,          // mulai tepat di slot terakhir MK lain (langsung setelah)
+            slotAkhir - sks,    // mulai sks slot sebelumnya (sehingga selesai tepat sebelum MK lain)
+        ]);
+
+        // Pisahkan slot ideal dan sisanya, ideal masuk depan
+        const depan  = slotList.filter(s => slotIdeal.has(s));
+        const sisanya = slotList.filter(s => !slotIdeal.has(s));
+        return [...depan, ...sisanya];
+    }
+
     // ── HELPERS ───────────────────────────────────────────────
     function dosenBisaMengajar(hariId, dosenId, sks) {
         if (!dosenId) return true;
@@ -1260,6 +1392,19 @@ function generateJadwal() {
     }
     const menitBatasMalam = jamKeMenit(JAM_BATAS_MALAM);
 
+    // ── HELPER C8 ─────────────────────────────────────────────
+    const SLOT_ISTIRAHAT = 6; // slot istirahat yang tidak boleh dilewati
+
+    function melewatiIstirahat(slotId, sks) {
+        const slotMulai  = slotId;
+        const slotSelesai = slotId + sks - 1; // slot terakhir yang dipakai
+
+        // Bentrok jika: mulai sebelum istirahat DAN selesai di istirahat atau setelahnya
+        // Atau mulai tepat di slot istirahat
+        const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
+        return slotsDibutuhkan.includes(SLOT_ISTIRAHAT);
+    }
+
     function jenisKelas(namaKelas) { return namaKelas.trim().slice(-1).toUpperCase(); }
 
     function slotSesuaiJenisKelas(slotId, namaKelas) {
@@ -1300,7 +1445,7 @@ function generateJadwal() {
 
         // ── Kocok hari & slot untuk variasi tiap generate ─────
         const hariList  = shuffleArray(hariListBase, rng);
-        const slotList  = shuffleArray([...SLOT_VALID], rng);
+        const slotListBase = shuffleArray([...SLOT_VALID], rng);
 
         let ditempatkan = false;
 
@@ -1309,10 +1454,14 @@ function generateJadwal() {
             if (!dosenBisaMengajar(hariId, dosenId, sks)) continue;
             if (prodiSudahMaksimal(hariId, prodi, nama)) continue;
 
+            // ── C9: susun ulang slot agar berdekatan dengan MK sejenis ─
+            const slotList = prioritaskanSlotBerdekatan(slotListBase, hariId, nama, sks);
+
             for (const slotId of slotList) {
                 const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
                 if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
                 if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
+                if (melewatiIstirahat(slotId, sks)) continue;
                 if (kelasBentrok(hariId, slotsDibutuhkan, kelas, nama, dosenId)) continue;
                 if (mkOverlap(hariId, slotsDibutuhkan, nama)) continue;
                 if (!slotMasihBisa(hariId, slotsDibutuhkan)) continue;
@@ -1351,6 +1500,7 @@ function generateJadwal() {
                 });
                 if (!mkProdiPerHari[hariId][prodi]) mkProdiPerHari[hariId][prodi] = new Set();
                 mkProdiPerHari[hariId][prodi].add(nama);
+                mkSlotAkhirPerHari[hariId][nama] = slotId + sks;
 
                 setSidebarStatus(kelasId, 'sudah');
                 berhasil++;
@@ -1373,6 +1523,7 @@ function generateJadwal() {
     applyFilter();
     filterCardsByDay(Alpine.$data(document.body).selectedDay || 'senin');
     renderTablePreview();
+    updateBentrokButton();
 
     const seedInfo = GEN_CONFIG.randomize ? ` (seed: ${seed})` : '';
     showToast(
@@ -1421,7 +1572,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const slotId  = parseInt(slot.dataset.slotLine);
             const day     = Alpine.$data(document.body).selectedDay;
 
+            // Ambil data gabungan dari card asal jika dari workspace
+            const kelasList   = fromWorkspace && draggedCard
+                ? JSON.parse(draggedCard.dataset.kelasList   || '[]')
+                : [kelas];
+            const kelasIdList = fromWorkspace && draggedCard
+                ? JSON.parse(draggedCard.dataset.kelasIdList || '[]')
+                : [kelasId];
+            const jadwalIds   = fromWorkspace && draggedCard
+                ? JSON.parse(draggedCard.dataset.jadwalIds   || '[]')
+                : [];
+
             if (!nama || !kelas || isNaN(sks) || sks < 1) return;
+
+                // ✅ [C8] Cegah drop ke slot istirahat
+            if (slot.dataset.isIstirahat === '1') {
+                showToast('⚠ Tidak bisa menempatkan kelas di slot istirahat.', 'red');
+                return;
+            }
 
             if (fromWorkspace && draggedCard) {
                 hapusJadwal(draggedCard);
@@ -1432,12 +1600,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const jamSelesaiEl = document.querySelector(`[data-slot-line="${slotId + sks - 1}"]`);
             const jamSelesai   = jamSelesaiEl?.dataset.jamSelesai || '-';
 
-            createCard({ sks, nama, kelas, kelasId, dosen, kodeMk, prodi, ruangan, slotId, day, jamMulai, jamSelesai });
+            // [C8] Cek slot istirahat
+            const slotsDrop = Array.from({ length: sks }, (_, i) => slotId + i);
+            if (slotsDrop.includes(6)) {
+                showToast('⚠ Kelas tidak boleh melewati waktu istirahat (Slot 6).', 'red');
+                return;
+            }
 
-            setSidebarStatus(kelasId, 'sudah');
+            const card = createCard({ sks, nama, kelas, kelasId, dosen, kodeMk, prodi, ruangan, slotId, day, jamMulai, jamSelesai, jadwalIds });
+
+            // Restore data gabungan jika card berasal dari merge sebelumnya
+            if (kelasList.length > 1) {
+                card.dataset.kelasList   = JSON.stringify(kelasList);
+                card.dataset.kelasIdList = JSON.stringify(kelasIdList);
+
+                const color = getCourseColor(nama);
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-[13px] text-gray-800">${kelasList.join(' + ')}</span>
+                                <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan</span>
+                            </div>
+                            <button class="text-gray-400 hover:text-red-500 transition ml-2" onclick="removeCard(this)">✕</button>
+                        </div>
+                        <div class="mt-2">
+                            <span class="text-xs px-2 py-0.5 rounded-lg bg-white/60 text-gray-600">${prodi || '-'}</span>
+                            <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${kodeMk}</span>
+                        </div>
+                        <h3 class="mt-2 text-[14px] leading-snug font-bold text-gray-800">${nama}</h3>
+                        <div class="mt-3 space-y-1">
+                            <p class="text-sm text-gray-700 font-medium">${dosen}</p>
+                            <p class="text-sm text-gray-700 font-semibold ruangan-text">${ruangan || '-'} <span class="mx-1 text-gray-300">|</span> ${sks} SKS</p>
+                        </div>
+                    </div>`;
+            }
+
+            kelasIdList.forEach(kid => setSidebarStatus(kid, 'sudah'));
             updateCounter();
             applyFilter();
             renderTablePreview();
+            updateBentrokButton();
         });
     });
     SLOT_VALID.sort((a, b) => a - b);
@@ -1447,6 +1650,302 @@ document.addEventListener('DOMContentLoaded', () => {
     filterCardsByDay('senin');
     loadExistingJadwals();
 });
+
+// ============================================================
+// RESET WORKSPACE
+// ============================================================
+async function resetWorkspace() {
+    const cards = [...document.querySelectorAll('.jadwal-card')];
+    if (!cards.length) {
+        showToast('Workspace sudah kosong.', 'green');
+        return;
+    }
+
+    if (!confirm(`Hapus semua ${cards.length} jadwal dari workspace dan database? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+    const btn = document.querySelector('[onclick="resetWorkspace()"]');
+    if (btn) { btn.disabled = true; btn.innerText = 'Mereset...'; }
+
+    // Hapus dari database
+    let gagal = 0;
+    for (const card of cards) {
+        try {
+            await hapusJadwal(card);
+        } catch(e) {
+            gagal++;
+            console.error('Gagal hapus jadwal:', e);
+        }
+    }
+
+    // Hapus semua card dari workspace
+    document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
+
+    // Reset semua status sidebar ke "belum"
+    document.querySelectorAll('.kelas-item').forEach(el => {
+        setSidebarStatus(el.dataset.id, 'belum');
+    });
+
+    updateCounter();
+    applyFilter();
+    renderTablePreview();
+    updateBentrokButton();
+    closeDetailPanel();
+
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Reset Jadwal`;
+    }
+
+    showToast(
+        gagal === 0 ? '✓ Semua jadwal berhasil direset!' : `Reset selesai, ${gagal} gagal dihapus dari DB.`,
+        gagal === 0 ? 'green' : 'red'
+    );
+}
+
+// ============================================================
+// DETEKSI BENTROK
+// ============================================================
+function detectBentrok() {
+    const cards = [...document.querySelectorAll('.jadwal-card')];
+    const bentrokSet = new Set();
+
+    // Kelompokkan card per hari
+    const byHari = {};
+    cards.forEach(card => {
+        const hari = card.dataset.day;
+        if (!byHari[hari]) byHari[hari] = [];
+        byHari[hari].push(card);
+    });
+
+    Object.values(byHari).forEach(hariCards => {
+        for (let i = 0; i < hariCards.length; i++) {
+            for (let j = i + 1; j < hariCards.length; j++) {
+                const a = hariCards[i];
+                const b = hariCards[j];
+
+                const aStart = parseInt(a.dataset.start);
+                const aEnd   = parseInt(a.dataset.end);
+                const bStart = parseInt(b.dataset.start);
+                const bEnd   = parseInt(b.dataset.end);
+
+                // Cek overlap waktu
+                const overlapWaktu = aStart < bEnd && aEnd > bStart;
+                if (!overlapWaktu) continue;
+
+                // [B1] Ruangan sama
+                if (
+                    a.dataset.ruanganId &&
+                    b.dataset.ruanganId &&
+                    a.dataset.ruanganId !== '' &&
+                    b.dataset.ruanganId !== '' &&
+                    String(a.dataset.ruanganId) === String(b.dataset.ruanganId)
+                ) {
+                    bentrokSet.add(a);
+                    bentrokSet.add(b);
+                }
+
+                // [B2] Dosen sama
+                if (
+                    a.dataset.dosen &&
+                    b.dataset.dosen &&
+                    a.dataset.dosen !== '-' &&
+                    a.dataset.dosen === b.dataset.dosen
+                ) {
+                    bentrokSet.add(a);
+                    bentrokSet.add(b);
+                }
+
+                // [B3] Kelas yang sama bentrok di hari berbeda tidak perlu,
+                // tapi kelas sama di slot overlap = bentrok
+                const aKelas = JSON.parse(a.dataset.kelasIdList || '[]');
+                const bKelas = JSON.parse(b.dataset.kelasIdList || '[]');
+                const kelasOverlap = aKelas.some(k => bKelas.includes(k));
+                if (kelasOverlap) {
+                    bentrokSet.add(a);
+                    bentrokSet.add(b);
+                }
+            }
+        }
+    });
+
+    return [...bentrokSet];
+}
+
+// ============================================================
+// UPDATE TOMBOL LIHAT BENTROK
+// ============================================================
+function updateBentrokButton() {
+    const bentrokCards = detectBentrok();
+    const btn = document.getElementById('btn-lihat-bentrok');
+    if (!btn) return;
+
+    if (bentrokCards.length > 0) {
+        btn.className = 'px-5 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold flex items-center gap-2 transition animate-pulse border-2 border-red-300';
+        btn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+            Bentrok! (${bentrokCards.length} card)`;
+    } else {
+        btn.className = 'px-5 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-2 transition';
+        btn.innerHTML = `
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Lihat Bentrok`;
+    }
+}
+
+// ============================================================
+// MODAL DETAIL BENTROK
+// ============================================================
+function lihatBentrok() {
+    const bentrokCards = detectBentrok();
+
+    if (!bentrokCards.length) {
+        showToast('✓ Tidak ada bentrok ditemukan!', 'green');
+        return;
+    }
+
+    // Buat modal bentrok
+    const existing = document.getElementById('modal-bentrok-overlay');
+    if (existing) existing.remove();
+
+    // Kelompokkan bentrok per pasangan
+    const cards = [...document.querySelectorAll('.jadwal-card')];
+    const pasangan = [];
+    const byHari = {};
+    cards.forEach(card => {
+        const hari = card.dataset.day;
+        if (!byHari[hari]) byHari[hari] = [];
+        byHari[hari].push(card);
+    });
+
+    Object.values(byHari).forEach(hariCards => {
+        for (let i = 0; i < hariCards.length; i++) {
+            for (let j = i + 1; j < hariCards.length; j++) {
+                const a = hariCards[i];
+                const b = hariCards[j];
+                const aStart = parseInt(a.dataset.start);
+                const aEnd   = parseInt(a.dataset.end);
+                const bStart = parseInt(b.dataset.start);
+                const bEnd   = parseInt(b.dataset.end);
+                if (!(aStart < bEnd && aEnd > bStart)) continue;
+
+                const alasan = [];
+                if (
+                    a.dataset.ruanganId && b.dataset.ruanganId &&
+                    a.dataset.ruanganId !== '' && b.dataset.ruanganId !== '' &&
+                    String(a.dataset.ruanganId) === String(b.dataset.ruanganId)
+                ) alasan.push(`Ruangan sama: <strong>${a.dataset.ruangan || '-'}</strong>`);
+
+                if (a.dataset.dosen && a.dataset.dosen !== '-' && a.dataset.dosen === b.dataset.dosen)
+                    alasan.push(`Dosen sama: <strong>${a.dataset.dosen}</strong>`);
+
+                const aKelas = JSON.parse(a.dataset.kelasIdList || '[]');
+                const bKelas = JSON.parse(b.dataset.kelasIdList || '[]');
+                if (aKelas.some(k => bKelas.includes(k)))
+                    alasan.push(`Kelas bentrok di slot yang sama`);
+
+                if (alasan.length) pasangan.push({ a, b, alasan });
+            }
+        }
+    });
+
+    const hariLabel = h => h.charAt(0).toUpperCase() + h.slice(1);
+    const rows = pasangan.map((p, idx) => `
+        <div class="bentrok-row rounded-xl border border-red-100 bg-red-50 p-4 cursor-pointer hover:border-red-300 transition"
+             onclick="highlightBentrokPair(${idx})" data-idx="${idx}">
+            <div class="flex items-start gap-3">
+                <span class="mt-0.5 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${idx + 1}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-sm font-bold text-gray-800">${p.a.dataset.kelas || p.a.dataset.nama}</span>
+                        <span class="text-gray-400">↔</span>
+                        <span class="text-sm font-bold text-gray-800">${p.b.dataset.kelas || p.b.dataset.nama}</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-500">
+                        ${hariLabel(p.a.dataset.day)} · Slot ${p.a.dataset.start}–${p.a.dataset.end} ↔ Slot ${p.b.dataset.start}–${p.b.dataset.end}
+                    </div>
+                    <div class="mt-2 space-y-1">
+                        ${p.alasan.map(a => `<div class="text-xs text-red-600 flex items-center gap-1">⚠ ${a}</div>`).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-bentrok-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:20px;width:100%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+            <div style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:22px 28px 20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <h2 style="color:#fff;font-size:18px;font-weight:700;margin:0 0 4px;">⚠️ Daftar Bentrok</h2>
+                        <p style="color:rgba(255,255,255,0.8);font-size:13px;margin:0;">${pasangan.length} konflik ditemukan · Klik baris untuk sorot di workspace</p>
+                    </div>
+                    <button onclick="document.getElementById('modal-bentrok-overlay').remove()"
+                            style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+                </div>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px;">
+                ${rows}
+            </div>
+            <div style="padding:16px 24px;border-top:1px solid #f3f4f6;">
+                <button onclick="document.getElementById('modal-bentrok-overlay').remove()"
+                        style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;font-weight:600;font-size:14px;color:#6b7280;cursor:pointer;">
+                    Tutup
+                </button>
+            </div>
+        </div>`;
+
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+
+    // Simpan pasangan untuk highlight
+    window._bentrokPasangan = pasangan;
+}
+
+// ============================================================
+// HIGHLIGHT CARD BENTROK DI WORKSPACE
+// ============================================================
+function highlightBentrokPair(idx) {
+    const pair = window._bentrokPasangan?.[idx];
+    if (!pair) return;
+
+    // Tutup modal
+    document.getElementById('modal-bentrok-overlay')?.remove();
+
+    // Pindah ke hari yang benar
+    const targetDay = pair.a.dataset.day;
+    Alpine.$data(document.body).selectedDay = targetDay;
+    filterCardsByDay(targetDay);
+
+    // Hapus highlight lama
+    document.querySelectorAll('.jadwal-card').forEach(c => {
+        c.style.outline = '';
+        c.style.zIndex  = '10';
+    });
+
+    // Sorot kedua card
+    [pair.a, pair.b].forEach(card => {
+        card.style.outline = '3px solid #ef4444';
+        card.style.zIndex  = '50';
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Hilangkan highlight setelah 3 detik
+    setTimeout(() => {
+        [pair.a, pair.b].forEach(card => {
+            card.style.outline = '';
+            card.style.zIndex  = '10';
+        });
+    }, 3000);
+}
 </script>
 
 </body>

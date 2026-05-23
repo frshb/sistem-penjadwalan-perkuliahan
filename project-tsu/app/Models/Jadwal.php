@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+
 use App\Models\Slot_waktu;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,51 +22,38 @@ class Jadwal extends Model
         'id_kelas',
         'id_ruang',
         'id_hari',
-        'id_slot_mulai',   // ← nama kolom yang benar
-        'durasi_sks',      // ← tambah ini
-        'jenis_jadwal',
-        'status_validasi',
+        'id_slot_mulai',
+        'durasi_sks',
+        'id_tahunakademik',   // ← tambahan baru
         'is_manual',
     ];
 
     /*
     |--------------------------------------------------------------------------
-    | RELATION
+    | RELASI
     |--------------------------------------------------------------------------
     */
 
     // Mata Kuliah
     public function matakuliah()
     {
-        return $this->belongsTo(
-            MataKuliah::class,
-            'id_matkul',
-            'kode_matkul'
-        );
+        return $this->belongsTo(MataKuliah::class, 'kode_matkul', 'kode_matkul');
     }
 
     // Dosen
     public function dosen()
     {
-        return $this->belongsTo(
-            Dosen::class,
-            'id_dosen',
-            'id_dosen'
-        );
+        return $this->belongsTo(Dosen::class, 'id_dosen', 'id_dosen');
     }
 
     // Kelas
     public function kelas()
     {
-        return $this->belongsTo(
-            Kelas::class,
-            'id_kelas',
-            'id_kelas'
-        );
+        return $this->belongsTo(Kelas::class, 'id_kelas', 'id_kelas');
     }
 
     // Ruangan
-    public function ruang()
+    public function ruangan()
     {
         return $this->belongsTo(Ruangan::class, 'id_ruang', 'id_ruang');
     }
@@ -80,5 +68,11 @@ class Jadwal extends Model
     public function slotMulai()
     {
         return $this->belongsTo(Slot_waktu::class, 'id_slot_mulai', 'id_slot');
+    }
+
+    // Tahun Akademik
+    public function tahunAkademik()
+    {
+        return $this->belongsTo(TahunAkademik::class, 'id_tahunakademik', 'id_tahunakademik');
     }
 }

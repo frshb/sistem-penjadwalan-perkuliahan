@@ -7,7 +7,6 @@ use App\Models\MataKuliah;
 use App\Models\Prodi;
 use App\Models\Kurikulum; // Import Kurikulum
 use App\Models\Ruangan;
-use Illuminate\Validation\Rule;
 use PDF; // Untuk export PDF
 use Maatwebsite\Excel\Facades\Excel; // Untuk export Excel
 use App\Exports\MataKuliahExport; // Untuk export Excel
@@ -107,13 +106,7 @@ class MataKuliahController extends Controller
         // Validasi data (termasuk id_kurikulum)
         $request->validate([
             'nama_matkul' => 'required|string|max:100',
-            'kode_matkul' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('mata_kuliah', 'kode_matkul')
-
-            ],
+            'kode_matkul' => 'required|string|max:20',
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string|in:Teori,Praktikum',
             'semester' => 'required|integer|min:1|max:8',
@@ -151,12 +144,7 @@ class MataKuliahController extends Controller
         $request->validate([
             'nama_matkul' => 'required|string|max:100',
             // Kode matkul bisa diubah, tapi harus unique kecuali punya sendiri
-            'kode_matkul' => [
-                'required',
-                'string',
-                'max:10', // Sesuai migration: string(10)
-                Rule::unique('mata_kuliah', 'kode_matkul')->ignore($matkul->kode_matkul, 'kode_matkul')
-            ],
+            'kode_matkul' => 'required|string|max:20',
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string', // strtolower nanti
             'semester' => 'required|integer|min:1|max:8',

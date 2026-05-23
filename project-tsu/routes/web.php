@@ -9,6 +9,7 @@ use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\KelasController;
 use App\Http\Controllers\KpSkripsiController;
+use App\Http\Controllers\JadwalExportController;
 
 
 use App\Http\Controllers\DashboardController;
@@ -147,6 +148,14 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/jadwal/hapus-slot/{id}', [JadwalController::class, 'hapusSlot'])->name('jadwal.hapus-slot');
 
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
+
+    Route::middleware(['auth'])->group(function () {
+
+    Route::get('/jadwal/{tahunAkademikId}/export/excel', [JadwalExportController::class, 'exportExcel'])
+         ->name('jadwal.export.excel');
+    Route::get('/jadwal/{tahunAkademikId}/export/pdf',   [JadwalExportController::class, 'exportPdf'])
+         ->name('jadwal.export.pdf');
+    });
 
     // Automatic Scheduling Wizard Routes
     Route::get('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'step1'])->name('jadwal.otomatis.step1');
