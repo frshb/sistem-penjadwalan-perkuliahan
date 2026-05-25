@@ -91,8 +91,7 @@ class JadwalExportController extends Controller
 
     private function getSesi(int $slotId): string
     {
-        if ($slotId <= 4) return 'Pagi';
-        if ($slotId <= 8) return 'Siang';
+        if ($slotId <= 8) return 'Pagi';
         return 'Malam';
     }
 

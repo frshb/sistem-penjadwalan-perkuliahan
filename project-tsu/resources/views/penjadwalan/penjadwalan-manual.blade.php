@@ -1006,7 +1006,7 @@ function renderTablePreview() {
     cards.forEach(card => {
         const kelasList = JSON.parse(card.dataset.kelasList || '[]');
         const slotId    = parseInt(card.dataset.start);
-        const sesi      = slotId <= 4 ? 'Pagi' : slotId <= 8 ? 'Siang' : 'Malam';
+        const sesi = slotId <= 8 ? 'Pagi' : 'Malam';
         const hariLabel = card.dataset.day.charAt(0).toUpperCase() + card.dataset.day.slice(1);
 
         const kelasPertama = kelasList[0];
@@ -1395,11 +1395,6 @@ function generateJadwal() {
     const SLOT_ISTIRAHAT = 6; // slot istirahat yang tidak boleh dilewati
 
     function melewatiIstirahat(slotId, sks) {
-        const slotMulai  = slotId;
-        const slotSelesai = slotId + sks - 1; // slot terakhir yang dipakai
-
-        // Bentrok jika: mulai sebelum istirahat DAN selesai di istirahat atau setelahnya
-        // Atau mulai tepat di slot istirahat
         const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
         return slotsDibutuhkan.includes(SLOT_ISTIRAHAT);
     }
@@ -1457,15 +1452,19 @@ function generateJadwal() {
             if (prodiSudahMaksimal(hariId, prodi, nama)) continue;
 
             // Jika ada saudara → coba slot tepat setelah saudara selesai
-            const slotList = saudaraInfo
-                ? [saudaraInfo.slotAkhir]    // wajib slot tepat setelah
-                : slotListBase;
+           const slotList = saudaraInfo
+                ? [saudaraInfo.slotAkhir]
+                : [
+                    // Prioritas 1: slot yang TIDAK melewati istirahat
+                    ...slotListBase.filter(s => !melewatiIstirahat(s, sks)),
+                    // Prioritas 2: slot yang melewati istirahat (fallback, seminimal mungkin)
+                    ...slotListBase.filter(s => melewatiIstirahat(s, sks)),
+                ];
 
             for (const slotId of slotList) {
                 const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
                 if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
                 if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
-                if (melewatiIstirahat(slotId, sks)) continue;
                 if (kelasBentrok(hariId, slotsDibutuhkan, kelas, nama, dosenId)) continue;
                 if (mkOverlap(hariId, slotsDibutuhkan, nama)) continue;
                 if (!slotMasihBisa(hariId, slotsDibutuhkan)) continue;
@@ -1517,13 +1516,17 @@ function generateJadwal() {
         // C9 Fallback: jika slot tepat setelah penuh, coba slot lain di hari yang sama
         if (!ditempatkan && saudaraInfo) {
             const hariSama     = saudaraInfo.hariId;
-            const slotFallback = shuffleArray([...SLOT_VALID], rng);
+            const slotFallbackBase = shuffleArray([...SLOT_VALID], rng);
+            const slotFallback = [
+                ...slotFallbackBase.filter(s => !melewatiIstirahat(s, sks)),
+                ...slotFallbackBase.filter(s => melewatiIstirahat(s, sks)),
+            ];
+
 
             for (const slotId of slotFallback) {
                 const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
                 if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
                 if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
-                if (melewatiIstirahat(slotId, sks)) continue;
                 if (kelasBentrok(hariSama, slotsDibutuhkan, kelas, nama, dosenId)) continue;
                 if (mkOverlap(hariSama, slotsDibutuhkan, nama)) continue;
                 if (!slotMasihBisa(hariSama, slotsDibutuhkan)) continue;
@@ -1641,10 +1644,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!nama || !kelas || isNaN(sks) || sks < 1) return;
 
-                // ✅ [C8] Cegah drop ke slot istirahat
+            // ✅ [C8] Cegah drop ke slot istirahat
             if (slot.dataset.isIstirahat === '1') {
-                showToast('⚠ Tidak bisa menempatkan kelas di slot istirahat.', 'red');
-                return;
+                showToast('⚠ Perhatian: kelas ditempatkan di slot istirahat.', 'red');
+                // Tidak return — tetap lanjut
             }
 
             if (fromWorkspace && draggedCard) {
@@ -1655,13 +1658,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const jamMulai    = slot.dataset.jamMulai;
             const jamSelesaiEl = document.querySelector(`[data-slot-line="${slotId + sks - 1}"]`);
             const jamSelesai   = jamSelesaiEl?.dataset.jamSelesai || '-';
-
-            // [C8] Cek slot istirahat
-            const slotsDrop = Array.from({ length: sks }, (_, i) => slotId + i);
-            if (slotsDrop.includes(6)) {
-                showToast('⚠ Kelas tidak boleh melewati waktu istirahat (Slot 6).', 'red');
-                return;
-            }
 
             const card = createCard({ sks, nama, kelas, kelasId, dosen, kodeMk, prodi, jenis, ruangan, slotId, day, jamMulai, jamSelesai, jadwalIds });
 
