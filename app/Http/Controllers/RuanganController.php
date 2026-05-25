@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Gedung;
 use App\Models\Ruangan;
-use Illuminate\Http\Request; 
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RuanganExport;
 
@@ -13,7 +13,7 @@ class RuanganController extends Controller
     /**
      * Menampilkan daftar semua ruangan, dengan filter pencarian dan pengelompokan.
      */
-    public function index(Request $request) 
+    public function index(Request $request)
     {
         // Kaprodi tidak boleh akses
         if (auth()->check() && auth()->user()->isKaprodi()) {

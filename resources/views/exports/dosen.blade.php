@@ -1,8 +1,10 @@
 @if(isset($isPdf) && $isPdf)
-    @include('exports.header_pdf_v3', ['title' => 'DAFTAR DOSEN'])
+    @include('exports.header_pdf_v3', ['title' => 'DAFTAR DOSEN FAKULTAS TEKNIK'])
 @else
-    @include('exports.header', ['title' => 'DAFTAR DOSEN'])
+    @include('exports.header', ['title' => 'DAFTAR DOSEN FAKULTAS TEKNIK'])
 @endif
+
+<h2 style="text-align: center; color: #00667f; margin-bottom: 20px; font-family: Arial, sans-serif; text-transform: uppercase;">DAFTAR DOSEN FAKULTAS TEKNIK</h2>
 
 <table class="data-table">
     <thead>

@@ -31,10 +31,18 @@ class Kurikulum extends Model
         'id_prodi',
         'nama_kurikulum',
         'status',
+        'kelas',
+        'matkul',
+        'dosen_pengampu',
     ];
 
     public function prodi()
     {
         return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
     }
+
+    protected $casts = [
+        'matkul' => 'array',
+        'dosen_pengampu' => 'array',
+    ];
 }

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detail Prodi | {{ $prodi->nama_prodi }}</title>
-    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('tsuwhite.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans text-gray-900">
@@ -131,6 +131,9 @@
                         <tr class="bg-gray-50 border-b border-gray-200 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             <th class="px-6 py-4">No</th>
                             <th class="px-6 py-4">Nama Kurikulum</th>
+                            <th class="px-6 py-4">Kelas</th>
+                            <th class="px-6 py-4">Mata Kuliah</th>
+                            <th class="px-6 py-4">Dosen Pengampu</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4 text-center">Aksi</th>
                         </tr>
@@ -140,13 +143,16 @@
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 text-sm text-gray-900">{{ $index + 1 }}</td>
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $kurikulum->nama_kurikulum }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ $kurikulum->kelas ?? '-' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ is_array($kurikulum->matkul) ? implode(', ', $kurikulum->matkul) : ($kurikulum->matkul ?? '-') }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ is_array($kurikulum->dosen_pengampu) ? implode(', ', $kurikulum->dosen_pengampu) : ($kurikulum->dosen_pengampu ?? '-') }}</td>
                             <td class="px-6 py-4 text-sm">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $kurikulum->status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                     {{ $kurikulum->status }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-center">
-                                <button onclick="openEditModal('{{ $kurikulum->id_kurikulum }}', '{{ $kurikulum->nama_kurikulum }}', '{{ $kurikulum->status }}')" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                <button onclick="openEditModal('{{ $kurikulum->id_kurikulum }}', '{{ $kurikulum->nama_kurikulum }}', '{{ $kurikulum->status }}', '{{ $kurikulum->kelas }}', {{ json_encode($kurikulum->matkul) }}, {{ json_encode($kurikulum->dosen_pengampu) }})" class="text-indigo-600 hover:text-indigo-900 mr-3">
                                     <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                 </button>
                                 <form action="{{ route('prodi.kurikulum.destroy', [$prodi->id_prodi, $kurikulum->id_kurikulum]) }}" method="POST" class="inline" onsubmit="return confirm('Yakin ingin menghapus kurikulum ini?');">
@@ -160,7 +166,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">Belum ada kurikulum untuk program studi ini.</td>
+                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">Belum ada kurikulum untuk program studi ini.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -184,6 +190,26 @@
                             <select name="status" id="status" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                                 <option value="Aktif">Aktif</option>
                                 <option value="Tidak Aktif">Tidak Aktif</option>
+                            </select>
+                        </div>
+                        <div class="mb-4 text-left">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="kelas">Kelas</label>
+                            <input type="text" name="kelas" id="kelas" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Contoh: A, B, C">
+                        </div>
+                        <div class="mb-4 text-left">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="matkul">Mata Kuliah (Bisa pilih lebih dari 1)</label>
+                            <select name="matkul[]" id="matkul" multiple size="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                @foreach($matkuls as $mk)
+                                    <option value="{{ $mk->nama_matkul }}">{{ $mk->nama_matkul }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-4 text-left">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="dosen_pengampu">Dosen Pengampu (Bisa pilih lebih dari 1)</label>
+                            <select name="dosen_pengampu[]" id="dosen_pengampu" multiple size="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                @foreach($dosens as $dsn)
+                                    <option value="{{ $dsn->nama_dosen }}">{{ $dsn->nama_dosen }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="flex items-center justify-end mt-4">
@@ -214,6 +240,26 @@
                                 <option value="Tidak Aktif">Tidak Aktif</option>
                             </select>
                         </div>
+                        <div class="mb-4 text-left">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_kelas">Kelas</label>
+                            <input type="text" name="kelas" id="edit_kelas" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+                        <div class="mb-4 text-left">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_matkul">Mata Kuliah (Bisa pilih lebih dari 1)</label>
+                            <select name="matkul[]" id="edit_matkul" multiple size="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                @foreach($matkuls as $mk)
+                                    <option value="{{ $mk->nama_matkul }}">{{ $mk->nama_matkul }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-4 text-left">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_dosen_pengampu">Dosen Pengampu (Bisa pilih lebih dari 1)</label>
+                            <select name="dosen_pengampu[]" id="edit_dosen_pengampu" multiple size="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                @foreach($dosens as $dsn)
+                                    <option value="{{ $dsn->nama_dosen }}">{{ $dsn->nama_dosen }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="flex items-center justify-end mt-4">
                             <button type="button" onclick="document.getElementById('editKurikulumModal').classList.add('hidden')" class="mr-2 px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 focus:outline-none">Batal</button>
                             <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none">Simpan</button>
@@ -224,9 +270,20 @@
         </div>
 
         <script>
-            function openEditModal(id, nama, status) {
+            function openEditModal(id, nama, status, kelas, matkulArray, dosenArray) {
                 document.getElementById('edit_nama_kurikulum').value = nama;
                 document.getElementById('edit_status').value = status;
+                document.getElementById('edit_kelas').value = kelas || '';
+
+                let matkulSelect = document.getElementById('edit_matkul');
+                for (let option of matkulSelect.options) {
+                    option.selected = matkulArray ? matkulArray.includes(option.value) : false;
+                }
+
+                let dosenSelect = document.getElementById('edit_dosen_pengampu');
+                for (let option of dosenSelect.options) {
+                    option.selected = dosenArray ? dosenArray.includes(option.value) : false;
+                }
                 
                 // Set the form action URL dynamically
                 let baseUrl = "{{ url('/management/prodi/' . $prodi->id_prodi . '/kurikulum') }}";

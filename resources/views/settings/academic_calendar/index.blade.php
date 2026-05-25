@@ -4,38 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalender Akademik | TSU</title>
-    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('tsuwhite.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300" x-data="{ sidebarOpen: true, showModal: false, editMode: false, modalData: { id: null, name: '', date: '', description: '' }, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }">
+<body class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300" x-data="{ sidebarOpen: true, showModal: false, editMode: false, modalData: { id: null, name: '', date: '', description: '' }, }">
 
     <div class="flex min-h-screen">
         @include('components.sidebar')
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out">
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->    
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div class="flex items-center space-x-3 w-1/3">
-                        <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
-                        <div class="w-48 h-6 bg-gray-300 rounded"></div>
-                    </div>
-                    <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
-                </div>
-
-                <!-- Table Skeleton -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
-                     <div class="flex justify-between mb-4">
-                         <div class="w-1/4 h-8 bg-gray-300 rounded"></div>
-                         <div class="w-24 h-8 bg-gray-300 rounded"></div>
-                     </div>
-                     <div class="h-12 bg-gray-200 rounded-lg"></div>
-                     <div class="h-12 bg-gray-200 rounded-lg"></div>
-                     <div class="h-12 bg-gray-200 rounded-lg"></div>
-                </div>
-            </div>
-
-            <div x-show="!isLoading">
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
                     <div class="flex flex-col">
@@ -101,7 +77,7 @@
                 </div>
 
 
-            </div>
+            
         </main>
     </div>
 

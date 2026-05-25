@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modul Penjadwalan | {{ $prodi->nama_prodi ?? 'Penjadwalan' }}</title>
     <meta name="description" content="Modul Penjadwalan Perkuliahan Fakultas Teknik TSU">
-    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('tsuwhite.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         /* Memperkecil ukuran font dropdown di dalam tabel agar pas */

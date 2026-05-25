@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Penjadwalan Manual | TSU</title>
-    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('tsuwhite.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
@@ -16,31 +16,6 @@
 
         <!-- Main Content -->
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0 bg-gray-50 flex flex-col">
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div class="flex items-center space-x-3 w-1/3">
-                        <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
-                        <div class="w-48 h-6 bg-gray-300 rounded"></div>
-                    </div>
-                    <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
-                </div>
-                
-                <!-- Filter Skeleton -->
-                <div class="flex gap-4">
-                     <div class="w-full h-12 bg-white rounded-lg shadow-sm border border-gray-200"></div>
-                </div>
-
-                <!-- Table Skeleton -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-4">
-                    <div class="h-12 bg-gray-200 rounded-lg"></div>
-                    <div class="h-12 bg-gray-200 rounded-lg"></div>
-                    <div class="h-12 bg-gray-200 rounded-lg"></div>
-                </div>
-            </div>
-
-            <div x-show="!isLoading">
             
             <!-- Header -->
             <div class="flex justify-between items-center mb-8">
@@ -156,7 +131,7 @@
                      <p class="text-gray-500 text-lg">Tidak ada jadwal yang sesuai filter atau data belum tersedia.</p>
                      <button @click="openModal()" class="mt-4 text-teal-600 hover:text-teal-800 font-medium">Tambah Jadwal Baru</button>
                 </div>
-            </div>
+            
 
         </main>
     </div>
@@ -323,7 +298,7 @@
         </div>
     </div>
 
-            </div>
+            
         </main>
     </div>
 
@@ -331,8 +306,6 @@
     <script>
         function manualSchedulingApp() {
             return {
-                isLoading: true,
-                init() { setTimeout(() => this.isLoading = false, 2000) },
                 sidebarOpen: true,
                 showModal: false,
                 editMode: false,

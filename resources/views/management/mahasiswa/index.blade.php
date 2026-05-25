@@ -4,37 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Data | Mahasiswa</title>
-    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('tsuwhite.png') }}" type="image/png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body x-data="{ sidebarOpen: true, isLoading: true, init() { setTimeout(() => this.isLoading = false, 2000) } }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
+<body x-data="{ sidebarOpen: true, }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
 
     <div class="flex min-h-screen">
         @include('components.sidebar')
 
         <!-- Main Content -->
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0 bg-gray-50 flex flex-col">
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-8 flex-1">
-                <!-- Header Skeleton -->
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8">
-                     <div class="flex items-center space-x-3 w-1/3">
-                         <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
-                         <div class="w-48 h-6 bg-gray-300 rounded"></div>
-                     </div>
-                     <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
-                </div>
 
-                <!-- Content Skeleton (Center Card) -->
-                <div class="flex-1 flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-sm border border-gray-200 min-h-[400px]">
-                    <div class="w-2/3 h-64 bg-gray-200 rounded-lg mb-6"></div>
-                    <div class="w-1/2 h-8 bg-gray-300 rounded mb-4"></div>
-                    <div class="w-1/3 h-4 bg-gray-300 rounded"></div>
-                </div>
-            </div>
-
-            <div x-show="!isLoading" class="contents">
-            
             <!-- Header -->
             <div class="flex justify-between items-center mb-8">
                 <div class="flex items-center">
@@ -134,7 +114,6 @@
                 </div>
             </div>
 
-            </div>
         </main>
     </div>
 

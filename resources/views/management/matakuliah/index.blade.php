@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Management Data | Mata Kuliah</title>
-    <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('tsuwhite.png') }}" type="image/png">
 
     <!-- Memuat CSS dan JS dari Vite -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -25,8 +25,6 @@
     editKurikulum: '',
     editProdi: '',
     editUrl: '', 
-    isLoading: true, 
-    init() { setTimeout(() => this.isLoading = false) },
     openEditModal(kode, nama, sks, jenis, semester, kurikulum, prodi) {
         this.editKodeMatkul = kode;
         this.editNamaMatkul = nama;
@@ -48,37 +46,6 @@
 
         <!-- Konten Utama -->
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div class="flex items-center space-x-3 w-1/3">
-                        <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
-                        <div class="w-48 h-6 bg-gray-300 rounded"></div>
-                    </div>
-                    <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
-                </div>
-                
-                <!-- Filter/Add Bar Skeleton -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
-                    <div class="flex flex-col sm:flex-row justify-between gap-4">
-                        <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
-                        <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
-                    </div>
-                    
-                    <!-- Table Skeleton -->
-                    <div class="border rounded-lg overflow-hidden">
-                        <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
-                            <div class="w-10 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div x-show="!isLoading">
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
                     <div class="flex flex-col">
@@ -109,12 +76,12 @@
                         <button id="btn-genap" type="button" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm">
                             Genap
                         </button>
-                        <select id="select-semester" name="semester" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <select id="select-semester" name="semester" onchange="this.form.submit()" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                             <!-- Opsi diisi JavaScript -->
                         </select>
 
                         <!-- Filter Kurikulum (Dinamis dari Controller) -->
-                        <select name="kurikulum" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <select name="kurikulum" onchange="this.form.submit()" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                             <option value="">Semua Kurikulum</option>
                             @foreach ($kurikulums as $kurikulum)
                                 <option value="{{ $kurikulum->id_kurikulum }}" {{ request('kurikulum') == $kurikulum->id_kurikulum ? 'selected' : '' }}>
@@ -124,17 +91,14 @@
                         </select>
 
                         <!-- Filter Prodi (Berdasarkan Kode) -->
-                        <select name="prodi" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <select name="prodi" onchange="this.form.submit()" class="px-3 py-2 w-36 sm:w-40 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                             <option value="">Semua Prodi</option>
                             <option value="informatika" {{ request('prodi') == 'informatika' ? 'selected' : '' }}>Informatika (INF)</option>
                             <option value="sistem_informasi" {{ request('prodi') == 'sistem_informasi' ? 'selected' : '' }}>Sistem Informasi (SIS)</option>
                             <option value="rekayasa_komputer" {{ request('prodi') == 'rekayasa_komputer' ? 'selected' : '' }}>Rekayasa Komputer (REK)</option>
                         </select>
 
-                        <!-- Tombol Submit Filter -->
-                        <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
-                            Filter
-                        </button>
+
                     </form>
                     <!-- ===== AKHIR FORM FILTER ===== -->
 
@@ -231,8 +195,6 @@
 
             </div>
             <!-- End Card Konten Utama -->
-
-            </div>
         </main>
         <!-- ===== End Main Content ===== -->
     </div>

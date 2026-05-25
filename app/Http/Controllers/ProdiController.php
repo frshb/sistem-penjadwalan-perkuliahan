@@ -59,9 +59,14 @@ class ProdiController extends Controller
             $dosenRasio = [];
         }
 
+        $matkuls = \App\Models\MataKuliah::all();
+        $dosens = \App\Models\Dosen::all();
+
         return view('management.prodi.detail', [
             'prodi' => $prodi,
-            'info' => $generalInfo
+            'info' => $generalInfo,
+            'matkuls' => $matkuls,
+            'dosens' => $dosens
         ]);
     }
 
@@ -147,12 +152,20 @@ public function update(Request $request, $id)
         $request->validate([
             'nama_kurikulum' => 'required|string|max:50',
             'status' => 'required|in:Aktif,Tidak Aktif',
+            'kelas' => 'nullable|string|max:50',
+            'matkul' => 'nullable|array',
+            'matkul.*' => 'string|max:255',
+            'dosen_pengampu' => 'nullable|array',
+            'dosen_pengampu.*' => 'string|max:255',
         ]);
 
         Kurikulum::create([
             'id_prodi' => $prodi->id_prodi,
             'nama_kurikulum' => $request->nama_kurikulum,
             'status' => $request->status,
+            'kelas' => $request->kelas,
+            'matkul' => $request->matkul,
+            'dosen_pengampu' => $request->dosen_pengampu,
         ]);
 
         return redirect()->route('prodi.show', $id)->with('success', 'Kurikulum berhasil ditambahkan.');
@@ -166,11 +179,19 @@ public function update(Request $request, $id)
         $request->validate([
             'nama_kurikulum' => 'required|string|max:50',
             'status' => 'required|in:Aktif,Tidak Aktif',
+            'kelas' => 'nullable|string|max:50',
+            'matkul' => 'nullable|array',
+            'matkul.*' => 'string|max:255',
+            'dosen_pengampu' => 'nullable|array',
+            'dosen_pengampu.*' => 'string|max:255',
         ]);
 
         $kurikulum->update([
             'nama_kurikulum' => $request->nama_kurikulum,
             'status' => $request->status,
+            'kelas' => $request->kelas,
+            'matkul' => $request->matkul,
+            'dosen_pengampu' => $request->dosen_pengampu,
         ]);
 
         return redirect()->route('prodi.show', $id)->with('success', 'Kurikulum berhasil diperbarui.');

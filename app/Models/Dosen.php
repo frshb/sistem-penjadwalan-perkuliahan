@@ -29,4 +29,8 @@ class Dosen extends Model
     {
         return $this->hasMany(Jadwal::class, 'id_dosen', 'id_dosen');
     }
+    public function getRouteKeyName()
+{
+    return 'nidn';
+}
 }

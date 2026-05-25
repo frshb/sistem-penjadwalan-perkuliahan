@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title>Laravel</title>
-        <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
+        <link rel="icon" href="{{ asset('tsuwhite.png') }}" type="image/png">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

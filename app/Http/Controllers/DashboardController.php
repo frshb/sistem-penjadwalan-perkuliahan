@@ -30,8 +30,9 @@ class DashboardController extends Controller
             'sks_beban' => 0
         ];
 
-        // 1. Fetch Manual Events from DB
-        $manualEvents = \App\Models\Holiday::whereDate('date', '>=', now())
+        // 1. Fetch Manual Events from DB (only within the next 15 days)
+        $manualEvents = \App\Models\Holiday::whereDate('date', '>=', now()->startOfDay())
+            ->whereDate('date', '<=', now()->addDays(15)->endOfDay())
             ->get()
             ->map(function ($event) {
                 return [
@@ -55,10 +56,12 @@ class DashboardController extends Controller
             }
         });
 
-        // 3. Process API Events
+        // 3. Process API Events (only within the next 15 days)
         $processedApiEvents = collect($apiEvents)
             ->filter(function ($event) {
-                return isset($event['tanggal']) && \Carbon\Carbon::parse($event['tanggal']) >= now();
+                if (!isset($event['tanggal'])) return false;
+                $date = \Carbon\Carbon::parse($event['tanggal']);
+                return $date >= now()->startOfDay() && $date <= now()->addDays(15)->endOfDay();
             })
             ->map(function ($event) {
                 return [
