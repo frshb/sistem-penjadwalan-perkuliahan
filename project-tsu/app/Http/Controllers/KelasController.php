@@ -50,7 +50,47 @@ class KelasController extends Controller
 
         // search
         if ($searchTerm) {
-            $query->where('nama_kelas', 'like', '%' . $searchTerm . '%');
+
+            $query->where(function ($q) use ($searchTerm) {
+
+                // nama kelas
+                $q->where(
+                    'nama_kelas',
+                    'like',
+                    '%' . $searchTerm . '%'
+                )
+
+                // kode matkul
+                ->orWhere(
+                    'kode_matkul',
+                    'like',
+                    '%' . $searchTerm . '%'
+                )
+
+                // nama matkul
+                ->orWhereHas('matakuliah', function ($matkul) use ($searchTerm) {
+
+                    $matkul->where(
+                        'nama_matkul',
+                        'like',
+                        '%' . $searchTerm . '%'
+                    );
+
+                })
+
+                // nama dosen
+                ->orWhereHas('dosen', function ($dosen) use ($searchTerm) {
+
+                    $dosen->where(
+                        'nama_dosen',
+                        'like',
+                        '%' . $searchTerm . '%'
+                    );
+
+                });
+
+            });
+
         }
 
         $kelas = $query
@@ -275,11 +315,16 @@ class KelasController extends Controller
 
         foreach ($mataKuliahs as $matkul) {
 
+            $sisaMahasiswa = $jumlahMahasiswa;
+
             for ($i = 0; $i < $jumlahKelas; $i++) {
 
                 $huruf = chr(65 + $i);
 
                 $namaKelas = $prefix . '-' . $semester . $huruf;
+
+                // maksimal 20 per kelas
+                $kapasitasKelas = min(20, $sisaMahasiswa);
 
                 Kelas::create([
                     'nama_kelas' => $namaKelas,
@@ -287,9 +332,12 @@ class KelasController extends Controller
                     'kode_matkul' => $matkul->kode_matkul,
                     'id_prodi' => $idProdi,
                     'id_tahunakademik' => $idTahun,
-                    'kapasitas' => 20,
+                    'kapasitas' => $kapasitasKelas,
                     'id_dosen' => null,
                 ]);
+
+                // kurangi sisa mahasiswa
+                $sisaMahasiswa -= $kapasitasKelas;
             }
         }
 

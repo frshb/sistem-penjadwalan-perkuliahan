@@ -70,4 +70,13 @@ class Kelas extends Model
             'id_dosen'
         );
     }
+
+    public function jadwals()
+    {
+        return $this->hasMany(
+            Jadwal::class,
+            'id_kelas',
+            'id_kelas'
+        );
+    }
 }

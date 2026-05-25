@@ -7,7 +7,6 @@ use App\Models\MataKuliah;
 use App\Models\Prodi;
 use App\Models\Kurikulum; // Import Kurikulum
 use App\Models\Ruangan;
-use Illuminate\Validation\Rule;
 use PDF; // Untuk export PDF
 use Maatwebsite\Excel\Facades\Excel; // Untuk export Excel
 use App\Exports\MataKuliahExport; // Untuk export Excel
@@ -25,6 +24,7 @@ class MataKuliahController extends Controller
 
         $user = Auth::user();
         $userProdiName = null;
+        $searchTerm = $request->input('search');
 
         if ($user && $user->isKaprodi()) {
             if ($user->id_prodi) {
@@ -49,7 +49,37 @@ class MataKuliahController extends Controller
             $query->where('id_prodi', $request->prodi);
         }
 
-// Ambil semua kurikulum untuk dropdown
+        // SEARCH
+        if ($searchTerm) {
+
+            $query->where(function ($q) use ($searchTerm) {
+
+                // nama matkul
+                $q->where(
+                    'nama_matkul',
+                    'like',
+                    '%' . $searchTerm . '%'
+                )
+
+                // kode matkul
+                ->orWhere(
+                    'kode_matkul',
+                    'like',
+                    '%' . $searchTerm . '%'
+                )
+
+                // jenis matkul
+                ->orWhere(
+                    'jenis',
+                    'like',
+                    '%' . $searchTerm . '%'
+                );
+
+            });
+
+        }
+
+        // Ambil semua kurikulum untuk dropdown
         $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA
 
         // Paginate hasil query, dan tambahkan filter ke link pagination
@@ -64,7 +94,8 @@ class MataKuliahController extends Controller
             'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
             'prodis' => $prodis,
             'ruangans' => $ruangans,
-            'userProdiName' => $userProdiName
+            'userProdiName' => $userProdiName,
+            'searchTerm' => $searchTerm
         ]);
     }
     /**
@@ -75,13 +106,7 @@ class MataKuliahController extends Controller
         // Validasi data (termasuk id_kurikulum)
         $request->validate([
             'nama_matkul' => 'required|string|max:100',
-            'kode_matkul' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('mata_kuliah', 'kode_matkul')
-
-            ],
+            'kode_matkul' => 'required|string|max:20',
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string|in:Teori,Praktikum',
             'semester' => 'required|integer|min:1|max:8',
@@ -119,12 +144,7 @@ class MataKuliahController extends Controller
         $request->validate([
             'nama_matkul' => 'required|string|max:100',
             // Kode matkul bisa diubah, tapi harus unique kecuali punya sendiri
-            'kode_matkul' => [
-                'required',
-                'string',
-                'max:10', // Sesuai migration: string(10)
-                Rule::unique('mata_kuliah', 'kode_matkul')->ignore($matkul->kode_matkul, 'kode_matkul')
-            ],
+            'kode_matkul' => 'required|string|max:20',
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string', // strtolower nanti
             'semester' => 'required|integer|min:1|max:8',
@@ -160,12 +180,15 @@ class MataKuliahController extends Controller
     /**
      * Menghapus mata kuliah dari database.
      */
-    public function destroy($id)
+    public function destroy($kode_matkul)
     {
-        $matkul = MataKuliah::findOrFail($id);
+        $matkul = MataKuliah::where('kode_matkul', $kode_matkul)->firstOrFail();
+
         $matkul->delete();
 
-        return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil dihapus.');
+        return redirect()
+            ->route('matakuliah.index')
+            ->with('success', 'Mata kuliah berhasil dihapus.');
     }
 
     /**

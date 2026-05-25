@@ -9,6 +9,8 @@ use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\KelasController;
 use App\Http\Controllers\KpSkripsiController;
+use App\Http\Controllers\JadwalExportController;
+use App\Http\Controllers\JadwalOtomatisController;
 
 
 use App\Http\Controllers\DashboardController;
@@ -134,21 +136,37 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/management/kelas/bulk-delete', [KelasController::class, 'bulkDelete'])
         ->name('kelas.bulk-delete');
 
-    Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
-    Route::get('/penjadwalan/manual', [\App\Http\Controllers\ManualJadwalDummyController::class, 'index'])->name('jadwal.manual');
+    // MODUL PENJADWALAN
+    Route::get('/modul-penjadwalan',[JadwalController::class, 'index'])->name('jadwal.index');
+
+    // PILIH TAHUN AKADEMIK PENJADWALAN
+    Route::get('/penjadwalan/pilih-tahun',[JadwalController::class, 'pilihTahun'])->name('jadwal.pilih-tahun');
+
+    // WORKSPACE PENJADWALAN MANUAL
+    Route::get('/penjadwalan/manual',[JadwalController::class, 'manual'])->name('jadwal.manual');
+
+    Route::post('/jadwal/simpan-slot', [JadwalController::class, 'simpanSlot'])->name('jadwal.simpan-slot');
+    Route::delete('/jadwal/hapus-slot/{id}', [JadwalController::class, 'hapusSlot'])->name('jadwal.hapus-slot');
+
     Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
 
+    Route::middleware(['auth'])->group(function () {
+
+    Route::get('/jadwal/{tahunAkademikId}/export/excel', [JadwalExportController::class, 'exportExcel'])
+         ->name('jadwal.export.excel');
+    Route::get('/jadwal/{tahunAkademikId}/export/pdf',   [JadwalExportController::class, 'exportPdf'])
+         ->name('jadwal.export.pdf');
+    });
+
     // Automatic Scheduling Wizard Routes
-    Route::get('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'step1'])->name('jadwal.otomatis.step1');
-    Route::post('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep1'])->name('jadwal.otomatis.step1.store');
-    Route::get('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'step2'])->name('jadwal.otomatis.step2');
-    Route::post('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep2'])->name('jadwal.otomatis.step2.store');
-    Route::get('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'step3'])->name('jadwal.otomatis.step3');
-Route::post('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep3'])->name('jadwal.otomatis.step3.store');
-Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatisController::class, 'step4'])->name('jadwal.otomatis.step4');
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/jadwal-otomatis',         [JadwalOtomatisController::class, 'index'])->name('jadwal.otomatis.index');
+        Route::post('/jadwal-otomatis/proses', [JadwalOtomatisController::class, 'proses'])->name('jadwal.otomatis.proses');
+        Route::post('/jadwal-otomatis/simpan', [JadwalOtomatisController::class, 'simpan'])->name('jadwal.otomatis.simpan');
+    });
 
-
-
+    Route::get('/jadwal-otomatis/stream', [JadwalOtomatisController::class, 'stream'])
+     ->name('jadwal.otomatis.stream');
 
 });
 

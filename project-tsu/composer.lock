@@ -8,26 +8,26 @@
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
-            "version": "v3.1.1",
+            "version": "v3.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/barryvdh/laravel-dompdf.git",
-                "reference": "8e71b99fc53bb8eb77f316c3c452dd74ab7cb25d"
+                "reference": "ee3b72b19ccdf57d0243116ecb2b90261344dedc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/barryvdh/laravel-dompdf/zipball/8e71b99fc53bb8eb77f316c3c452dd74ab7cb25d",
-                "reference": "8e71b99fc53bb8eb77f316c3c452dd74ab7cb25d",
+                "url": "https://api.github.com/repos/barryvdh/laravel-dompdf/zipball/ee3b72b19ccdf57d0243116ecb2b90261344dedc",
+                "reference": "ee3b72b19ccdf57d0243116ecb2b90261344dedc",
                 "shasum": ""
             },
             "require": {
                 "dompdf/dompdf": "^3.0",
-                "illuminate/support": "^9|^10|^11|^12",
+                "illuminate/support": "^9|^10|^11|^12|^13.0",
                 "php": "^8.1"
             },
             "require-dev": {
                 "larastan/larastan": "^2.7|^3.0",
-                "orchestra/testbench": "^7|^8|^9|^10",
+                "orchestra/testbench": "^7|^8|^9.16|^10|^11.0",
                 "phpro/grumphp": "^2.5",
                 "squizlabs/php_codesniffer": "^3.5"
             },
@@ -69,7 +69,7 @@
             ],
             "support": {
                 "issues": "https://github.com/barryvdh/laravel-dompdf/issues",
-                "source": "https://github.com/barryvdh/laravel-dompdf/tree/v3.1.1"
+                "source": "https://github.com/barryvdh/laravel-dompdf/tree/v3.1.2"
             },
             "funding": [
                 {
@@ -81,7 +81,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-02-13T15:07:54+00:00"
+            "time": "2026-02-21T08:51:10+00:00"
         },
         {
             "name": "brick/math",
@@ -2463,29 +2463,29 @@
         },
         {
             "name": "maatwebsite/excel",
-            "version": "3.1.67",
+            "version": "3.1.68",
             "source": {
                 "type": "git",
                 "url": "https://github.com/SpartnerNL/Laravel-Excel.git",
-                "reference": "e508e34a502a3acc3329b464dad257378a7edb4d"
+                "reference": "1854739267d81d38eae7d8c623caf523f30f256b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/SpartnerNL/Laravel-Excel/zipball/e508e34a502a3acc3329b464dad257378a7edb4d",
-                "reference": "e508e34a502a3acc3329b464dad257378a7edb4d",
+                "url": "https://api.github.com/repos/SpartnerNL/Laravel-Excel/zipball/1854739267d81d38eae7d8c623caf523f30f256b",
+                "reference": "1854739267d81d38eae7d8c623caf523f30f256b",
                 "shasum": ""
             },
             "require": {
                 "composer/semver": "^3.3",
                 "ext-json": "*",
-                "illuminate/support": "5.8.*||^6.0||^7.0||^8.0||^9.0||^10.0||^11.0||^12.0",
+                "illuminate/support": "5.8.*||^6.0||^7.0||^8.0||^9.0||^10.0||^11.0||^12.0||^13.0",
                 "php": "^7.0||^8.0",
                 "phpoffice/phpspreadsheet": "^1.30.0",
                 "psr/simple-cache": "^1.0||^2.0||^3.0"
             },
             "require-dev": {
-                "laravel/scout": "^7.0||^8.0||^9.0||^10.0",
-                "orchestra/testbench": "^6.0||^7.0||^8.0||^9.0||^10.0",
+                "laravel/scout": "^7.0||^8.0||^9.0||^10.0||^11.0",
+                "orchestra/testbench": "^6.0||^7.0||^8.0||^9.0||^10.0||^11.0",
                 "predis/predis": "^1.1"
             },
             "type": "library",
@@ -2528,7 +2528,7 @@
             ],
             "support": {
                 "issues": "https://github.com/SpartnerNL/Laravel-Excel/issues",
-                "source": "https://github.com/SpartnerNL/Laravel-Excel/tree/3.1.67"
+                "source": "https://github.com/SpartnerNL/Laravel-Excel/tree/3.1.68"
             },
             "funding": [
                 {
@@ -2540,7 +2540,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-08-26T09:13:16+00:00"
+            "time": "2026-03-17T20:51:10+00:00"
         },
         {
             "name": "maennchen/zipstream-php",

@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Models;
-
+use App\Models\PengampuMatkul;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -42,5 +42,14 @@ class Dosen extends Model
             PengampuMatkul::class,
             'id_dosen'
         );
+    }
+
+    protected static function booted()
+    {
+        static::deleting(function ($dosen) {
+
+            $dosen->mataKuliahs()->detach();
+
+        });
     }
 }

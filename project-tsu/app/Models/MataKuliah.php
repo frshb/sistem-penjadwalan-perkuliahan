@@ -12,9 +12,9 @@ class MataKuliah extends Model
     use HasFactory;
 
     protected $table = 'mata_kuliah';
-    protected $primaryKey = 'kode_matkul';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $primaryKey = 'id';
+    public $incrementing = true;
+    protected $keyType = 'int';
     public $timestamps = false;
 
     /**
@@ -71,5 +71,12 @@ class MataKuliah extends Model
             'kode_matkul',
             'kode_matkul'
         );
+    }
+
+        protected static function booted()
+    {
+        static::deleting(function ($matkul) {
+            $matkul->ruangans()->detach();
+        });
     }
 }

@@ -19,11 +19,21 @@ class DosenController extends Controller
     /**
      * Menampilkan halaman daftar dosen.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $userProdiName = null;
+        $searchTerm = $request->search;
         $query = Dosen::with(['prodi', 'mataKuliahs']);
+        if ($request->filled('search')) {
+
+            $query->where(
+                'nama_dosen',
+                'like',
+                '%' . $request->search . '%'
+            );
+
+        }
 
         if ($user && $user->isKaprodi()) {
             if ($user->id_prodi) {
@@ -35,12 +45,15 @@ class DosenController extends Controller
             }
         }
 
-        $dosens = $query->paginate(10)->onEachSide(1);
+        $dosens = $query
+            ->paginate(10)
+            ->appends($request->query())
+            ->onEachSide(1);
         $prodis = Prodi::all();
         $kurikulums = Kurikulum::all();
         $mataKuliahs = MataKuliah::orderBy('semester')->get();
 
-        return view('management.dosen.index', compact('dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs'));
+        return view('management.dosen.index', compact('dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs', 'searchTerm'));
     }
 
     /**
@@ -150,16 +163,14 @@ class DosenController extends Controller
     /**
      * Menghapus data dosen.
      */
-    public function destroy(Dosen $dosen)
+    public function destroy(Request $request, Dosen $dosen)
     {
-        PengampuMatkul::where(
-            'id_dosen',
-            $dosen->id_dosen
-        )->delete();
         $dosen->delete();
 
         return redirect()
-            ->route('dosen.index', ['page' => $request->page])
+            ->route('dosen.index', [
+                'page' => $request->page
+            ])
             ->with('success', 'Data dosen berhasil dihapus.');
     }
 

@@ -15,18 +15,18 @@
         }
     </style>
 </head>
-<body x-data="{ 
-    sidebarOpen: true, 
-    showAddModal: false, 
-    showEditModal: false, 
-    activeTab: 'all', 
-    editData: { id_ruang: null, nama_ruang: '', id_gedung: '', kapasitas: '', fasilitas: '' }, 
-    isLoading: true, 
+<body x-data="{
+    sidebarOpen: true,
+    showAddModal: false,
+    showEditModal: false,
+    activeTab: 'all',
+    editData: { id_ruang: null, nama_ruang: '', id_gedung: '', kapasitas: '', fasilitas: '' },
+    isLoading: true,
     init() { setTimeout(() => this.isLoading = false, 2000) },
     openEdit(ruangan) {
         this.editData = ruangan;
         this.showEditModal = true;
-    } 
+    }
 }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
         @include('components.sidebar')
 
@@ -41,14 +41,14 @@
                     </div>
                     <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
                 </div>
-                
+
                 <!-- Filter/Add Bar Skeleton -->
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
                     <div class="flex flex-col sm:flex-row justify-between gap-4">
                         <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
                         <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
                     </div>
-                    
+
                     <!-- Table Skeleton -->
                     <div class="border rounded-lg overflow-hidden">
                         <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
@@ -145,12 +145,12 @@
                                     </td>
                                     <td class="text-left py-2 px-3 text-sm">
                                         <div class="flex space-x-2">
-                                            <button @click='openEdit(@json($ruangan))' 
+                                            <button @click='openEdit(@json($ruangan))'
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                 Edit
                                             </button>
-                                            <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')" 
+                                            <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')"
                                                     class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                 Hapus
@@ -174,14 +174,14 @@
         @else
 
             <div class="flex space-x-2 mb-6 border-b border-gray-300 overflow-x-auto">
-                <button 
+                <button
                     @click="activeTab = 'all'"
                     class="building-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
                     :class="activeTab === 'all' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-gray-600 hover:text-teal-700'">
                     Semua Gedung
                 </button>
                 @foreach ($ruangansByGedung as $namaGedung => $ruangansInGedung)
-                    <button 
+                    <button
                         @click="activeTab = '{{ Str::slug($namaGedung) }}'"
                         class="building-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
                         :class="activeTab === '{{ Str::slug($namaGedung) }}' ? 'border-teal-600 text-teal-700 font-bold' : 'border-transparent text-gray-600 hover:text-teal-700'">
@@ -191,8 +191,8 @@
             </div>
 
             @forelse ($ruangansByGedung as $namaGedung => $ruangansInGedung)
-                <div class="building-content mb-8" 
-                     id="gedung-{{ Str::slug($namaGedung) }}" 
+                <div class="building-content mb-8"
+                     id="gedung-{{ Str::slug($namaGedung) }}"
                      x-show="activeTab === 'all' || activeTab === '{{ Str::slug($namaGedung) }}'"
                      x-transition:enter="transition ease-out duration-300"
                      x-transition:enter-start="opacity-0 translate-y-2"
@@ -215,7 +215,6 @@
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Lokasi</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Fasilitas</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
-                                            <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Status</th>
                                             <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
                                         </tr>
                                     </thead>
@@ -229,20 +228,12 @@
                                             <td class="text-left py-2 px-3 text-sm">{{ $ruangan->fasilitas }}</td>
                                             <td class="text-left py-2 px-3 text-sm">{{ $ruangan->kapasitas }}</td>
                                             <td class="text-left py-2 px-3 text-sm">
-                                                @php $isAvailable = rand(0, 1); @endphp
-                                                @if($isAvailable)
-                                                    <span class="px-2 py-1 text-xs font-semibold leading-tight text-green-700 bg-green-100 rounded-full">Tersedia</span>
-                                                @else
-                                                    <span class="px-2 py-1 text-xs font-semibold leading-tight text-red-700 bg-red-100 rounded-full">Tidak Tersedia</span>
-                                                @endif
-                                            </td>
-                                            <td class="text-left py-2 px-3 text-sm">
                                                 <div class="flex space-x-2">
                                                     <button @click='openEdit(@json($ruangan))' class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                         Edit
                                                     </button>
-                                                    <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')" 
+                                                    <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')"
                                                             class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                         Hapus
@@ -292,7 +283,7 @@
                         <h2 class="text-xl font-bold text-teal-800">Tambah Ruangan Baru</h2>
                         <button @click="showAddModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     </div>
-                    
+
                     <form action="{{ route('ruangan.store') }}" method="POST" class="mt-4 space-y-4">
                         @csrf
                         <div>
@@ -341,7 +332,7 @@
                         <h2 class="text-xl font-bold text-teal-800">Edit Ruangan</h2>
                         <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     </div>
-                    
+
                     <form :action="`/management/ruangan/${editData.id_ruang}`" method="POST" class="mt-4 space-y-4">
                         @csrf
                         @method('PUT')

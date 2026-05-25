@@ -3,216 +3,261 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Kelas;
+use App\Models\TahunAkademik;
+use App\Models\Slot_waktu;
+use App\Services\GeneticAlgorithm\GeneticScheduler;
 
 class JadwalOtomatisController extends Controller
 {
-    public function step1()
+    // ── Tampilkan form parameter GA ──────────────────────────
+    public function index()
     {
-        // Dummy Data for Step 1
-        // Context: "Informatika, Sistem Informasi, Rekayasa Komputer"
-        $prodis = [
-            (object)['id' => 1, 'nama' => 'S1 Informatika'],
-            (object)['id' => 2, 'nama' => 'S1 Sistem Informasi'],
-            (object)['id' => 3, 'nama' => 'S1 Rekayasa Komputer'],
-        ];
+        $tahunAkademikList = TahunAkademik::orderByDesc('id_tahunakademik')->get();
 
-        // Kurikulum Dummy
-        $kurikulums = [
-            '2020' => [
-                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
-            ],
-            '2023' => [
-                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
-            ],
-            '2025' => [
-                'semesters' => [1, 2, 3, 4, 5, 6, 7, 8]
-            ]
-        ];
+        return view('jadwal-otomatis.index', compact('tahunAkademikList'));
+    }
 
-        return view('penjadwalan.otomatis.step1', [
-            'prodis' => $prodis,
-            'kurikulums' => $kurikulums
+    // ── Jalankan GA ──────────────────────────────────────────
+    public function proses(Request $request)
+    {
+        $request->validate([
+            'tahun_akademik_id' => 'required|exists:tahun_akademik,id_tahunakademik',
+            'populasi'          => 'required|integer|min:10|max:500',
+            'generasi'          => 'required|integer|min:10|max:1000',
+        ]);
+
+        $tahunAkademikId = $request->tahun_akademik_id;
+
+        // Ambil semua kelas untuk tahun akademik ini beserta relasi yang dibutuhkan
+        $kelas = Kelas::with([
+                'matakuliah.ruangans',
+                'dosen',
+                'prodi',
+            ])
+            ->where('id_tahunakademik', $tahunAkademikId)
+            ->get();
+
+        if ($kelas->isEmpty()) {
+            return back()->withErrors(['kelas' => 'Tidak ada data kelas untuk tahun akademik ini.']);
+        }
+
+        // Ambil semua slot waktu
+        $slots = Slot_waktu::orderBy('id_slot')
+            ->get()
+            ->map(fn($s) => [
+                'id'           => $s->id_slot,
+                'waktu_mulai'  => $s->waktu_mulai,
+                'waktu_selesai'=> $s->waktu_selesai,
+            ])
+            ->all();
+
+        $hariList = [1, 2, 3, 4, 5];
+
+        // Jalankan GA
+        $scheduler = new GeneticScheduler(
+            populasiSize: (int) $request->populasi,
+            maxGenerasi:  (int) $request->generasi,
+            crossoverRate: 0.8,
+            mutationRate:  0.1,
+        );
+
+        set_time_limit(300); // 5 menit max
+        $hasil = $scheduler->run($kelas, $slots, $hariList);
+
+        // Susun data untuk ditampilkan
+        $hariNama   = [1=>'Senin',2=>'Selasa',3=>'Rabu',4=>'Kamis',5=>'Jumat'];
+        $slotMap    = collect($slots)->keyBy('id');
+        $kelasMap   = $kelas->keyBy('id_kelas');
+
+        $jadwalRows = [];
+        foreach ($hasil['genes'] as $gene) {
+            $k          = $kelasMap[$gene->kelasId] ?? null;
+            if (!$k) continue;
+
+            $slotMulai   = $slotMap[$gene->slotMulai]   ?? null;
+            // Slot terakhir = slotMulai + durasi - 1
+            $idSlotAkhir = $gene->slotMulai + $gene->durasi - 1;
+            $slotAkhir   = $slotMap[$idSlotAkhir] ?? null;
+            $ruangan     = $k->matakuliah->ruangans->firstWhere('id_ruang', $gene->ruangId);
+
+           $jadwalRows[] = [
+                'kelas_id'    => $gene->kelasId,
+                'nama_kelas'  => $k->nama_kelas,
+                'kode_mk'     => $k->matakuliah->kode_matkul ?? '-',
+                'nama_mk'     => $k->matakuliah->nama_matkul ?? '-',
+                'jenis'       => $k->matakuliah->jenis       ?? 'Teori',
+                'sks'         => $gene->durasi,
+                'dosen'       => $k->dosen->nama_dosen       ?? '-',
+                'prodi'       => $k->prodi->nama_prodi       ?? '-',
+                'semester'    => $k->semester,
+                'hari'        => $hariNama[$gene->hariId]    ?? '-',
+                'hari_id'     => $gene->hariId,
+                'slot_id'     => $gene->slotMulai,
+                'jam_mulai'   => $slotMulai  ? \Carbon\Carbon::parse($slotMulai['waktu_mulai'])->format('H:i')   : '-',
+                'jam_selesai' => $slotAkhir  ? \Carbon\Carbon::parse($slotAkhir['waktu_selesai'])->format('H:i') : '-',
+                'ruangan'     => $ruangan?->nama_ruang ?? '-',
+                'ruangan_id'  => $gene->ruangId,
+                'dosen_id'    => $gene->dosenId,
+            ];
+        }
+
+        // Urutkan: hari → jam mulai
+        usort($jadwalRows, fn($a, $b) =>
+            $a['hari_id'] !== $b['hari_id']
+                ? $a['hari_id'] <=> $b['hari_id']
+                : strcmp($a['jam_mulai'], $b['jam_mulai'])
+        );
+
+        $tahunAkademik = TahunAkademik::find($tahunAkademikId);
+
+        return view('jadwal-otomatis.hasil', [
+            'jadwalRows'    => $jadwalRows,
+            'fitness'       => $hasil['fitness_pct'],
+            'generasi'      => $hasil['generasi'],
+            'totalKelas'    => $hasil['total_kelas'],
+            'populasi'      => $request->populasi,
+            'tahunAkademik' => $tahunAkademik,
+            'jadwalJson'    => json_encode($jadwalRows),
         ]);
     }
 
-    public function storeStep1(Request $request)
+    // ── Simpan hasil GA ke database (lanjut ke workspace) ────
+    public function simpan(Request $request)
     {
-        // Validation (Make sure at least one semester is selected if needed, or just nullable)
-        // For now just storing to session
-        session(['wizard_step1' => $request->all()]);
+        $request->validate([
+            'jadwal_json'       => 'required|string',
+            'tahun_akademik_id' => 'required',
+        ]);
 
-        return redirect()->route('jadwal.otomatis.step2');
-    }
+        $jadwals         = json_decode($request->jadwal_json, true);
+        $tahunAkademikId = $request->tahun_akademik_id;
 
-    public function step2()
-    {
-        // Dummy Data for Rooms
-        $gedungs = [
-            'Gedung B' => [
-                'Lt 1' => ['Lab 5', 'Lab 6'],
-                'Lt 2' => ['Lab 1', 'Lab 2', 'Lab 3', 'Lab 4'],
-            ],
-            'Gedung C' => [
-                'Lt 2' => ['C 2.1', 'C 2.2', 'C 2.3'],
-                'Lt 3' => ['C 3.1', 'C 3.2', 'C 3.3', 'C 3.4'],
-                'Lt 4' => ['C 4.1', 'Lab 7', 'Lab 8'],
-            ]
-        ];
+        // Hapus jadwal lama untuk tahun akademik ini dulu
+        \App\Models\Jadwal::where('id_tahunakademik', $tahunAkademikId)->delete();
 
-        return view('penjadwalan.otomatis.step2', compact('gedungs'));
-    }
-
-    public function storeStep2(Request $request)
-    {
-        session(['wizard_step2' => $request->all()]);
-        return redirect()->route('jadwal.otomatis.step3');
-    }
-
-    public function step3()
-    {
-        // Get Step 1 data
-        $step1 = session('wizard_step1');
-
-        if (!$step1) {
-            return redirect()->route('jadwal.otomatis.step1');
+        foreach ($jadwals as $row) {
+            \App\Models\Jadwal::create([
+                'id_kelas'         => $row['kelas_id'],
+                'kode_matkul'      => $row['kode_mk'],
+                'id_dosen'         => $row['dosen_id'] ?: null,
+                'id_hari'          => $row['hari_id'],
+                'id_slot_mulai'    => $row['slot_id'],
+                'id_ruang'         => $row['ruangan_id'] ?: null,
+                'durasi_sks'       => $row['sks'],
+                'id_tahunakademik' => $tahunAkademikId,
+                'is_manual'        => 0,
+            ]);
         }
 
-        $getSubjects = function ($master, $selectedSemesters) {
-            $filtered = [];
-            if(isset($selectedSemesters['kurikulum'])) {
-                foreach ($selectedSemesters['kurikulum'] as $year => $semesters) {
-                    foreach ($master as $sub) {
-                        if ($sub['kurikulum'] == $year && in_array($sub['semester'], $semesters)) {
-                            $filtered[] = (object) $sub;
-                        }
-                    }
+        // Redirect ke workspace manual agar bisa diedit
+        return redirect()
+            ->route('jadwal.manual', ['tahun' => $tahunAkademikId])
+            ->with('success', 'Jadwal hasil GA berhasil disimpan! Silakan review di workspace.');
+    }
+
+        public function stream(Request $request)
+    {
+        $request->validate([
+            'tahun_akademik_id' => 'required|exists:tahun_akademik,id_tahunakademik',
+            'populasi'          => 'required|integer|min:10|max:500',
+            'generasi'          => 'required|integer|min:10|max:1000',
+        ]);
+
+        $tahunAkademikId = $request->tahun_akademik_id;
+
+        $kelas = Kelas::with(['matakuliah.ruangans', 'dosen', 'prodi'])
+            ->where('id_tahunakademik', $tahunAkademikId)
+            ->get();
+
+        $slots = Slot_waktu::orderBy('id_slot')->get()
+            ->map(fn($s) => [
+                'id'            => $s->id_slot,
+                'waktu_mulai'   => $s->waktu_mulai,
+                'waktu_selesai' => $s->waktu_selesai,
+            ])->all();
+
+        $scheduler = new GeneticScheduler(
+            populasiSize:  (int) $request->populasi,
+            maxGenerasi:   (int) $request->generasi,
+            crossoverRate: 0.8,
+            mutationRate:  0.15,
+        );
+
+        return response()->stream(function () use ($scheduler, $kelas, $slots, $tahunAkademikId) {
+            set_time_limit(300);
+
+            // Fungsi kirim SSE event
+            $send = function (array $data) {
+                echo "data: " . json_encode($data) . "\n\n";
+                ob_flush();
+                flush();
+            };
+
+            $hasil = $scheduler->run(
+                $kelas,
+                $slots,
+                [1, 2, 3, 4, 5],
+                function ($progress) use ($send) {
+                    $send($progress);
                 }
+            );
+
+            // Susun jadwal rows
+            $hariNama  = [1=>'Senin',2=>'Selasa',3=>'Rabu',4=>'Kamis',5=>'Jumat'];
+            $slotMap   = collect($slots)->keyBy('id');
+            $kelasMap  = $kelas->keyBy('id_kelas');
+
+            $jadwalRows = [];
+            foreach ($hasil['genes'] as $gene) {
+                $k = $kelasMap[$gene->kelasId] ?? null;
+                if (!$k) continue;
+                $slotMulai   = $slotMap[$gene->slotMulai] ?? null;
+                $idSlotAkhir = $gene->slotMulai + $gene->durasi - 1;
+                $slotAkhir   = $slotMap[$idSlotAkhir] ?? null;
+                $ruangan     = $k->matakuliah->ruangans->firstWhere('id_ruang', $gene->ruangId);
+
+                $jadwalRows[] = [
+                    'kelas_id'    => $gene->kelasId,
+                    'nama_kelas'  => $k->nama_kelas,
+                    'kode_mk'     => $k->matakuliah->kode_matkul ?? '-',
+                    'nama_mk'     => $k->matakuliah->nama_matkul ?? '-',
+                    'jenis'       => $k->matakuliah->jenis       ?? 'Teori',
+                    'sks'         => $gene->durasi,
+                    'dosen'       => $k->dosen->nama_dosen       ?? '-',
+                    'prodi'       => $k->prodi->nama_prodi       ?? '-',
+                    'semester'    => $k->semester,
+                    'hari'        => $hariNama[$gene->hariId]    ?? '-',
+                    'hari_id'     => $gene->hariId,
+                    'slot_id'     => $gene->slotMulai,
+                    'jam_mulai'   => $slotMulai ? \Carbon\Carbon::parse($slotMulai['waktu_mulai'])->format('H:i')   : '-',
+                    'jam_selesai' => $slotAkhir ? \Carbon\Carbon::parse($slotAkhir['waktu_selesai'])->format('H:i') : '-',
+                    'ruangan'     => $ruangan?->nama_ruang ?? '-',
+                    'ruangan_id'  => $gene->ruangId,
+                    'dosen_id'    => $gene->dosenId,
+                ];
             }
-            return $filtered;
-        };
 
-        $masterSubjects = $this->getMasterSubjects();
+            usort($jadwalRows, fn($a, $b) =>
+                $a['hari_id'] !== $b['hari_id']
+                    ? $a['hari_id'] <=> $b['hari_id']
+                    : strcmp($a['jam_mulai'], $b['jam_mulai'])
+            );
 
-        $subjectsByProdi = [];
-        // Map ID from step 1 checkbox/input to Name key in masterSubjects
-        // Assuming step 1 input might just be implicit, but looking at step1 blade it sends 'kurikulum' array.
-        // It doesn't seem to send 'prodi'. But the previous code assumed prodi input.
-        // Let's assume for this specific user request context we show all relevant prodis or defaults.
-        // The previous step3 code had explicit keys. let's stick to that.
+            // Kirim event selesai dengan hasil lengkap
+            $send([
+                'done'        => true,
+                'fitness'     => $hasil['fitness_pct'],
+                'generasi'    => $hasil['generasi'],
+                'total_kelas' => $hasil['total_kelas'],
+                'jadwal_rows' => $jadwalRows,
+            ]);
 
-        $subjectsByProdi = [
-            'Informatika' => $getSubjects($masterSubjects['Informatika'], $step1),
-            'Sistem Informasi' => $getSubjects($masterSubjects['Sistem Informasi'], $step1),
-            'Rekayasa Komputer' => $getSubjects($masterSubjects['Rekayasa Komputer'], $step1),
-        ];
-
-        $dosens = \App\Models\Dosen::all();
-
-        return view('penjadwalan.otomatis.step3', compact('subjectsByProdi', 'dosens'));
+        }, 200, [
+            'Content-Type'      => 'text/event-stream',
+            'Cache-Control'     => 'no-cache',
+            'X-Accel-Buffering' => 'no', // penting untuk Nginx
+        ]);
     }
 
-    public function storeStep3(Request $request)
-    {
-        // $request->data structure: [ProdiName => [SubjectCode => ['classes' => [], 'lecturer' => id]]]
-        session(['wizard_step3' => $request->data]);
-        return redirect()->route('jadwal.otomatis.step4');
-    }
-
-    public function step4()
-    {
-        $step1 = session('wizard_step1');
-        $step2 = session('wizard_step2');
-        $step3 = session('wizard_step3');
-
-        if (!$step1 || !$step3) { // Step 2 might be optional in logic effectively but let's assume flow
-             return redirect()->route('jadwal.otomatis.step1');
-        }
-
-        // Prepare Master Data for lookup
-        $masterSubjects = $this->getMasterSubjects();
-        $dosens = \App\Models\Dosen::all()->keyBy('id');
-
-        // Flatten available rooms from step2 structure: Gedung -> Lt -> [Rooms]
-        $availableRooms = [];
-        if (isset($step2['rooms'])) {
-             // If step2 stores flat array
-             $availableRooms = $step2['rooms'];
-        } else {
-             // Fallback dummy
-             $availableRooms = ['Lab 1', 'Lab 2', 'Lab 5', 'C 3.3'];
-        }
-
-        $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-        $times = ['08.00 - 09.40', '10.00 - 11.40', '13.10-14.50', '15.30 - 17.10'];
-        $types = ['Teori', 'Praktikum'];
-
-        $schedule = [];
-        $no = 1;
-
-        foreach ($step3 as $prodi => $subjects) {
-            $prodiSubjects = collect($masterSubjects[$prodi] ?? [])->keyBy('code');
-
-            foreach ($subjects as $code => $data) {
-                $subjectInfo = $prodiSubjects[$code] ?? null;
-                $lecturerId = $data['lecturer'] ?? null;
-                $lecturerName = $dosens[$lecturerId]->name ?? 'Belum dipilih';
-                $classes = $data['classes'] ?? [];
-
-                // Filter out empty class names
-                if(is_array($classes)) {
-                    $classes = array_filter($classes, fn($c) => !empty($c));
-
-                    foreach ($classes as $className) {
-                        $schedule[] = [
-                            'no' => $no++,
-                            'prodi' => $prodi,
-                            'subject_name' => $subjectInfo ? $subjectInfo['name'] : $code,
-                            'subject_code' => $code,
-                            'semester' => $subjectInfo ? $subjectInfo['semester'] : '-',
-                            'lecturer' => $lecturerName,
-                            'class_code' => $className,
-                            'day' => $days[array_rand($days)],
-                            'time' => $times[array_rand($times)],
-                            'room' => !empty($availableRooms) ? $availableRooms[array_rand($availableRooms)] : 'Lab 1',
-                            'type' => $types[array_rand($types)],
-                        ];
-                    }
-                }
-            }
-        }
-
-        return view('penjadwalan.otomatis.step4', compact('schedule'));
-    }
-
-    private function getMasterSubjects()
-    {
-        return [
-            'Informatika' => [
-                ['code' => 'IF101', 'name' => 'Pemrograman Dasar', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'IF102', 'name' => 'Matematika Diskrit', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'IF201', 'name' => 'Algoritma & Struktur Data', 'semester' => 2, 'kurikulum' => '2020'],
-                ['code' => 'IF301', 'name' => 'Pemrograman Berorientasi Objek', 'semester' => 3, 'kurikulum' => '2020'],
-                ['code' => 'IF401', 'name' => 'Kecerdasan Buatan', 'semester' => 4, 'kurikulum' => '2020'],
-                ['code' => 'IF501', 'name' => 'Pemrograman Web', 'semester' => 5, 'kurikulum' => '2020'],
-                ['code' => 'IF601', 'name' => 'Pembelajaran Mesin', 'semester' => 6, 'kurikulum' => '2020'],
-            ],
-            'Sistem Informasi' => [
-                ['code' => 'SI101', 'name' => 'Dasar Sistem Informasi', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'SI102', 'name' => 'Manajemen & Organisasi', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'SI201', 'name' => 'Analisis Proses Bisnis', 'semester' => 2, 'kurikulum' => '2020'],
-                ['code' => 'SI301', 'name' => 'Desain Basis Data', 'semester' => 3, 'kurikulum' => '2020'],
-                ['code' => 'SI401', 'name' => 'Manajemen Proyek TI', 'semester' => 4, 'kurikulum' => '2020'],
-                ['code' => 'SI501', 'name' => 'E-Business', 'semester' => 5, 'kurikulum' => '2020'],
-            ],
-            'Rekayasa Komputer' => [
-                ['code' => 'RK101', 'name' => 'Fisika Dasar', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'RK102', 'name' => 'Rangkaian Listrik', 'semester' => 1, 'kurikulum' => '2020'],
-                ['code' => 'RK201', 'name' => 'Elektronika Digital', 'semester' => 2, 'kurikulum' => '2020'],
-                ['code' => 'RK301', 'name' => 'Sistem Tertanam', 'semester' => 3, 'kurikulum' => '2020'],
-                ['code' => 'RK401', 'name' => 'Jaringan Komputer', 'semester' => 4, 'kurikulum' => '2020'],
-                ['code' => 'RK501', 'name' => 'Robotika', 'semester' => 5, 'kurikulum' => '2020'],
-            ]
-        ];
-    }
 }
