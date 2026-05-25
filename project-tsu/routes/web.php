@@ -10,6 +10,7 @@ use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\KelasController;
 use App\Http\Controllers\KpSkripsiController;
 use App\Http\Controllers\JadwalExportController;
+use App\Http\Controllers\JadwalOtomatisController;
 
 
 use App\Http\Controllers\DashboardController;
@@ -158,16 +159,14 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Automatic Scheduling Wizard Routes
-    Route::get('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'step1'])->name('jadwal.otomatis.step1');
-    Route::post('/penjadwalan-otomatis/step-1', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep1'])->name('jadwal.otomatis.step1.store');
-    Route::get('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'step2'])->name('jadwal.otomatis.step2');
-    Route::post('/penjadwalan-otomatis/step-2', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep2'])->name('jadwal.otomatis.step2.store');
-    Route::get('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'step3'])->name('jadwal.otomatis.step3');
-Route::post('/penjadwalan-otomatis/step-3', [\App\Http\Controllers\JadwalOtomatisController::class, 'storeStep3'])->name('jadwal.otomatis.step3.store');
-Route::get('/penjadwalan-otomatis/step-4', [\App\Http\Controllers\JadwalOtomatisController::class, 'step4'])->name('jadwal.otomatis.step4');
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/jadwal-otomatis',         [JadwalOtomatisController::class, 'index'])->name('jadwal.otomatis.index');
+        Route::post('/jadwal-otomatis/proses', [JadwalOtomatisController::class, 'proses'])->name('jadwal.otomatis.proses');
+        Route::post('/jadwal-otomatis/simpan', [JadwalOtomatisController::class, 'simpan'])->name('jadwal.otomatis.simpan');
+    });
 
-
-
+    Route::get('/jadwal-otomatis/stream', [JadwalOtomatisController::class, 'stream'])
+     ->name('jadwal.otomatis.stream');
 
 });
 

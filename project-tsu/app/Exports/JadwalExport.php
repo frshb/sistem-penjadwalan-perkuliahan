@@ -54,7 +54,7 @@ class JadwalExport implements FromCollection, WithHeadings, WithStyles, WithTitl
                     ucfirst($j->hari->nama_hari ?? '-'),
                     $j->kelas->prodi->nama_prodi       ?? '-',
                     $j->kelas->semester                ?? '-',
-                    $slotId <= 4 ? 'Pagi' : ($slotId <= 8 ? 'Siang' : 'Malam'),
+                    $slotId <= 8 ? 'Pagi' : 'Malam',
                     $j->kelas->nama_kelas              ?? '-',
                     $j->kelas->matakuliah->kode_matkul ?? '-',
                     $j->kelas->matakuliah->nama_matkul ?? '-',

@@ -415,6 +415,7 @@
                         data-kelas="{{ $item->nama_kelas }}"
                         data-dosen="{{ $item->dosen->nama_dosen ?? '-' }}"
                         data-ruangans="{{ json_encode($item->matakuliah->ruangans->map(fn($r) => ['id' => $r->id_ruang, 'nama' => $r->nama_ruang])) }}"
+                        data-jenis="{{ $item->matakuliah->jenis ?? 'Teori' }}"
                     >
                         <div class="flex items-start justify-between">
                             <div>
@@ -562,18 +563,15 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <a href="{{ route('jadwal.export.excel', $tahunAkademik->id_tahunakademik) }}"
-                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center gap-2 transition"
-                    >
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center gap-2 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                         Export Excel
                     </a>
-
                     <a href="{{ route('jadwal.export.pdf', $tahunAkademik->id_tahunakademik) }}"
-                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2 transition"
-                    >
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -582,7 +580,74 @@
                     </a>
                 </div>
             </div>
+
+            {{-- ── FILTER & SEARCH BAR ── --}}
+            <div class="mt-5 space-y-3">
+                {{-- Search --}}
+                <div class="relative">
+                    <input
+                        type="text"
+                        id="preview-search"
+                        placeholder="Cari dosen, mata kuliah, atau kelas..."
+                        oninput="applyPreviewFilter()"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                    >
+                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+                    </svg>
+                </div>
+
+                {{-- Filter chips --}}
+                <div class="flex flex-wrap gap-2">
+                    {{-- Hari --}}
+                    <select id="pf-hari" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Hari</option>
+                        <option value="Senin">Senin</option>
+                        <option value="Selasa">Selasa</option>
+                        <option value="Rabu">Rabu</option>
+                        <option value="Kamis">Kamis</option>
+                        <option value="Jumat">Jumat</option>
+                    </select>
+
+                    {{-- Prodi --}}
+                    <select id="pf-prodi" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Prodi</option>
+                    </select>
+
+                    {{-- Semester --}}
+                    <select id="pf-semester" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Semester</option>
+                    </select>
+
+                    {{-- Sesi --}}
+                    <select id="pf-sesi" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Sesi</option>
+                        <option value="Pagi">Pagi</option>
+                        <option value="Malam">Malam</option>
+                    </select>
+
+                    {{-- Kurikulum --}}
+                    <select id="pf-kurikulum" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Kurikulum</option>
+                    </select>
+
+                    {{-- Reset --}}
+                    <button onclick="resetPreviewFilter()"
+                        class="px-4 py-2 text-sm rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 font-medium transition">
+                        Reset Filter
+                    </button>
+
+                    {{-- Info hasil --}}
+                    <span id="preview-filter-info" class="ml-auto self-center text-xs text-gray-400"></span>
+                </div>
+            </div>
         </div>
+
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="bg-teal-700 text-white">
@@ -985,6 +1050,87 @@ function updateCardRuangan(ruanganId, ruanganNama) {
 }
 
 // ============================================================
+// PREVIEW TABLE — FILTER & SEARCH
+// ============================================================
+
+// Populate dropdown Prodi, Semester, Kurikulum dari data yang ada di tbody
+function populatePreviewDropdowns() {
+    const rows = [...document.querySelectorAll('#tbody-preview tr[data-preview]')];
+
+    const prodis     = new Set();
+    const semesters  = new Set();
+    const kurikulums = new Set();
+
+    rows.forEach(tr => {
+        if (tr.dataset.prodi)    prodis.add(tr.dataset.prodi);
+        if (tr.dataset.semester) semesters.add(tr.dataset.semester);
+        if (tr.dataset.kurikulum) kurikulums.add(tr.dataset.kurikulum);
+    });
+
+    const fillSelect = (id, values, label) => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = `<option value="">${label}</option>`;
+        [...values].sort().forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = v;
+            if (v === cur) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    };
+
+    fillSelect('pf-prodi',     prodis,    'Semua Prodi');
+    fillSelect('pf-semester',  semesters, 'Semua Semester');
+    fillSelect('pf-kurikulum', kurikulums,'Semua Kurikulum');
+}
+
+function applyPreviewFilter() {
+    const query     = (document.getElementById('preview-search')?.value || '').toLowerCase();
+    const hari      = document.getElementById('pf-hari')?.value      || '';
+    const prodi     = document.getElementById('pf-prodi')?.value     || '';
+    const semester  = document.getElementById('pf-semester')?.value  || '';
+    const sesi      = document.getElementById('pf-sesi')?.value      || '';
+    const kurikulum = document.getElementById('pf-kurikulum')?.value || '';
+
+    const rows = [...document.querySelectorAll('#tbody-preview tr[data-preview]')];
+    let visible = 0;
+
+    rows.forEach(tr => {
+        const matchSearch = !query || (
+            (tr.dataset.dosen  || '').toLowerCase().includes(query) ||
+            (tr.dataset.mk     || '').toLowerCase().includes(query) ||
+            (tr.dataset.kelas  || '').toLowerCase().includes(query)
+        );
+        const matchHari      = !hari      || tr.dataset.hari      === hari;
+        const matchProdi     = !prodi     || tr.dataset.prodi     === prodi;
+        const matchSemester  = !semester  || tr.dataset.semester  === semester;
+        const matchSesi      = !sesi      || tr.dataset.sesi      === sesi;
+        const matchKurikulum = !kurikulum || tr.dataset.kurikulum === kurikulum;
+
+        const show = matchSearch && matchHari && matchProdi && matchSemester && matchSesi && matchKurikulum;
+        tr.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    const info = document.getElementById('preview-filter-info');
+    if (info) info.textContent = `${visible} dari ${rows.length} jadwal ditampilkan`;
+}
+
+function resetPreviewFilter() {
+    ['preview-search'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    ['pf-hari','pf-prodi','pf-semester','pf-sesi','pf-kurikulum'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    applyPreviewFilter();
+}
+
+// ============================================================
 // TABLE PREVIEW
 // ============================================================
 function renderTablePreview() {
@@ -998,6 +1144,8 @@ function renderTablePreview() {
 
     if (!cards.length) {
         tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-6 text-center text-gray-400">Belum ada jadwal yang disusun.</td></tr>`;
+        const info = document.getElementById('preview-filter-info');
+        if (info) info.textContent = '';
         return;
     }
 
@@ -1005,36 +1153,59 @@ function renderTablePreview() {
     cards.forEach(card => {
         const kelasList = JSON.parse(card.dataset.kelasList || '[]');
         const slotId    = parseInt(card.dataset.start);
-        const sesi      = slotId <= 4 ? 'Pagi' : slotId <= 8 ? 'Siang' : 'Malam';
+        const sesi = slotId <= 8 ? 'Pagi' : 'Malam';
         const hariLabel = card.dataset.day.charAt(0).toUpperCase() + card.dataset.day.slice(1);
 
         const kelasPertama = kelasList[0];
         const sidebarEl    = document.querySelector(`.kelas-item[data-kelas="${kelasPertama}"]`);
         const prodi        = sidebarEl?.querySelector('.bg-purple-100')?.innerText?.trim() || '-';
         const semester     = sidebarEl?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '-';
+        // Kurikulum = 2 digit awal kode kelas, e.g. "23uf4" → "20 23"
+        const kodeKelas   = kelasPertama || '';
+        const kurikulumRaw = kodeKelas.substring(0, 2);
+        const kurikulum   = kurikulumRaw ? '20' + kurikulumRaw : '-';
         const namaKelas    = kelasList.length > 1
             ? kelasList.join(' + ') + ' <span class="text-xs px-1.5 py-0.5 bg-pink-100 text-pink-700 rounded font-semibold">Gabungan</span>'
             : kelasPertama;
 
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50 border-b border-gray-100';
+        tr.setAttribute('data-preview', '1');
+        // Data attributes untuk filter
+        tr.dataset.hari      = hariLabel;
+        tr.dataset.prodi     = prodi;
+        tr.dataset.semester  = semester;
+        tr.dataset.sesi      = sesi;
+        tr.dataset.kurikulum = kurikulum;
+        tr.dataset.dosen     = card.dataset.dosen     || '';
+        tr.dataset.mk        = card.dataset.nama       || '';
+        tr.dataset.kelas     = kelasList.join(' ')     || '';
+
         tr.innerHTML = `
             <td class="px-4 py-3 text-sm">${hariLabel}</td>
             <td class="px-4 py-3 text-sm">${prodi}</td>
             <td class="px-4 py-3 text-sm">${semester}</td>
-            <td class="px-4 py-3 text-sm">${sesi}</td>
+            <td class="px-4 py-3 text-sm">
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${sesi === 'Pagi' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}">
+                    ${sesi}
+                </span>
+            </td>
             <td class="px-4 py-3 text-sm font-medium">${namaKelas}</td>
             <td class="px-4 py-3 text-sm font-mono text-teal-700">${card.dataset.kodeMk || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.nama || '-'}</td>
-            <td class="px-4 py-3 text-sm">Teori</td>
+            <td class="px-4 py-3 text-sm">${card.dataset.jenis || 'Teori'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.sks} SKS</td>
             <td class="px-4 py-3 text-sm">${card.dataset.dosen || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.ruangan || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.jamMulai || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.jamSelesai || '-'}</td>`;
+
         tbody.appendChild(tr);
 
     });
+
+    populatePreviewDropdowns();
+    applyPreviewFilter();
 }
 
 // ============================================================
@@ -1042,7 +1213,7 @@ function renderTablePreview() {
 // ============================================================
 function createCard(data, skipSave = false) {
     const { sks, nama, kelas, kelasId, dosen, kodeMk, ruangan, ruanganId,
-            slotId, day, jamMulai, jamSelesai, jadwalIds, prodi } = data;
+            slotId, day, jamMulai, jamSelesai, jadwalIds, prodi, jenis } = data;
     const color = getCourseColor(nama);
 
     const sameDay = [...document.querySelectorAll('.jadwal-card')].filter(c => c.dataset.day === day);
@@ -1079,6 +1250,7 @@ function createCard(data, skipSave = false) {
         ruangan:    ruangan    || '',
         ruanganId:  ruanganId  || '',
         jadwalIds:  jadwalIds ? JSON.stringify(Array.isArray(jadwalIds) ? jadwalIds : [jadwalIds]) : '[]',
+        jenis: jenis || 'Teori',
     });
 
     card.style.cssText = `width:170px; height:${sks * SLOT_HEIGHT - 18}px; left:${left}px; top:${top}px; pointer-events:${isVisible ? 'auto' : 'none'}; user-select:none; touch-action:none; display:${isVisible ? 'flex' : 'none'};`;
@@ -1145,6 +1317,7 @@ function loadExistingJadwals() {
         // Ambil prodi dari sidebar jika ada
         const sidebarEl = document.querySelector(`.kelas-item[data-id="${j.kelas_id}"]`);
         const prodi     = sidebarEl?.dataset.prodi || '-';
+        const jenis     = sidebarEl?.dataset.jenis || 'Teori';
 
         createCard({
             sks:        sksInt,
@@ -1161,6 +1334,7 @@ function loadExistingJadwals() {
             jamSelesai: infoEnd?.jamSelesai || '-',
             jadwalIds:  [j.jadwal_id],
             prodi:      prodi,
+            jenis:      jenis,
         }, true);
 
         setSidebarStatus(j.kelas_id, 'sudah');
@@ -1181,6 +1355,7 @@ function enableCardDrag(card) {
         e.dataTransfer.setData('kelas_list',   card.dataset.kelasList   || '[]');
         e.dataTransfer.setData('kelas_id_list',card.dataset.kelasIdList || '[]');
         e.dataTransfer.setData('jadwal_ids',   card.dataset.jadwalIds   || '[]');
+        e.dataTransfer.setData('jenis',        card.dataset.jenis       || 'Teori');
     });
     card.addEventListener('click', e => {
         if (e.target.closest('button')) return;
@@ -1316,28 +1491,22 @@ function generateJadwal() {
     const mkProdiPerHari = {};
     hariListBase.forEach(h => { mkProdiPerHari[h] = {}; });
 
-    // ── STATE C9: slot akhir per MK per hari ─────────────────
-    // mkSlotAkhirPerHari[hariId][namaMK] = slotId terakhir yang dipakai MK itu
-    // Dipakai untuk mengutamakan penempatan berdekatan
-    const mkSlotAkhirPerHari = {};
-    hariListBase.forEach(h => { mkSlotAkhirPerHari[h] = {}; });
+    // ── STATE C9 ─────────────────────────────────────────────
+    // mkDosenHari[namaMK|dosenId] = { hariId, slotAkhir }
+    // Kelas MK+dosen sama WAJIB hari sama, slot tepat berdekatan
+    const mkDosenHari = {};
 
-    // Helper C9: susun ulang slotList agar slot yang berdekatan dengan MK
-    // sejenis di hari ini diprioritaskan di depan
-    function prioritaskanSlotBerdekatan(slotList, hariId, namaMK, sks) {
-        const slotAkhir = mkSlotAkhirPerHari[hariId][namaMK];
-        if (slotAkhir === undefined) return slotList; // belum ada MK ini di hari ini
+    function getSaudaraInfo(namaMK, dosenId) {
+        return mkDosenHari[namaMK + '|' + dosenId] || null;
+    }
 
-        // Slot ideal: tepat setelah MK sebelumnya selesai, atau tepat sebelum MK berikutnya mulai
-        const slotIdeal = new Set([
-            slotAkhir,          // mulai tepat di slot terakhir MK lain (langsung setelah)
-            slotAkhir - sks,    // mulai sks slot sebelumnya (sehingga selesai tepat sebelum MK lain)
-        ]);
-
-        // Pisahkan slot ideal dan sisanya, ideal masuk depan
-        const depan  = slotList.filter(s => slotIdeal.has(s));
-        const sisanya = slotList.filter(s => !slotIdeal.has(s));
-        return [...depan, ...sisanya];
+    function catatMkDosen(namaMK, dosenId, hariId, slotAkhir) {
+        const key = namaMK + '|' + dosenId;
+        if (!mkDosenHari[key]) {
+            mkDosenHari[key] = { hariId, slotAkhir };
+        } else {
+            mkDosenHari[key].slotAkhir = Math.max(mkDosenHari[key].slotAkhir, slotAkhir);
+        }
     }
 
     // ── HELPERS ───────────────────────────────────────────────
@@ -1396,11 +1565,6 @@ function generateJadwal() {
     const SLOT_ISTIRAHAT = 6; // slot istirahat yang tidak boleh dilewati
 
     function melewatiIstirahat(slotId, sks) {
-        const slotMulai  = slotId;
-        const slotSelesai = slotId + sks - 1; // slot terakhir yang dipakai
-
-        // Bentrok jika: mulai sebelum istirahat DAN selesai di istirahat atau setelahnya
-        // Atau mulai tepat di slot istirahat
         const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
         return slotsDibutuhkan.includes(SLOT_ISTIRAHAT);
     }
@@ -1435,6 +1599,7 @@ function generateJadwal() {
         const dosen   = el.dataset.dosen   || '-';
         const kodeMk  = el.dataset.kodeMk  || '-';
         const prodi   = el.dataset.prodi   || '-';
+        const jenis   = el.dataset.jenis   || 'Teori';
 
         const poolRuanganBase = JSON.parse(el.dataset.ruangans || '[]');
         if (!poolRuanganBase.length) {
@@ -1443,8 +1608,10 @@ function generateJadwal() {
             continue;
         }
 
-        // ── Kocok hari & slot untuk variasi tiap generate ─────
-        const hariList  = shuffleArray(hariListBase, rng);
+        const saudaraInfo  = getSaudaraInfo(nama, dosenId);
+        const hariList     = saudaraInfo
+            ? [saudaraInfo.hariId]           // wajib hari sama
+            : shuffleArray(hariListBase, rng);
         const slotListBase = shuffleArray([...SLOT_VALID], rng);
 
         let ditempatkan = false;
@@ -1454,14 +1621,20 @@ function generateJadwal() {
             if (!dosenBisaMengajar(hariId, dosenId, sks)) continue;
             if (prodiSudahMaksimal(hariId, prodi, nama)) continue;
 
-            // ── C9: susun ulang slot agar berdekatan dengan MK sejenis ─
-            const slotList = prioritaskanSlotBerdekatan(slotListBase, hariId, nama, sks);
+            // Jika ada saudara → coba slot tepat setelah saudara selesai
+           const slotList = saudaraInfo
+                ? [saudaraInfo.slotAkhir]
+                : [
+                    // Prioritas 1: slot yang TIDAK melewati istirahat
+                    ...slotListBase.filter(s => !melewatiIstirahat(s, sks)),
+                    // Prioritas 2: slot yang melewati istirahat (fallback, seminimal mungkin)
+                    ...slotListBase.filter(s => melewatiIstirahat(s, sks)),
+                ];
 
             for (const slotId of slotList) {
                 const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
                 if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
                 if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
-                if (melewatiIstirahat(slotId, sks)) continue;
                 if (kelasBentrok(hariId, slotsDibutuhkan, kelas, nama, dosenId)) continue;
                 if (mkOverlap(hariId, slotsDibutuhkan, nama)) continue;
                 if (!slotMasihBisa(hariId, slotsDibutuhkan)) continue;
@@ -1481,6 +1654,7 @@ function generateJadwal() {
                     sks, nama, kelas,
                     kelasId:    parseInt(kelasId),
                     dosen, kodeMk, prodi,
+                    jenis,
                     ruangan:    ruangDipilih.nama,
                     ruanganId:  ruangDipilih.id,
                     slotId,
@@ -1500,12 +1674,66 @@ function generateJadwal() {
                 });
                 if (!mkProdiPerHari[hariId][prodi]) mkProdiPerHari[hariId][prodi] = new Set();
                 mkProdiPerHari[hariId][prodi].add(nama);
-                mkSlotAkhirPerHari[hariId][nama] = slotId + sks;
+                catatMkDosen(nama, dosenId, hariId, slotId + sks);
 
                 setSidebarStatus(kelasId, 'sudah');
                 berhasil++;
                 ditempatkan = true;
                 break luarLoop;
+            }
+        }
+
+        // C9 Fallback: jika slot tepat setelah penuh, coba slot lain di hari yang sama
+        if (!ditempatkan && saudaraInfo) {
+            const hariSama     = saudaraInfo.hariId;
+            const slotFallbackBase = shuffleArray([...SLOT_VALID], rng);
+            const slotFallback = [
+                ...slotFallbackBase.filter(s => !melewatiIstirahat(s, sks)),
+                ...slotFallbackBase.filter(s => melewatiIstirahat(s, sks)),
+            ];
+
+
+            for (const slotId of slotFallback) {
+                const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
+                if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
+                if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
+                if (kelasBentrok(hariSama, slotsDibutuhkan, kelas, nama, dosenId)) continue;
+                if (mkOverlap(hariSama, slotsDibutuhkan, nama)) continue;
+                if (!slotMasihBisa(hariSama, slotsDibutuhkan)) continue;
+
+                const poolRuangan  = shuffleArray(poolRuanganBase, rng);
+                const ruangDipilih = cariRuanganBebas(hariSama, slotsDibutuhkan, poolRuangan);
+                if (!ruangDipilih) continue;
+
+                const infoMulai   = slotElMap[slotId];
+                const infoSelesai = slotElMap[slotId + sks - 1];
+                if (!infoMulai) continue;
+
+                createCard({
+                    sks, nama, kelas, kelasId: parseInt(kelasId),
+                    dosen, kodeMk, prodi, jenis,
+                    ruangan: ruangDipilih.nama, ruanganId: ruangDipilih.id,
+                    slotId, day: hariNama[hariSama],
+                    jamMulai: infoMulai.jamMulai,
+                    jamSelesai: infoSelesai?.jamSelesai || '-',
+                    jadwalIds: [],
+                }, true);
+
+                if (dosenId) sksDosenPerHari[hariSama][dosenId] = (sksDosenPerHari[hariSama][dosenId] || 0) + sks;
+                slotsDibutuhkan.forEach(s => {
+                    ruanganTerpakai[hariSama][s].add(String(ruangDipilih.id));
+                    kelasPerSlot[hariSama][s] = (kelasPerSlot[hariSama][s] || 0) + 1;
+                    kelasNamaPerSlot[hariSama][s].set(kelas, { namaMK: nama, dosenId });
+                    mkPerSlot[hariSama][s].add(nama);
+                });
+                if (!mkProdiPerHari[hariSama][prodi]) mkProdiPerHari[hariSama][prodi] = new Set();
+                mkProdiPerHari[hariSama][prodi].add(nama);
+                catatMkDosen(nama, dosenId, hariSama, slotId + sks);
+
+                setSidebarStatus(kelasId, 'sudah');
+                berhasil++;
+                ditempatkan = true;
+                break;
             }
         }
 
@@ -1569,6 +1797,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const ruangan = e.dataTransfer.getData('ruangan');
             const kodeMk  = e.dataTransfer.getData('kode_mk') || e.dataTransfer.getData('kodeMk') || '-';
             const prodi   = e.dataTransfer.getData('prodi') || '-';
+            const jenis   = e.dataTransfer.getData('jenis') || 'Teori';
             const slotId  = parseInt(slot.dataset.slotLine);
             const day     = Alpine.$data(document.body).selectedDay;
 
@@ -1585,10 +1814,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!nama || !kelas || isNaN(sks) || sks < 1) return;
 
-                // ✅ [C8] Cegah drop ke slot istirahat
+            // ✅ [C8] Cegah drop ke slot istirahat
             if (slot.dataset.isIstirahat === '1') {
-                showToast('⚠ Tidak bisa menempatkan kelas di slot istirahat.', 'red');
-                return;
+                showToast('⚠ Perhatian: kelas ditempatkan di slot istirahat.', 'red');
+                // Tidak return — tetap lanjut
             }
 
             if (fromWorkspace && draggedCard) {
@@ -1600,14 +1829,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const jamSelesaiEl = document.querySelector(`[data-slot-line="${slotId + sks - 1}"]`);
             const jamSelesai   = jamSelesaiEl?.dataset.jamSelesai || '-';
 
-            // [C8] Cek slot istirahat
-            const slotsDrop = Array.from({ length: sks }, (_, i) => slotId + i);
-            if (slotsDrop.includes(6)) {
-                showToast('⚠ Kelas tidak boleh melewati waktu istirahat (Slot 6).', 'red');
-                return;
-            }
-
-            const card = createCard({ sks, nama, kelas, kelasId, dosen, kodeMk, prodi, ruangan, slotId, day, jamMulai, jamSelesai, jadwalIds });
+            const card = createCard({ sks, nama, kelas, kelasId, dosen, kodeMk, prodi, jenis, ruangan, slotId, day, jamMulai, jamSelesai, jadwalIds });
 
             // Restore data gabungan jika card berasal dari merge sebelumnya
             if (kelasList.length > 1) {

@@ -68,7 +68,6 @@ class JadwalController extends Controller
             'ruangan',
         ])
         ->where('id_tahunakademik', $idTahun)
-        ->where('is_manual', 1)
         ->get();
 
         // ✅ Tambahkan ini — encode ke array bersih untuk JS
