@@ -84,7 +84,7 @@ class MataKuliahController extends Controller
 
         // Paginate hasil query, dan tambahkan filter ke link pagination
         // USER REQUEST: Munculin semua data (limit diperbesar)
-        $matkuls = $query->paginate(100)->appends($request->query());
+        $matkuls = $query->orderBy('semester')->paginate(100)->appends($request->query());$matkuls = $query->paginate(100)->appends($request->query());
         $prodis = Prodi::all();
         $ruangans = Ruangan::all();
 

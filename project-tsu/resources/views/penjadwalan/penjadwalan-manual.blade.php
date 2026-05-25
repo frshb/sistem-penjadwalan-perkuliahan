@@ -563,18 +563,15 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <a href="{{ route('jadwal.export.excel', $tahunAkademik->id_tahunakademik) }}"
-                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center gap-2 transition"
-                    >
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center gap-2 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                         Export Excel
                     </a>
-
                     <a href="{{ route('jadwal.export.pdf', $tahunAkademik->id_tahunakademik) }}"
-                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2 transition"
-                    >
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -583,7 +580,74 @@
                     </a>
                 </div>
             </div>
+
+            {{-- ── FILTER & SEARCH BAR ── --}}
+            <div class="mt-5 space-y-3">
+                {{-- Search --}}
+                <div class="relative">
+                    <input
+                        type="text"
+                        id="preview-search"
+                        placeholder="Cari dosen, mata kuliah, atau kelas..."
+                        oninput="applyPreviewFilter()"
+                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-teal-500 outline-none text-sm"
+                    >
+                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+                    </svg>
+                </div>
+
+                {{-- Filter chips --}}
+                <div class="flex flex-wrap gap-2">
+                    {{-- Hari --}}
+                    <select id="pf-hari" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Hari</option>
+                        <option value="Senin">Senin</option>
+                        <option value="Selasa">Selasa</option>
+                        <option value="Rabu">Rabu</option>
+                        <option value="Kamis">Kamis</option>
+                        <option value="Jumat">Jumat</option>
+                    </select>
+
+                    {{-- Prodi --}}
+                    <select id="pf-prodi" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Prodi</option>
+                    </select>
+
+                    {{-- Semester --}}
+                    <select id="pf-semester" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Semester</option>
+                    </select>
+
+                    {{-- Sesi --}}
+                    <select id="pf-sesi" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Sesi</option>
+                        <option value="Pagi">Pagi</option>
+                        <option value="Malam">Malam</option>
+                    </select>
+
+                    {{-- Kurikulum --}}
+                    <select id="pf-kurikulum" onchange="applyPreviewFilter()"
+                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="">Semua Kurikulum</option>
+                    </select>
+
+                    {{-- Reset --}}
+                    <button onclick="resetPreviewFilter()"
+                        class="px-4 py-2 text-sm rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 font-medium transition">
+                        Reset Filter
+                    </button>
+
+                    {{-- Info hasil --}}
+                    <span id="preview-filter-info" class="ml-auto self-center text-xs text-gray-400"></span>
+                </div>
+            </div>
         </div>
+
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="bg-teal-700 text-white">
@@ -986,6 +1050,87 @@ function updateCardRuangan(ruanganId, ruanganNama) {
 }
 
 // ============================================================
+// PREVIEW TABLE — FILTER & SEARCH
+// ============================================================
+
+// Populate dropdown Prodi, Semester, Kurikulum dari data yang ada di tbody
+function populatePreviewDropdowns() {
+    const rows = [...document.querySelectorAll('#tbody-preview tr[data-preview]')];
+
+    const prodis     = new Set();
+    const semesters  = new Set();
+    const kurikulums = new Set();
+
+    rows.forEach(tr => {
+        if (tr.dataset.prodi)    prodis.add(tr.dataset.prodi);
+        if (tr.dataset.semester) semesters.add(tr.dataset.semester);
+        if (tr.dataset.kurikulum) kurikulums.add(tr.dataset.kurikulum);
+    });
+
+    const fillSelect = (id, values, label) => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = `<option value="">${label}</option>`;
+        [...values].sort().forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = v;
+            if (v === cur) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    };
+
+    fillSelect('pf-prodi',     prodis,    'Semua Prodi');
+    fillSelect('pf-semester',  semesters, 'Semua Semester');
+    fillSelect('pf-kurikulum', kurikulums,'Semua Kurikulum');
+}
+
+function applyPreviewFilter() {
+    const query     = (document.getElementById('preview-search')?.value || '').toLowerCase();
+    const hari      = document.getElementById('pf-hari')?.value      || '';
+    const prodi     = document.getElementById('pf-prodi')?.value     || '';
+    const semester  = document.getElementById('pf-semester')?.value  || '';
+    const sesi      = document.getElementById('pf-sesi')?.value      || '';
+    const kurikulum = document.getElementById('pf-kurikulum')?.value || '';
+
+    const rows = [...document.querySelectorAll('#tbody-preview tr[data-preview]')];
+    let visible = 0;
+
+    rows.forEach(tr => {
+        const matchSearch = !query || (
+            (tr.dataset.dosen  || '').toLowerCase().includes(query) ||
+            (tr.dataset.mk     || '').toLowerCase().includes(query) ||
+            (tr.dataset.kelas  || '').toLowerCase().includes(query)
+        );
+        const matchHari      = !hari      || tr.dataset.hari      === hari;
+        const matchProdi     = !prodi     || tr.dataset.prodi     === prodi;
+        const matchSemester  = !semester  || tr.dataset.semester  === semester;
+        const matchSesi      = !sesi      || tr.dataset.sesi      === sesi;
+        const matchKurikulum = !kurikulum || tr.dataset.kurikulum === kurikulum;
+
+        const show = matchSearch && matchHari && matchProdi && matchSemester && matchSesi && matchKurikulum;
+        tr.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    const info = document.getElementById('preview-filter-info');
+    if (info) info.textContent = `${visible} dari ${rows.length} jadwal ditampilkan`;
+}
+
+function resetPreviewFilter() {
+    ['preview-search'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    ['pf-hari','pf-prodi','pf-semester','pf-sesi','pf-kurikulum'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    applyPreviewFilter();
+}
+
+// ============================================================
 // TABLE PREVIEW
 // ============================================================
 function renderTablePreview() {
@@ -999,6 +1144,8 @@ function renderTablePreview() {
 
     if (!cards.length) {
         tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-6 text-center text-gray-400">Belum ada jadwal yang disusun.</td></tr>`;
+        const info = document.getElementById('preview-filter-info');
+        if (info) info.textContent = '';
         return;
     }
 
@@ -1013,17 +1160,36 @@ function renderTablePreview() {
         const sidebarEl    = document.querySelector(`.kelas-item[data-kelas="${kelasPertama}"]`);
         const prodi        = sidebarEl?.querySelector('.bg-purple-100')?.innerText?.trim() || '-';
         const semester     = sidebarEl?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '-';
+        // Kurikulum = 2 digit awal kode kelas, e.g. "23uf4" → "20 23"
+        const kodeKelas   = kelasPertama || '';
+        const kurikulumRaw = kodeKelas.substring(0, 2);
+        const kurikulum   = kurikulumRaw ? '20' + kurikulumRaw : '-';
         const namaKelas    = kelasList.length > 1
             ? kelasList.join(' + ') + ' <span class="text-xs px-1.5 py-0.5 bg-pink-100 text-pink-700 rounded font-semibold">Gabungan</span>'
             : kelasPertama;
 
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50 border-b border-gray-100';
+        tr.setAttribute('data-preview', '1');
+        // Data attributes untuk filter
+        tr.dataset.hari      = hariLabel;
+        tr.dataset.prodi     = prodi;
+        tr.dataset.semester  = semester;
+        tr.dataset.sesi      = sesi;
+        tr.dataset.kurikulum = kurikulum;
+        tr.dataset.dosen     = card.dataset.dosen     || '';
+        tr.dataset.mk        = card.dataset.nama       || '';
+        tr.dataset.kelas     = kelasList.join(' ')     || '';
+
         tr.innerHTML = `
             <td class="px-4 py-3 text-sm">${hariLabel}</td>
             <td class="px-4 py-3 text-sm">${prodi}</td>
             <td class="px-4 py-3 text-sm">${semester}</td>
-            <td class="px-4 py-3 text-sm">${sesi}</td>
+            <td class="px-4 py-3 text-sm">
+                <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${sesi === 'Pagi' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}">
+                    ${sesi}
+                </span>
+            </td>
             <td class="px-4 py-3 text-sm font-medium">${namaKelas}</td>
             <td class="px-4 py-3 text-sm font-mono text-teal-700">${card.dataset.kodeMk || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.nama || '-'}</td>
@@ -1033,9 +1199,13 @@ function renderTablePreview() {
             <td class="px-4 py-3 text-sm">${card.dataset.ruangan || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.jamMulai || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.jamSelesai || '-'}</td>`;
+
         tbody.appendChild(tr);
 
     });
+
+    populatePreviewDropdowns();
+    applyPreviewFilter();
 }
 
 // ============================================================
