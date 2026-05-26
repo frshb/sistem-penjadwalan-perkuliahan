@@ -35,6 +35,10 @@ class DosenController extends Controller
 
         }
 
+        if ($request->filled('prodi')) {
+            $query->where('id_prodi', $request->prodi);
+        }
+
         if ($user && $user->isKaprodi()) {
             if ($user->id_prodi) {
                 $query->where('id_prodi', $user->id_prodi);

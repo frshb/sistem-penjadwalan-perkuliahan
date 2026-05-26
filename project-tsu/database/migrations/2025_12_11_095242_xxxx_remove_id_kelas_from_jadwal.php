@@ -8,23 +8,11 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::table('jadwal', function (Blueprint $table) {
-            if (Schema::hasColumn('jadwal', 'id_kelas')) {
-                $table->dropColumn('id_kelas');
-            }
-
-            // tambah field kelas manual
-            if (!Schema::hasColumn('jadwal', 'kelas')) {
-                $table->string('kelas')->nullable()->after('id_matkul');
-            }
-        });
+        
     }
 
     public function down()
     {
-        Schema::table('jadwal', function (Blueprint $table) {
-            $table->integer('id_kelas')->nullable()->after('id_dosen');
-            $table->dropColumn('kelas');
-        });
+ 
     }
 };

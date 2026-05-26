@@ -161,38 +161,56 @@
                     </div>
                 </div>
 
-                <!-- Search -->
-                <div class="mb-6">
-                    <form action="{{ route('dosen.index') }}" method="GET">
-
-                        <div class="relative">
-
+                <!-- Search & Filter -->
+                <div class="mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
+                    <form action="{{ route('dosen.index') }}" method="GET" class="flex flex-col md:flex-row items-center gap-3">
+                        
+                        <!-- Search Bar -->
+                        <div class="flex-1 w-full relative">
                             <input
                                 type="text"
                                 name="search"
                                 value="{{ $searchTerm ?? '' }}"
                                 placeholder="Cari nama dosen..."
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                class="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm h-10"
                             >
-
                             <button
                                 type="submit"
-                                class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700"
+                                class="absolute right-0 top-0 h-full px-3.5 text-gray-500 hover:text-teal-700 transition-colors"
                             >
-                                <svg class="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z">
-                                    </path>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                             </button>
-
                         </div>
+
+                        <!-- Filter Prodi -->
+                        @if (!Auth::user() || !Auth::user()->isKaprodi())
+                            <div class="relative w-full md:w-auto md:min-w-[240px]">
+                                <select 
+                                    name="prodi" 
+                                    onchange="this.form.submit()"
+                                    class="w-full pl-3.5 pr-8 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer h-10"
+                                >
+                                    <option value="">Semua Program Studi</option>
+                                    @foreach ($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}" {{ request('prodi') == $prodi->id_prodi ? 'selected' : '' }}>
+                                            {{ $prodi->nama_prodi }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                        @endif
+
+                        <!-- Reset Button -->
+                        @if(request()->anyFilled(['search', 'prodi']))
+                            <a href="{{ route('dosen.index') }}" class="w-full md:w-auto inline-flex items-center justify-center px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors text-sm h-10">
+                                Reset
+                            </a>
+                        @endif
 
                     </form>
                 </div>

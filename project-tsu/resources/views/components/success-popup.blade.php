@@ -1,16 +1,13 @@
-<!-- 1. Popup untuk Session PHP (Reload Biasa) -->
 @if (session('success'))
     <div id="session-success-popup" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300" style="background-color: rgba(0, 0, 0, 0.5);">
         <div class="bg-white rounded-lg shadow-2xl p-8 max-w-sm w-full text-center transform transition-all scale-100 animate-bounce-in relative">
 
-            <!-- Icon Sukses (Checkmark Hijau) -->
             <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
                 <svg class="h-10 w-10 text-teal-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
             </div>
 
-            <!-- Judul & Pesan -->
             <h3 class="text-2xl font-bold text-gray-900 mb-2">Berhasil!</h3>
             <p class="text-gray-600 mb-8">
                 {{ session('success') }}
@@ -20,7 +17,6 @@
                 OK, Lanjutkan
             </button>
 
-<!-- pop up sukses untuk form tampilan awal -->
         </div>
     </div>
 @endif
@@ -51,7 +47,6 @@
         }
     }
 
-    // Fungsi global untuk memanggil popup via JS
     window.showSuccessPopup = function(message) {
         const popup = document.getElementById('js-success-popup');
         const msgEl = document.getElementById('js-success-message');
@@ -59,9 +54,7 @@
         if (popup && msgEl) {
             msgEl.innerText = message;
             popup.classList.remove('hidden');
-            popup.style.display = 'flex'; // Pastikan display flex agar tengah
-
-            // Animasi masuk sederhana (opsional)
+            popup.style.display = 'flex';
             popup.style.opacity = '0';
             setTimeout(() => {
                 popup.style.opacity = '1';

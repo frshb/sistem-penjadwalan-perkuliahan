@@ -142,111 +142,157 @@
             </div>
 
 
-            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md mt-6 border border-transparent">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl mt-6 border border-gray-100">
 
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">
-                        Mata Kuliah
-                    </h2>
-                    <div class="flex flex-wrap items-center gap-2">
+                <!-- Header Row: Title & Action Buttons -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-gray-100 gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-teal-800">
+                            Mata Kuliah
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Kelola dan filter seluruh daftar mata kuliah program studi dan kurikulum.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Tombol Aksi Tambah Matkul -->
+                        <button @click="showAddModal = true" class="inline-flex items-center px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl shadow-sm transition-all duration-200 transform hover:scale-[1.02] text-sm">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Tambah Matkul
+                        </button>
 
-                        <!-- ===== AWAL FORM FILTER ===== -->
-                        <form action="{{ route('matakuliah.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
-                            <!-- Filter Semester (JS) -->
-                            <button id="btn-ganjil" type="button" class="px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md text-sm">
-                                Ganjil
-                            </button>
-                            <button id="btn-genap" type="button" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm">
-                                Genap
-                            </button>
-                            <select id="select-semester" name="semester" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <!-- Opsi diisi JavaScript -->
-                            </select>
-
-                            <!-- Filter Kurikulum (Dinamis dari Controller) -->
-                            <select name="kurikulum" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <option value="">Semua Kurikulum</option>
-                                @foreach ($kurikulums as $kurikulum)
-                                    <option value="{{ $kurikulum->id_kurikulum }}" {{ request('kurikulum') == $kurikulum->id_kurikulum ? 'selected' : '' }}>
-                                        {{ $kurikulum->nama_kurikulum }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <!-- Filter Program Studi -->
-                            <select
-                                name="prodi"
-                                class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            >
-                                <option value="">Semua Prodi</option>
-
-                                @foreach ($prodis as $prodi)
-                                    <option
-                                        value="{{ $prodi->id_prodi }}"
-                                        {{ request('prodi') == $prodi->id_prodi ? 'selected' : '' }}
-                                    >
-                                        {{ $prodi->nama_prodi }}
-                                    </option>
-                                @endforeach
-                            </select>
-
-                            <!-- Tombol Submit Filter -->
-                            <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
-                                Filter
-                            </button>
-                        </form>
-                        <!-- ===== AKHIR FORM FILTER ===== -->
-
-                        <!-- Tombol Aksi -->
+                        <!-- Tombol Aksi Export -->
                         <div class="relative" @click.away="showExportMenu = false">
-                            <button @click="showExportMenu = !showExportMenu" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 flex items-center">
+                            <button @click="showExportMenu = !showExportMenu" class="inline-flex items-center px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-sm transition-all duration-200 text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
                                 Export
-                                <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                <svg class="w-3.5 h-3.5 ml-1.5 transition-transform duration-200" :class="showExportMenu ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </button>
-                            <div x-show="showExportMenu" x-transition class="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl z-20 border border-gray-200" style="display: none;">
-
-                                <a href="{{ route('matakuliah.export.excel') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <div x-show="showExportMenu" 
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl z-20 border border-gray-200 p-1" 
+                                 style="display: none;">
+                                <a href="{{ route('matakuliah.export.excel') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-teal-50 hover:text-teal-800 transition-colors">
+                                    <svg class="w-4 h-4 mr-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     Export Excel
                                 </a>
-                                <a href="{{ route('matakuliah.export.pdf') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="{{ route('matakuliah.export.pdf') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-teal-50 hover:text-teal-800 transition-colors">
+                                    <svg class="w-4 h-4 mr-2.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                                     Export PDF
                                 </a>
                             </div>
                         </div>
-
-                        <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
-                            Tambah Matkul
-                        </button>
                     </div>
                 </div>
 
-                <!-- Search -->
+                <!-- Search bar (styled exactly like other pages) -->
                 <div class="mb-6">
-
                     <form action="{{ route('matakuliah.index') }}" method="GET">
-
                         {{-- PERTAHANKAN FILTER YANG SUDAH DIPILIH --}}
                         <input type="hidden" name="semester" value="{{ request('semester') }}">
                         <input type="hidden" name="kurikulum" value="{{ request('kurikulum') }}">
                         <input type="hidden" name="prodi" value="{{ request('prodi') }}">
 
                         <div class="relative">
-
                             <input
                                 type="text"
                                 name="search"
                                 value="{{ $searchTerm ?? '' }}"
                                 placeholder="Cari mata kuliah, kode MK, atau jenis..."
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
 
                             <button type="submit"
                                     class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Unified Toolbar: Filters Only -->
+                <div class="bg-gray-50/75 p-5 rounded-2xl border border-gray-100 mb-6">
+                    <form action="{{ route('matakuliah.index') }}" method="GET" class="space-y-4">
+                        {{-- PERTAHANKAN PENCARIAN YANG SUDAH DIPILIH --}}
+                        <input type="hidden" name="search" value="{{ request('search') }}">
+
+                        <div class="flex flex-wrap items-center gap-3">
+                            
+                            <!-- Semester Ganjil / Genap Segmented Control -->
+                            <div class="inline-flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                                <button id="btn-ganjil" type="button" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200">
+                                    Ganjil
+                                </button>
+                                <button id="btn-genap" type="button" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200">
+                                    Genap
+                                </button>
+                            </div>
+
+                            <!-- Select Semester Dropdown -->
+                            <div class="relative min-w-[140px]">
+                                <select id="select-semester" name="semester" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+                                    <!-- Opsi diisi JavaScript -->
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+
+                            <!-- Kurikulum Dropdown -->
+                            <div class="relative min-w-[160px]">
+                                <select name="kurikulum" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+                                    <option value="">Semua Kurikulum</option>
+                                    @foreach ($kurikulums as $kurikulum)
+                                        <option value="{{ $kurikulum->id_kurikulum }}" {{ request('kurikulum') == $kurikulum->id_kurikulum ? 'selected' : '' }}>
+                                            {{ $kurikulum->nama_kurikulum }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+
+                            <!-- Prodi Dropdown -->
+                            <div class="relative min-w-[160px]">
+                                <select name="prodi" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+                                    <option value="">Semua Prodi</option>
+                                    @foreach ($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}" {{ request('prodi') == $prodi->id_prodi ? 'selected' : '' }}>
+                                            {{ $prodi->nama_prodi }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-sm transition-all duration-200 text-sm whitespace-nowrap">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 8.293A1 1 0 013 7.586V4z"></path>
+                                </svg>
+                                Filter
+                            </button>
+                            
+                            <!-- Reset Button (Visible only when filters/search are active) -->
+                            @if(request()->anyFilled(['search', 'semester', 'kurikulum', 'prodi']))
+                                <a href="{{ route('matakuliah.index') }}" class="inline-flex items-center justify-center px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition-all duration-200 text-sm whitespace-nowrap">
+                                    Reset
+                                </a>
+                            @endif
 
                         </div>
-
                     </form>
-
                 </div>
 
 
@@ -682,15 +728,11 @@
                 });
 
                 if (type === 'ganjil') {
-                    btnGanjil.classList.add('bg-teal-600', 'text-white');
-                    btnGanjil.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
-                    btnGenap.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
-                    btnGenap.classList.remove('bg-teal-600', 'text-white');
+                    btnGanjil.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 bg-teal-600 text-white shadow-sm';
+                    btnGenap.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-800 bg-transparent';
                 } else {
-                    btnGenap.classList.add('bg-teal-600', 'text-white');
-                    btnGenap.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
-                    btnGanjil.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-50');
-                    btnGanjil.classList.remove('bg-teal-600', 'text-white');
+                    btnGenap.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 bg-teal-600 text-white shadow-sm';
+                    btnGanjil.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-800 bg-transparent';
                 }
             }
             if(btnGanjil && btnGenap && selectSemester) {
@@ -745,6 +787,239 @@
                 });
             }
             handleFormSubmit('form-edit-matkul', 'edit-errors', 'edit');
+
+            // ===== LOGIKA URUTKAN & FILTER TABEL (SORTING & FILTERING POPUPS) =====
+            const table = document.querySelector('table');
+            if (table) {
+                const headers = table.querySelectorAll('thead th');
+                const tbody = table.querySelector('tbody');
+                const originalRows = Array.from(tbody.querySelectorAll('tr'));
+
+                if (originalRows.length > 0 && originalRows[0].cells.length > 1) {
+                    let currentSortColumn = -1;
+                    let isAscending = true;
+                    let activeProdiFilter = 'all';
+
+                    // Function to apply filters
+                    function applyProdiFilter() {
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        rows.forEach(row => {
+                            const prodiCell = row.cells[7]?.textContent.trim() || '';
+                            const matches = activeProdiFilter === 'all' || prodiCell === activeProdiFilter;
+                            row.style.display = matches ? '' : 'none';
+                        });
+
+                        // Re-index No column
+                        let visibleIndex = 1;
+                        const pageOffset = parseInt("{{ ($matkuls->currentPage() - 1) * $matkuls->perPage() }}") || 0;
+                        rows.forEach(row => {
+                            if (row.style.display !== 'none') {
+                                const noCell = row.cells[0];
+                                if (noCell) {
+                                    noCell.textContent = pageOffset + visibleIndex;
+                                    visibleIndex++;
+                                }
+                            }
+                        });
+
+                        // Update Prodi Header Filter Icon
+                        const prodiHeader = headers[7];
+                        const prodiIcon = prodiHeader.querySelector('.sort-icon');
+                        if (prodiIcon) {
+                            if (activeProdiFilter === 'all') {
+                                prodiIcon.innerHTML = '⇅';
+                                prodiIcon.classList.remove('text-amber-400');
+                            } else {
+                                prodiIcon.innerHTML = '✓';
+                                prodiIcon.classList.add('text-amber-400');
+                            }
+                        }
+                    }
+
+                    // Helper to close all popups
+                    function closeAllPopups() {
+                        const popups = document.querySelectorAll('.header-popup-menu');
+                        popups.forEach(p => p.remove());
+                    }
+
+                    // Sorting helper function
+                    function sortTable(columnIndex, ascending) {
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        currentSortColumn = columnIndex;
+                        isAscending = ascending;
+
+                        // Update icons for all sortable headers
+                        headers.forEach((h, idx) => {
+                            const icon = h.querySelector('.sort-icon');
+                            if (icon) {
+                                if (idx === columnIndex) {
+                                    icon.innerHTML = isAscending ? '▲' : '▼';
+                                    icon.classList.remove('opacity-60', 'text-teal-300');
+                                    icon.classList.add('opacity-100', 'text-amber-400');
+                                } else {
+                                    // Don't reset Prodi filter icon if it is active
+                                    if (idx === 7 && activeProdiFilter !== 'all') {
+                                        icon.innerHTML = '✓';
+                                        icon.classList.add('text-amber-400');
+                                    } else {
+                                        icon.innerHTML = '⇅';
+                                        icon.classList.remove('opacity-100', 'text-amber-400');
+                                        icon.classList.add('opacity-60', 'text-teal-300');
+                                    }
+                                }
+                            }
+                        });
+
+                        // Sort the actual rows array
+                        rows.sort((rowA, rowB) => {
+                            const cellA = rowA.cells[columnIndex]?.textContent.trim() || '';
+                            const cellB = rowB.cells[columnIndex]?.textContent.trim() || '';
+
+                            const isNumeric = columnIndex === 3 || columnIndex === 5;
+
+                            if (isNumeric) {
+                                const numA = parseFloat(cellA) || 0;
+                                const numB = parseFloat(cellB) || 0;
+                                return isAscending ? numA - numB : numB - numA;
+                            } else {
+                                return isAscending
+                                    ? cellA.localeCompare(cellB, 'id', { sensitivity: 'base' })
+                                    : cellB.localeCompare(cellA, 'id', { sensitivity: 'base' });
+                            }
+                        });
+
+                        // Append sorted rows to tbody
+                        rows.forEach(row => tbody.appendChild(row));
+
+                        // Refresh numbers keeping display filter in mind
+                        applyProdiFilter();
+                    }
+
+                    // Open Body-Level absolute popup
+                    function openPopup(anchor, index, contentHtml, onSelect) {
+                        closeAllPopups();
+
+                        const popup = document.createElement('div');
+                        popup.className = 'header-popup-menu fixed bg-white rounded-xl shadow-2xl border border-gray-200 p-1.5 z-[9999] min-w-[220px] text-sm text-gray-700';
+                        popup.innerHTML = contentHtml;
+                        document.body.appendChild(popup);
+
+                        // Position popup correctly below the header cell
+                        const rect = anchor.getBoundingClientRect();
+                        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+                        popup.style.top = `${rect.bottom + scrollTop + 6}px`;
+                        
+                        if (rect.left + 220 > window.innerWidth) {
+                            popup.style.left = `${rect.right + scrollLeft - 220}px`;
+                        } else {
+                            popup.style.left = `${rect.left + scrollLeft}px`;
+                        }
+
+                        // Outside click close handler
+                        const outsideClick = (e) => {
+                            if (!popup.contains(e.target) && !anchor.contains(e.target)) {
+                                popup.remove();
+                                document.removeEventListener('click', outsideClick);
+                            }
+                        };
+                        
+                        setTimeout(() => {
+                            document.addEventListener('click', outsideClick);
+                        }, 50);
+
+                        // Bind selection click event
+                        popup.querySelectorAll('[data-option]').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                onSelect(btn.getAttribute('data-option'));
+                                popup.remove();
+                                document.removeEventListener('click', outsideClick);
+                            });
+                        });
+                    }
+
+                    // Configure headers
+                    headers.forEach((header, index) => {
+                        if (index === 0 || index === 8) return;
+
+                        header.classList.add('cursor-pointer', 'select-none', 'hover:bg-teal-900', 'transition-all', 'duration-200');
+                        
+                        const text = header.textContent.trim();
+                        header.innerHTML = `
+                            <div class="flex items-center justify-between gap-1.5 py-1.5 px-1">
+                                <span>${text}</span>
+                                <span class="sort-icon text-teal-300 opacity-60 text-xs transition-all duration-200 ml-1">⇅</span>
+                            </div>
+                        `;
+
+                        header.addEventListener('click', (e) => {
+                            // Prevent any default behavior
+                            e.preventDefault();
+
+                            // Semester (index 5) custom popup
+                            if (index === 5) {
+                                const popupContent = `
+                                    <div class="flex flex-col p-1 space-y-1">
+                                        <button data-option="asc" class="w-full text-left px-3 py-2 hover:bg-teal-50 hover:text-teal-800 rounded-lg transition-colors flex items-center gap-2.5 font-medium">
+                                            <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
+                                            <span>Lowest to Highest (1 → 8)</span>
+                                        </button>
+                                        <button data-option="desc" class="w-full text-left px-3 py-2 hover:bg-teal-50 hover:text-teal-800 rounded-lg transition-colors flex items-center gap-2.5 font-medium">
+                                            <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"></path></svg>
+                                            <span>Highest to Lowest (8 → 1)</span>
+                                        </button>
+                                    </div>
+                                `;
+                                openPopup(header, index, popupContent, (option) => {
+                                    sortTable(5, option === 'asc');
+                                });
+                            }
+                            // Program Studi (index 7) custom popup
+                            else if (index === 7) {
+                                // Extract unique Prodi from current rows
+                                const prodis = new Set();
+                                originalRows.forEach(row => {
+                                    const val = row.cells[7]?.textContent.trim() || '';
+                                    if (val && val !== '-' && val !== 'Data mata kuliah tidak ditemukan.') {
+                                        prodis.add(val);
+                                    }
+                                });
+
+                                let popupContent = `
+                                    <div class="flex flex-col p-1 max-h-[260px] overflow-y-auto space-y-1">
+                                        <button data-option="all" class="w-full text-left px-3 py-2 hover:bg-teal-50 hover:text-teal-800 rounded-lg transition-colors flex items-center justify-between font-semibold">
+                                            <span>Tampilkan Semua</span>
+                                            ${activeProdiFilter === 'all' ? '<span class="text-teal-600 font-bold">✓</span>' : ''}
+                                        </button>
+                                        <div class="border-t border-gray-100 my-1"></div>
+                                `;
+
+                                prodis.forEach(prodi => {
+                                    popupContent += `
+                                        <button data-option="${prodi}" class="w-full text-left px-3 py-2 hover:bg-teal-50 hover:text-teal-800 rounded-lg transition-colors flex items-center justify-between gap-4 font-medium">
+                                            <span>${prodi}</span>
+                                            ${activeProdiFilter === prodi ? '<span class="text-teal-600 font-bold">✓</span>' : ''}
+                                        </button>
+                                    `;
+                                });
+
+                                popupContent += `</div>`;
+
+                                openPopup(header, index, popupContent, (option) => {
+                                    activeProdiFilter = option;
+                                    applyProdiFilter();
+                                });
+                            }
+                            // General columns sorting click direct toggle
+                            else {
+                                const ascending = currentSortColumn === index ? !isAscending : true;
+                                sortTable(index, ascending);
+                            }
+                        });
+                    });
+                }
+            }
         });
     </script>
 </body>

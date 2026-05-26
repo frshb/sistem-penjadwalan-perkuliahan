@@ -10,6 +10,7 @@
 <body x-data="{ sidebarOpen: true }" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300 font-sans">
 
     @include('components.sidebar')
+    @include('components.success-popup')
 
     <main :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-white min-h-screen">
         
@@ -56,10 +57,11 @@
                             <!-- Management Data Section -->
                             <div class="bg-white rounded-2xl mb-6 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
                                     x-data="{ 
-                                    enabled: {{ $permissions['management_data']['enabled'] ? 'true' : 'false' }},
-                                    items: {{ json_encode($permissions['management_data']['items']) }}
+                                    enabled: {{ $permissions['management_data']['enabled'] ? 'true' : 'false' }}
                                     }">
                                 
+                                <input type="hidden" name="permissions[{{ $roleName }}][management_data][enabled]" :value="enabled ? '1' : '0'">
+
                                 <div class="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center cursor-pointer" @click="enabled = !enabled">
                                     <div class="flex items-center space-x-3">
                                         <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
@@ -80,25 +82,34 @@
                                 </div>
 
                                 <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" x-show="enabled" x-collapse>
-                                    <template x-for="(item, index) in items" :key="index">
+                                    @foreach($permissions['management_data']['items'] as $index => $item)
                                         <label class="flex items-center space-x-3 p-3 rounded-xl border border-gray-100 hover:bg-teal-50/30 hover:border-teal-100 cursor-pointer transition-all">
                                             <div class="relative flex items-center">
-                                                <input type="checkbox" :checked="item.enabled" class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-teal-500 checked:bg-teal-500 hover:border-teal-400">
+                                                <input type="hidden" name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][name]" value="{{ $item['name'] }}">
+                                                <input type="hidden" name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][enabled]" value="0">
+                                                <input 
+                                                    type="checkbox" 
+                                                    name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][enabled]" 
+                                                    value="1" 
+                                                    {{ $item['enabled'] ? 'checked' : '' }} 
+                                                    class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-teal-500 checked:bg-teal-500 hover:border-teal-400"
+                                                >
                                                 <svg class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                             </div>
-                                            <span class="text-sm font-medium text-gray-700 select-none" x-text="item.name"></span>
+                                            <span class="text-sm font-medium text-gray-700 select-none">{{ $item['name'] }}</span>
                                         </label>
-                                    </template>
+                                    @endforeach
                                 </div>
                             </div>
 
                             <!-- Modul Penjadwalan Section -->
                             <div class="bg-white rounded-2xl mb-6 shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
                                     x-data="{ 
-                                    enabled: {{ $permissions['modul_penjadwalan']['enabled'] ? 'true' : 'false' }},
-                                    items: {{ json_encode($permissions['modul_penjadwalan']['items']) }}
+                                    enabled: {{ $permissions['modul_penjadwalan']['enabled'] ? 'true' : 'false' }}
                                     }">
                                 
+                                <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][enabled]" :value="enabled ? '1' : '0'">
+
                                 <div class="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center cursor-pointer" @click="enabled = !enabled">
                                     <div class="flex items-center space-x-3">
                                         <div class="p-2 bg-yellow-50 rounded-lg text-yellow-600">
@@ -119,15 +130,23 @@
                                 </div>
 
                                 <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" x-show="enabled" x-collapse>
-                                    <template x-for="(item, index) in items" :key="index">
+                                    @foreach($permissions['modul_penjadwalan']['items'] as $index => $item)
                                         <label class="flex items-center space-x-3 p-3 rounded-xl border border-gray-100 hover:bg-yellow-50/30 hover:border-yellow-100 cursor-pointer transition-all">
                                             <div class="relative flex items-center">
-                                                <input type="checkbox" :checked="item.enabled" class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-yellow-500 checked:bg-yellow-500 hover:border-yellow-400">
+                                                <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][name]" value="{{ $item['name'] }}">
+                                                <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][enabled]" value="0">
+                                                <input 
+                                                    type="checkbox" 
+                                                    name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][enabled]" 
+                                                    value="1" 
+                                                    {{ $item['enabled'] ? 'checked' : '' }} 
+                                                    class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-yellow-500 checked:bg-yellow-500 hover:border-yellow-400"
+                                                >
                                                 <svg class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                             </div>
-                                            <span class="text-sm font-medium text-gray-700 select-none" x-text="item.name"></span>
+                                            <span class="text-sm font-medium text-gray-700 select-none">{{ $item['name'] }}</span>
                                         </label>
-                                    </template>
+                                    @endforeach
                                 </div>
                             </div>
 

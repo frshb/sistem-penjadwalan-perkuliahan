@@ -31,11 +31,11 @@ class CheckRole
         }
 
         // Map role names to IDs or use helper if roles are passed as strings
-        // Implementation Plan used strings like 'admin', 'dekan'. 
+        // Implementation Plan used strings like 'admin', 'dekan'.
         // User model has helpers but we need to match against the user's role name.
-        
+
         $userRoleName = $user->role->nama_role;
-        
+
         // --- FIX: Map Legacy Roles to New Roles ---
         // DB has 'super_admin' and 'admin_fakultas', code expects 'admin'.
         if ($userRoleName === 'super_admin' || $userRoleName === 'admin_fakultas') {
@@ -48,7 +48,7 @@ class CheckRole
         if (in_array($userRoleName, $roles)) {
             return $next($request);
         }
-        
+
         // Allow Admin to access everything? (Optional, but "Admin full akses" was requested)
         if ($userRoleName === 'admin') {
             return $next($request);

@@ -1,4 +1,3 @@
-<!-- Button to Open Sidebar (Visible when sidebar is closed) -->
 <button @click="sidebarOpen = true" aria-label="Open Sidebar"
         :class="sidebarOpen ? 'hidden' : 'mt-5'"
         class="fixed top-6 left-6 z-20 text-gray-600 hover:text-gray-900 transition-all duration-300 ease-in-out">
@@ -89,7 +88,6 @@
 </aside>
 
 <script>
-    // Force remove dark class just in case it persisted in localstorage/html
     document.documentElement.classList.remove('dark');
     localStorage.removeItem('theme');
 </script>
