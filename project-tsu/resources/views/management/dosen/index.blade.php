@@ -164,7 +164,7 @@
                 <!-- Search & Filter -->
                 <div class="mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
                     <form action="{{ route('dosen.index') }}" method="GET" class="flex flex-col md:flex-row items-center gap-3">
-                        
+
                         <!-- Search Bar -->
                         <div class="flex-1 w-full relative">
                             <input
@@ -187,8 +187,8 @@
                         <!-- Filter Prodi -->
                         @if (!Auth::user() || !Auth::user()->isKaprodi())
                             <div class="relative w-full md:w-auto md:min-w-[240px]">
-                                <select 
-                                    name="prodi" 
+                                <select
+                                    name="prodi"
                                     onchange="this.form.submit()"
                                     class="w-full pl-3.5 pr-8 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer h-10"
                                 >

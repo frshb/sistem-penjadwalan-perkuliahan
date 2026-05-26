@@ -535,6 +535,12 @@
                     </div>
                 </div>
                 <div class="px-5 py-4 border-t border-gray-100 flex gap-2">
+                    <button id="dp-btn-split" class="hidden flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-sm font-semibold transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+                        </svg>
+                        Pisahkan
+                    </button>
                     <button id="dp-btn-hapus" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-sm font-semibold transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -1028,6 +1034,17 @@ function openDetailPanel(card) {
         if (closeBtn) closeBtn.click();
     };
 
+    // ── Tombol Split: tampil hanya jika card gabungan ──
+    const btnSplit = document.getElementById('dp-btn-split');
+    if (kelasList.length > 1) {
+        btnSplit.classList.remove('hidden');
+        btnSplit.onclick = () => splitCard(card);
+    } else {
+        btnSplit.classList.add('hidden');
+        btnSplit.onclick = null;
+    }
+
+
     const panel = document.getElementById('detail-panel');
     panel.classList.remove('hidden');
     panel.classList.add('flex');
@@ -1037,6 +1054,70 @@ function closeDetailPanel() {
     document.getElementById('detail-panel').classList.remove('flex');
     document.getElementById('detail-panel').classList.add('hidden');
     activeDetailCard = null;
+}
+
+// ============================================================
+// SPLIT / PISAHKAN CARD GABUNGAN
+// ============================================================
+function splitCard(card) {
+    const kelasList   = JSON.parse(card.dataset.kelasList   || '[]');
+    const kelasIdList = JSON.parse(card.dataset.kelasIdList || '[]');
+
+    if (kelasList.length <= 1) {
+        showToast('Kelas ini tidak dalam kondisi gabungan.', 'red');
+        return;
+    }
+
+    if (!confirm(`Pisahkan ${kelasList.length} kelas (${kelasList.join(' + ')}) menjadi card terpisah?`)) return;
+
+    // Simpan semua data sebelum card dihapus
+    const slotId     = parseInt(card.dataset.start);
+    const day        = card.dataset.day;
+    const sks        = parseInt(card.dataset.sks);
+    const nama       = card.dataset.nama;
+    const dosen      = card.dataset.dosen;
+    const kodeMk     = card.dataset.kodeMk;
+    const ruangan    = card.dataset.ruangan;
+    const ruanganId  = card.dataset.ruanganId;
+    const prodi      = card.dataset.prodi;
+    const jenis      = card.dataset.jenis;
+    const jamMulai   = card.dataset.jamMulai;
+    const jamSelesai = card.dataset.jamSelesai;
+
+    // Hapus card gabungan dari DB & DOM
+    hapusJadwal(card);
+    card.remove();
+    closeDetailPanel();
+
+    // Buat card individual untuk setiap kelas
+    kelasList.forEach((kelasNama, i) => {
+        const kelasId  = kelasIdList[i];
+
+        // Ambil prodi per-kelas dari sidebar jika tersedia
+        // (bisa berbeda jika kelas lintas prodi digabung)
+        const sidebarEl  = document.getElementById(`kelas-${kelasId}`);
+        const prodiKelas = sidebarEl?.dataset.prodi || prodi || '-';
+        const jenisKelas = sidebarEl?.dataset.jenis || jenis || 'Teori';
+
+        createCard({
+            sks, nama, dosen, kodeMk, ruangan, ruanganId,
+            slotId, day, jamMulai, jamSelesai,
+            kelas:    kelasNama,
+            kelasId:  parseInt(kelasId),
+            prodi:    prodiKelas,
+            jenis:    jenisKelas,
+            jadwalIds: [],
+        });
+
+        setSidebarStatus(kelasId, 'sudah');
+    });
+
+    updateCounter();
+    applyFilter();
+    renderTablePreview();
+    updateBentrokButton();
+
+    showToast(`✓ ${kelasList.length} kelas berhasil dipisahkan!`, 'green');
 }
 
 function updateCardRuangan(ruanganId, ruanganNama) {
@@ -1153,7 +1234,7 @@ function renderTablePreview() {
     cards.forEach(card => {
         const kelasList = JSON.parse(card.dataset.kelasList || '[]');
         const slotId    = parseInt(card.dataset.start);
-        const sesi = slotId <= 8 ? 'Pagi' : 'Malam';
+        const sesi = slotId <= 11 ? 'Pagi' : 'Malam';
         const hariLabel = card.dataset.day.charAt(0).toUpperCase() + card.dataset.day.slice(1);
 
         const kelasPertama = kelasList[0];
@@ -1356,6 +1437,7 @@ function enableCardDrag(card) {
         e.dataTransfer.setData('kelas_id_list',card.dataset.kelasIdList || '[]');
         e.dataTransfer.setData('jadwal_ids',   card.dataset.jadwalIds   || '[]');
         e.dataTransfer.setData('jenis',        card.dataset.jenis       || 'Teori');
+        e.dataTransfer.setData('prodi',        card.dataset.prodi       || '-');
     });
     card.addEventListener('click', e => {
         if (e.target.closest('button')) return;
@@ -1414,6 +1496,7 @@ function enableMerge(card) {
 //   [C5] MK yang sama tidak overlap waktu
 //   [C6] Maks MK unik per prodi per hari  (dari modal)
 //   [C7] Kelas A/B pagi/siang, kelas S malam
+//   [C9] Kelas A/B yang sama (MK+prodi+semester+dosen) harus berurutan tanpa jeda, di hari yang sama
 //
 // Randomisasi:
 //   - Urutan kelas diacak dengan seeded PRNG
@@ -1435,73 +1518,70 @@ function generateJadwal() {
         updateCounter();
     }
 
-    // Tampilkan loading
     const btn = document.getElementById('btn-generate');
     btn.disabled  = true;
     btn.innerHTML = `<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg> Generating...`;
 
-    // ── Baca konfigurasi dari GEN_CONFIG ────────────────────
     const MAX_SKS_DOSEN_PER_HARI    = GEN_CONFIG.maxSksDosen;
     const MAX_KELAS_PER_SLOT        = GEN_CONFIG.maxKelasSlot;
     const MAX_MK_PER_PRODI_PER_HARI = GEN_CONFIG.maxMkProdi;
 
-    // ── Init PRNG dengan seed ────────────────────────────────
     const seed = GEN_CONFIG.seed ?? 42;
     const rng  = makePRNG(seed);
-
-    // Tampilkan seed di badge/toast untuk reproducibility
     console.info(`[Generate] Seed: ${seed} | Config: SKS=${MAX_SKS_DOSEN_PER_HARI}, Slot=${MAX_KELAS_PER_SLOT}, MK=${MAX_MK_PER_PRODI_PER_HARI}`);
 
-    const hariNama   = { 1:'senin', 2:'selasa', 3:'rabu', 4:'kamis', 5:'jumat' };
+    const hariNama     = { 1:'senin', 2:'selasa', 3:'rabu', 4:'kamis', 5:'jumat' };
     const hariListBase = [1, 2, 3, 4, 5];
 
-    // ── STATE C1 ─────────────────────────────────────────────
+    // STATE C1: SKS dosen per hari
     const sksDosenPerHari = {};
     hariListBase.forEach(h => { sksDosenPerHari[h] = {}; });
 
-    // ── STATE C2 ─────────────────────────────────────────────
+    // STATE C2: Ruangan terpakai per slot per hari
     const ruanganTerpakai = {};
     hariListBase.forEach(h => {
         ruanganTerpakai[h] = {};
         SLOT_VALID.forEach(s => { ruanganTerpakai[h][s] = new Set(); });
     });
 
-    // ── STATE C3 ─────────────────────────────────────────────
+    // STATE C3: Jumlah kelas per slot
     const kelasPerSlot = {};
     hariListBase.forEach(h => {
         kelasPerSlot[h] = {};
         SLOT_VALID.forEach(s => { kelasPerSlot[h][s] = 0; });
     });
 
-    // ── STATE C4 ─────────────────────────────────────────────
+    // STATE C4: Nama kelas per slot (cegah kelas yang sama di slot overlap)
     const kelasNamaPerSlot = {};
     hariListBase.forEach(h => {
         kelasNamaPerSlot[h] = {};
         SLOT_VALID.forEach(s => { kelasNamaPerSlot[h][s] = new Map(); });
     });
 
-    // ── STATE C5 ─────────────────────────────────────────────
-    const mkPerSlot = {};
+    // STATE C5 (DIPERBAIKI): Dosen per slot — gantikan mkPerSlot
+    // mkOverlap diganti dosenOverlap: dosen yang sama tidak boleh mengajar bersamaan.
+    // Kelas paralel (MK sama, dosen sama) diizinkan di slot BERBEDA.
+    const dosenPerSlot = {};
     hariListBase.forEach(h => {
-        mkPerSlot[h] = {};
-        SLOT_VALID.forEach(s => { mkPerSlot[h][s] = new Set(); });
+        dosenPerSlot[h] = {};
+        SLOT_VALID.forEach(s => { dosenPerSlot[h][s] = new Set(); });
     });
 
-    // ── STATE C6 ─────────────────────────────────────────────
+    // STATE C6: MK unik per prodi per hari
     const mkProdiPerHari = {};
     hariListBase.forEach(h => { mkProdiPerHari[h] = {}; });
 
-    // ── STATE C9 ─────────────────────────────────────────────
-    // mkDosenHari[namaMK|dosenId] = { hariId, slotAkhir }
-    // Kelas MK+dosen sama WAJIB hari sama, slot tepat berdekatan
+    // STATE C9: Tracking saudara (MK+dosen+prodi+semester sama)
     const mkDosenHari = {};
 
-    function getSaudaraInfo(namaMK, dosenId) {
-        return mkDosenHari[namaMK + '|' + dosenId] || null;
+    function buatKeyC9(namaMK, dosenId, prodi, semester) {
+        return `${namaMK}|${dosenId}|${prodi}|${semester}`;
     }
-
-    function catatMkDosen(namaMK, dosenId, hariId, slotAkhir) {
-        const key = namaMK + '|' + dosenId;
+    function getSaudaraInfo(namaMK, dosenId, prodi, semester) {
+        return mkDosenHari[buatKeyC9(namaMK, dosenId, prodi, semester)] || null;
+    }
+    function catatMkDosen(namaMK, dosenId, prodi, semester, hariId, slotAkhir) {
+        const key = buatKeyC9(namaMK, dosenId, prodi, semester);
         if (!mkDosenHari[key]) {
             mkDosenHari[key] = { hariId, slotAkhir };
         } else {
@@ -1509,7 +1589,7 @@ function generateJadwal() {
         }
     }
 
-    // ── HELPERS ───────────────────────────────────────────────
+    // HELPERS
     function dosenBisaMengajar(hariId, dosenId, sks) {
         if (!dosenId) return true;
         return (sksDosenPerHari[hariId][dosenId] || 0) + sks <= MAX_SKS_DOSEN_PER_HARI;
@@ -1517,7 +1597,7 @@ function generateJadwal() {
 
     function cariRuanganBebas(hariId, slotsDibutuhkan, poolRuangan) {
         for (const ruangan of poolRuangan) {
-            const rid = String(ruangan.id);
+            const rid   = String(ruangan.id);
             const bebas = slotsDibutuhkan.every(s => {
                 const set = ruanganTerpakai[hariId][s];
                 return set && !set.has(rid);
@@ -1536,14 +1616,20 @@ function generateJadwal() {
             const map = kelasNamaPerSlot[hariId][s];
             if (!map || !map.has(namaKelas)) return false;
             const ex = map.get(namaKelas);
-            return ex.namaMK !== namaMK || ex.dosenId !== namaDosenId;
+            // Kelas yang sama di slot yang sama selalu bentrok
+            // kecuali jika itu kelas yang persis sama (MK dan dosen sama — tidak mungkin terjadi)
+            return true;
         });
     }
 
-    function mkOverlap(hariId, slotsDibutuhkan, namaMK) {
+    // PERBAIKAN BUG #3: Cek dosen overlap, bukan MK overlap
+    // Dosen yang sama tidak boleh mengajar DI WAKTU YANG SAMA
+    // tapi boleh mengajar kelas paralel di waktu berbeda
+    function dosenOverlap(hariId, slotsDibutuhkan, dosenId) {
+        if (!dosenId) return false;
         return slotsDibutuhkan.some(s => {
-            const set = mkPerSlot[hariId][s];
-            return set && set.has(namaMK);
+            const set = dosenPerSlot[hariId]?.[s];
+            return set && set.has(String(dosenId));
         });
     }
 
@@ -1554,23 +1640,18 @@ function generateJadwal() {
         return set.size >= MAX_MK_PER_PRODI_PER_HARI;
     }
 
-    const JAM_BATAS_MALAM = '16:30';
+    const JAM_BATAS_MALAM  = '16:30';
+    const SLOT_ISTIRAHAT   = 6;
     function jamKeMenit(jamStr) {
         const [h, m] = jamStr.split(':').map(Number);
         return h * 60 + m;
     }
     const menitBatasMalam = jamKeMenit(JAM_BATAS_MALAM);
 
-    // ── HELPER C8 ─────────────────────────────────────────────
-    const SLOT_ISTIRAHAT = 6; // slot istirahat yang tidak boleh dilewati
-
     function melewatiIstirahat(slotId, sks) {
-        const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
-        return slotsDibutuhkan.includes(SLOT_ISTIRAHAT);
+        return Array.from({ length: sks }, (_, i) => slotId + i).includes(SLOT_ISTIRAHAT);
     }
-
     function jenisKelas(namaKelas) { return namaKelas.trim().slice(-1).toUpperCase(); }
-
     function slotSesuaiJenisKelas(slotId, namaKelas) {
         const info = slotElMap[slotId];
         if (!info || !info.jamMulai || info.jamMulai === '-') return true;
@@ -1580,17 +1661,35 @@ function generateJadwal() {
         return menitMulai < menitBatasMalam;
     }
 
-    // ── RANDOMISASI URUTAN KELAS ──────────────────────────────
-    // Pertama urutkan SKS terbesar dulu, lalu kocok dengan PRNG
-    // agar posisi slot awal berbeda-beda tiap generate
-    const kelasUrut = shuffleArray(
-        [...semua].sort((a, b) => parseInt(b.dataset.sks) - parseInt(a.dataset.sks)),
-        rng
-    );
+    // ── PERBAIKAN BUG #2: Susun urutan kelas ─────────────────
+    // Kelas yang punya MK+dosen+prodi+semester sama dikelompokkan
+    // dan diurutkan A→B→C agar A selalu diproses lebih dulu.
+    function getSemesterDariSidebar(kelasId) {
+        const el = document.querySelector(`.kelas-item[data-id="${kelasId}"]`);
+        return el?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '';
+    }
+
+    const grupKelas = {};
+    semua.forEach(el => {
+        const sem = getSemesterDariSidebar(el.dataset.id);
+        const key = buatKeyC9(el.dataset.nama, el.dataset.dosenId || '', el.dataset.prodi || '', sem);
+        if (!grupKelas[key]) grupKelas[key] = [];
+        grupKelas[key].push(el);
+    });
+
+    // Dalam satu grup: urutkan ascending by nama kelas (A < B < C < S1 < S2)
+    Object.values(grupKelas).forEach(grup => {
+        grup.sort((a, b) => a.dataset.kelas.localeCompare(b.dataset.kelas));
+    });
+
+    // Acak URUTAN ANTAR GRUP (bukan urutan dalam grup)
+    const grupKeys  = shuffleArray(Object.keys(grupKelas), rng);
+    const kelasUrut = [];
+    grupKeys.forEach(key => kelasUrut.push(...grupKelas[key]));
 
     let berhasil = 0, gagal = 0;
 
-    for (const el of kelasUrut) {
+    function cariDanTempatkan(el, hariForced = null) {
         const kelasId = el.dataset.id;
         const sks     = parseInt(el.dataset.sks) || 2;
         const nama    = el.dataset.nama    || '-';
@@ -1604,43 +1703,56 @@ function generateJadwal() {
         const poolRuanganBase = JSON.parse(el.dataset.ruangans || '[]');
         if (!poolRuanganBase.length) {
             console.warn(`[C2] Tidak ada ruangan: ${kelas} – ${nama}`);
-            gagal++;
-            continue;
+            return false;
         }
 
-        const saudaraInfo  = getSaudaraInfo(nama, dosenId);
-        const hariList     = saudaraInfo
-            ? [saudaraInfo.hariId]           // wajib hari sama
-            : shuffleArray(hariListBase, rng);
+        const semesterKelas = getSemesterDariSidebar(kelasId);
+        const saudaraInfo   = getSaudaraInfo(nama, dosenId, prodi, semesterKelas);
+
+        // PERBAIKAN BUG #2: Jika ada saudara, WAJIB hari yang sama
+        const hariList = hariForced
+            ? [hariForced]
+            : saudaraInfo
+                ? [saudaraInfo.hariId]
+                : shuffleArray([...hariListBase], rng);
+
+        // PERBAIKAN BUG #1: slotList dimulai dari tepat setelah saudara,
+        // lalu fallback ke slot lain di hari yang sama
         const slotListBase = shuffleArray([...SLOT_VALID], rng);
 
-        let ditempatkan = false;
-
-        luarLoop:
         for (const hariId of hariList) {
             if (!dosenBisaMengajar(hariId, dosenId, sks)) continue;
             if (prodiSudahMaksimal(hariId, prodi, nama)) continue;
 
-            // Jika ada saudara → coba slot tepat setelah saudara selesai
-           const slotList = saudaraInfo
-                ? [saudaraInfo.slotAkhir]
-                : [
-                    // Prioritas 1: slot yang TIDAK melewati istirahat
+            // Slot prioritas: jika ada saudara, mulai dari slot idealnya
+            let slotList;
+            if (saudaraInfo && saudaraInfo.hariId === hariId) {
+                const slotIdeal = saudaraInfo.slotAkhir;
+                // Prioritas 1: slot tepat setelah saudara selesai
+                // Prioritas 2: slot lain yang tidak melewati istirahat
+                // Prioritas 3: slot yang melewati istirahat (last resort)
+                const sisaTanpaIstirahat = slotListBase.filter(s => s !== slotIdeal && !melewatiIstirahat(s, sks));
+                const sisaDenganIstirahat = slotListBase.filter(s => s !== slotIdeal && melewatiIstirahat(s, sks));
+                slotList = [slotIdeal, ...sisaTanpaIstirahat, ...sisaDenganIstirahat];
+            } else {
+                slotList = [
                     ...slotListBase.filter(s => !melewatiIstirahat(s, sks)),
-                    // Prioritas 2: slot yang melewati istirahat (fallback, seminimal mungkin)
                     ...slotListBase.filter(s => melewatiIstirahat(s, sks)),
                 ];
+            }
 
             for (const slotId of slotList) {
                 const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
                 if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
                 if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
                 if (kelasBentrok(hariId, slotsDibutuhkan, kelas, nama, dosenId)) continue;
-                if (mkOverlap(hariId, slotsDibutuhkan, nama)) continue;
+
+                // PERBAIKAN BUG #3: Pakai dosenOverlap, bukan mkOverlap
+                if (dosenOverlap(hariId, slotsDibutuhkan, dosenId)) continue;
+
                 if (!slotMasihBisa(hariId, slotsDibutuhkan)) continue;
 
-                // Kocok pool ruangan juga agar pilihan tidak monoton
-                const poolRuangan = shuffleArray(poolRuanganBase, rng);
+                const poolRuangan  = shuffleArray(poolRuanganBase, rng);
                 const ruangDipilih = cariRuanganBebas(hariId, slotsDibutuhkan, poolRuangan);
                 if (!ruangDipilih) continue;
 
@@ -1649,12 +1761,11 @@ function generateJadwal() {
                 const infoSelesai = slotElMap[slotId + sks - 1];
                 if (!infoMulai) continue;
 
-                // ── TEMPATKAN ────────────────────────────────────
+                // TEMPATKAN
                 createCard({
                     sks, nama, kelas,
-                    kelasId:    parseInt(kelasId),
-                    dosen, kodeMk, prodi,
-                    jenis,
+                    kelasId: parseInt(kelasId),
+                    dosen, kodeMk, prodi, jenis,
                     ruangan:    ruangDipilih.nama,
                     ruanganId:  ruangDipilih.id,
                     slotId,
@@ -1664,86 +1775,37 @@ function generateJadwal() {
                     jadwalIds:  [],
                 }, true);
 
-                // Update state
-                if (dosenId) sksDosenPerHari[hariId][dosenId] = (sksDosenPerHari[hariId][dosenId] || 0) + sks;
+                // Update semua state
+                if (dosenId) {
+                    sksDosenPerHari[hariId][dosenId] = (sksDosenPerHari[hariId][dosenId] || 0) + sks;
+                }
                 slotsDibutuhkan.forEach(s => {
                     ruanganTerpakai[hariId][s].add(String(ruangDipilih.id));
-                    kelasPerSlot[hariId][s] = (kelasPerSlot[hariId][s] || 0) + 1;
+                    kelasPerSlot[hariId][s]    = (kelasPerSlot[hariId][s] || 0) + 1;
                     kelasNamaPerSlot[hariId][s].set(kelas, { namaMK: nama, dosenId });
-                    mkPerSlot[hariId][s].add(nama);
+                    // PERBAIKAN: update dosenPerSlot, bukan mkPerSlot
+                    if (dosenId) dosenPerSlot[hariId][s].add(String(dosenId));
                 });
                 if (!mkProdiPerHari[hariId][prodi]) mkProdiPerHari[hariId][prodi] = new Set();
                 mkProdiPerHari[hariId][prodi].add(nama);
-                catatMkDosen(nama, dosenId, hariId, slotId + sks);
+                catatMkDosen(nama, dosenId, prodi, semesterKelas, hariId, slotId + sks);
 
                 setSidebarStatus(kelasId, 'sudah');
-                berhasil++;
-                ditempatkan = true;
-                break luarLoop;
+                return true; // berhasil
             }
         }
+        return false; // gagal
+    }
 
-        // C9 Fallback: jika slot tepat setelah penuh, coba slot lain di hari yang sama
-        if (!ditempatkan && saudaraInfo) {
-            const hariSama     = saudaraInfo.hariId;
-            const slotFallbackBase = shuffleArray([...SLOT_VALID], rng);
-            const slotFallback = [
-                ...slotFallbackBase.filter(s => !melewatiIstirahat(s, sks)),
-                ...slotFallbackBase.filter(s => melewatiIstirahat(s, sks)),
-            ];
-
-
-            for (const slotId of slotFallback) {
-                const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
-                if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
-                if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
-                if (kelasBentrok(hariSama, slotsDibutuhkan, kelas, nama, dosenId)) continue;
-                if (mkOverlap(hariSama, slotsDibutuhkan, nama)) continue;
-                if (!slotMasihBisa(hariSama, slotsDibutuhkan)) continue;
-
-                const poolRuangan  = shuffleArray(poolRuanganBase, rng);
-                const ruangDipilih = cariRuanganBebas(hariSama, slotsDibutuhkan, poolRuangan);
-                if (!ruangDipilih) continue;
-
-                const infoMulai   = slotElMap[slotId];
-                const infoSelesai = slotElMap[slotId + sks - 1];
-                if (!infoMulai) continue;
-
-                createCard({
-                    sks, nama, kelas, kelasId: parseInt(kelasId),
-                    dosen, kodeMk, prodi, jenis,
-                    ruangan: ruangDipilih.nama, ruanganId: ruangDipilih.id,
-                    slotId, day: hariNama[hariSama],
-                    jamMulai: infoMulai.jamMulai,
-                    jamSelesai: infoSelesai?.jamSelesai || '-',
-                    jadwalIds: [],
-                }, true);
-
-                if (dosenId) sksDosenPerHari[hariSama][dosenId] = (sksDosenPerHari[hariSama][dosenId] || 0) + sks;
-                slotsDibutuhkan.forEach(s => {
-                    ruanganTerpakai[hariSama][s].add(String(ruangDipilih.id));
-                    kelasPerSlot[hariSama][s] = (kelasPerSlot[hariSama][s] || 0) + 1;
-                    kelasNamaPerSlot[hariSama][s].set(kelas, { namaMK: nama, dosenId });
-                    mkPerSlot[hariSama][s].add(nama);
-                });
-                if (!mkProdiPerHari[hariSama][prodi]) mkProdiPerHari[hariSama][prodi] = new Set();
-                mkProdiPerHari[hariSama][prodi].add(nama);
-                catatMkDosen(nama, dosenId, hariSama, slotId + sks);
-
-                setSidebarStatus(kelasId, 'sudah');
-                berhasil++;
-                ditempatkan = true;
-                break;
-            }
-        }
-
-        if (!ditempatkan) {
+    for (const el of kelasUrut) {
+        const ok = cariDanTempatkan(el);
+        if (ok) { berhasil++; }
+        else {
             gagal++;
-            console.warn(`[Generate] Gagal: ${kelas} – ${nama} (${sks} SKS)`);
+            console.warn(`[Generate] Gagal: ${el.dataset.kelas} – ${el.dataset.nama} (${el.dataset.sks} SKS)`);
         }
     }
 
-    // Selesai
     btn.disabled  = false;
     btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Generate Jadwal`;
 
@@ -1857,6 +1919,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>`;
             }
+
+
+            simpanJadwal(card);
 
             kelasIdList.forEach(kid => setSidebarStatus(kid, 'sudah'));
             updateCounter();

@@ -356,4 +356,79 @@ class KelasController extends Controller
         return redirect()->back()
             ->with('success', 'Data kelas berhasil dihapus.');
     }
+
+    /**
+     * Simpan tahun akademik baru.
+     */
+    public function storeTahunAkademik(Request $request)
+    {
+        $request->validate([
+            'nama_tahunakademik' => 'required|string|max:20',
+            'tahun_ajaran'       => 'required|string|max:20',
+            'status_aktif'       => 'required|boolean',
+        ]);
+
+        $lastId = TahunAkademik::max('id_tahunakademik') ?? 0;
+
+        TahunAkademik::create([
+            'id_tahunakademik'   => $lastId + 1,
+            'nama_tahunakademik' => $request->nama_tahunakademik,
+            'tahun_ajaran'       => $request->tahun_ajaran,
+            'status_aktif'       => $request->status_aktif,
+        ]);
+
+        return redirect()->route('kelas.pilih-tahun')
+            ->with('success', 'Tahun akademik berhasil ditambahkan.');
+    }
+
+    /**
+     * Hapus tahun akademik.
+     */
+    public function destroyTahunAkademik($id)
+    {
+        try {
+
+            $tahun = TahunAkademik::findOrFail($id);
+            $tahun->delete();
+
+            return redirect()->route('kelas.pilih-tahun')
+                ->with('success', 'Tahun akademik berhasil dihapus.');
+
+        } catch (\Exception $e) {
+
+            return redirect()->back()
+                ->with('error', 'Gagal menghapus. Tahun akademik mungkin masih digunakan.');
+        }
+    }
+
+    /**
+     * Update tahun akademik.
+     */
+    public function updateTahunAkademik(Request $request, $id)
+    {
+        $request->validate([
+            'nama_tahunakademik' => 'required|string|max:20',
+            'tahun_ajaran'       => 'required|string|max:20',
+            'status_aktif'       => 'required|boolean',
+        ]);
+
+        try {
+
+            $tahun = TahunAkademik::findOrFail($id);
+
+            $tahun->update([
+                'nama_tahunakademik' => $request->nama_tahunakademik,
+                'tahun_ajaran'       => $request->tahun_ajaran,
+                'status_aktif'       => $request->status_aktif,
+            ]);
+
+            return redirect()->route('kelas.pilih-tahun')
+                ->with('success', 'Tahun akademik berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+
+            return redirect()->back()
+                ->with('error', 'Gagal memperbarui tahun akademik.');
+        }
+    }
 }

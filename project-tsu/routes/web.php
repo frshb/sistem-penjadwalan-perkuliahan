@@ -136,6 +136,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/management/kelas/bulk-delete', [KelasController::class, 'bulkDelete'])
         ->name('kelas.bulk-delete');
 
+    Route::post('/kelas/tahun-akademik', [KelasController::class, 'storeTahunAkademik'])
+    ->name('kelas.tahun-akademik.store');
+
+    Route::delete('/kelas/tahun-akademik/{id}', [KelasController::class, 'destroyTahunAkademik'])
+        ->name('kelas.tahun-akademik.destroy');
+
+    Route::put('/kelas/tahun-akademik/{id}', [KelasController::class, 'updateTahunAkademik'])
+    ->name('kelas.tahun-akademik.update');
+
     // MODUL PENJADWALAN
     Route::get('/modul-penjadwalan',[JadwalController::class, 'index'])->name('jadwal.index');
 

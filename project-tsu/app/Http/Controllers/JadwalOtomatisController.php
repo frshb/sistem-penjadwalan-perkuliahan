@@ -62,7 +62,8 @@ class JadwalOtomatisController extends Controller
             mutationRate:  0.1,
         );
 
-        set_time_limit(300); // 5 menit max
+        set_time_limit(0);
+        ini_set('memory_limit', '512M'); // 5 menit max
         $hasil = $scheduler->run($kelas, $slots, $hariList);
 
         // Susun data untuk ditampilkan
