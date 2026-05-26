@@ -55,33 +55,78 @@
                         @endforeach
                     </select>
                 </div>
-
                 {{-- Populasi --}}
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Jumlah Individu (Populasi)</label>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                        Jumlah Individu (Populasi)
+                    </label>
+
+                    {{-- Penjelasan awam --}}
+                    <div class="mt-2 mb-3 flex gap-3 bg-teal-50 border border-teal-100 rounded-xl p-3">
+                        <svg class="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-5.477-3.72M9 20H4v-2a4 4 0 015.477-3.72M15 8a4 4 0 11-8 0 4 4 0 018 0zm6 4a3 3 0 11-6 0 3 3 0 016 0zm-18 0a3 3 0 116 0 3 3 0 01-6 0z"/>
+                        </svg>
+                        <div>
+                            <p class="text-sm font-semibold text-teal-800">Berapa banyak "kandidat jadwal" yang dicoba sekaligus?</p>
+                            <p class="text-xs text-teal-700 mt-1 leading-relaxed">
+                                Bayangkan Anda meminta 100 orang berbeda untuk masing-masing membuat jadwal. Setiap orang menghasilkan satu versi jadwal yang berbeda. Semakin banyak orang yang mencoba, semakin besar peluang menemukan susunan jadwal yang paling bagus — tapi butuh waktu lebih lama.
+                            </p>
+                            <div class="flex gap-4 mt-2">
+                                <span class="text-xs text-teal-600">↑ Lebih besar = hasil lebih baik, proses lebih lama</span>
+                                <span class="text-xs text-amber-600">↓ Lebih kecil = proses cepat, hasil mungkin kurang optimal</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <p class="text-xs text-gray-400 mb-3">Rekomendasi: 50–150</p>
                     <div class="flex items-center gap-4">
                         <input type="range" id="range-populasi" min="10" max="500" step="10" value="100"
-                               class="flex-1 accent-teal-600"
-                               oninput="document.getElementById('num-populasi').value = this.value">
+                            class="flex-1 accent-teal-600"
+                            oninput="document.getElementById('num-populasi').value = this.value; updatePopTip(this.value)">
                         <input type="number" id="num-populasi" min="10" max="500" value="100"
-                               class="w-20 text-center border border-teal-300 rounded-xl px-2 py-2 font-bold text-teal-700 outline-none"
-                               oninput="document.getElementById('range-populasi').value = this.value">
+                            class="w-20 text-center border border-teal-300 rounded-xl px-2 py-2 font-bold text-teal-700 outline-none"
+                            oninput="document.getElementById('range-populasi').value = this.value; updatePopTip(this.value)">
                     </div>
+                    <p id="tip-populasi" class="text-xs text-teal-600 mt-2">
+                        ✅ Nilai ini seimbang antara kecepatan dan kualitas hasil.
+                    </p>
                 </div>
 
                 {{-- Generasi --}}
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Jumlah Generasi</label>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                        Jumlah Generasi
+                    </label>
+
+                    {{-- Penjelasan awam --}}
+                    <div class="mt-2 mb-3 flex gap-3 bg-blue-50 border border-blue-100 rounded-xl p-3">
+                        <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <div>
+                            <p class="text-sm font-semibold text-blue-800">Berapa kali jadwal "disempurnakan" secara bertahap?</p>
+                            <p class="text-xs text-blue-700 mt-1 leading-relaxed">
+                                Setiap generasi adalah satu putaran seleksi: jadwal-jadwal terbaik dipertahankan, yang buruk dibuang, lalu digabungkan untuk menghasilkan jadwal yang lebih baik lagi. Seperti lomba memasak yang berlangsung 200 babak — semakin banyak babak, resep finalnya semakin sempurna.
+                            </p>
+                            <div class="flex gap-4 mt-2">
+                                <span class="text-xs text-blue-600">↑ Lebih besar = jadwal lebih matang, proses lebih lama</span>
+                                <span class="text-xs text-amber-600">↓ Lebih kecil = proses cepat, jadwal belum mencapai puncaknya</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <p class="text-xs text-gray-400 mb-3">Rekomendasi: 100–300</p>
                     <div class="flex items-center gap-4">
                         <input type="range" id="range-generasi" min="10" max="1000" step="10" value="200"
-                               class="flex-1 accent-teal-600"
-                               oninput="document.getElementById('num-generasi').value = this.value">
+                            class="flex-1 accent-teal-600"
+                            oninput="document.getElementById('num-generasi').value = this.value; updateGenTip(this.value)">
                         <input type="number" id="num-generasi" min="10" max="1000" value="200"
-                               class="w-20 text-center border border-teal-300 rounded-xl px-2 py-2 font-bold text-teal-700 outline-none"
-                               oninput="document.getElementById('range-generasi').value = this.value">
+                            class="w-20 text-center border border-teal-300 rounded-xl px-2 py-2 font-bold text-teal-700 outline-none"
+                            oninput="document.getElementById('range-generasi').value = this.value; updateGenTip(this.value)">
                     </div>
+                    <p id="tip-generasi" class="text-xs text-blue-600 mt-2">
+                        ✅ Cukup untuk sebagian besar kasus penjadwalan kampus.
+                    </p>
                 </div>
 
                 {{-- Constraint info --}}
@@ -244,6 +289,42 @@
 let bestFitnessPrev = 0;
 let maxGen = 200;
 
+function updatePopTip(v) {
+    const el = document.getElementById('tip-populasi');
+    const n  = parseInt(v);
+    if (n < 50) {
+        el.className = 'text-xs text-amber-600 mt-2';
+        el.innerText = '⚠ Terlalu kecil — variasi jadwal yang diuji sangat sedikit, hasil mungkin kurang optimal.';
+    } else if (n <= 150) {
+        el.className = 'text-xs text-teal-600 mt-2';
+        el.innerText = '✅ Nilai ini seimbang antara kecepatan dan kualitas hasil.';
+    } else if (n <= 300) {
+        el.className = 'text-xs text-blue-600 mt-2';
+        el.innerText = 'ℹ Cukup besar — hasilnya bisa lebih baik tapi proses akan terasa lebih lambat.';
+    } else {
+        el.className = 'text-xs text-amber-600 mt-2';
+        el.innerText = '⚠ Sangat besar — proses akan berjalan lama. Gunakan hanya jika waktu tidak menjadi kendala.';
+    }
+}
+
+function updateGenTip(v) {
+    const el = document.getElementById('tip-generasi');
+    const n  = parseInt(v);
+    if (n < 100) {
+        el.className = 'text-xs text-amber-600 mt-2';
+        el.innerText = '⚠ Terlalu sedikit putaran — jadwal belum sempat disempurnakan dengan baik.';
+    } else if (n <= 300) {
+        el.className = 'text-xs text-blue-600 mt-2';
+        el.innerText = '✅ Cukup untuk sebagian besar kasus penjadwalan kampus.';
+    } else if (n <= 600) {
+        el.className = 'text-xs text-blue-600 mt-2';
+        el.innerText = 'ℹ Banyak putaran — gunakan jika data kelas sangat banyak atau constraint kompleks.';
+    } else {
+        el.className = 'text-xs text-amber-600 mt-2';
+        el.innerText = '⚠ Sangat banyak putaran — waktu proses bisa cukup panjang.';
+    }
+}
+
 function startGA() {
     const tahun    = document.getElementById('inp-tahun').value;
     const populasi = document.getElementById('num-populasi').value;
@@ -254,7 +335,6 @@ function startGA() {
     maxGen = parseInt(generasi);
     bestFitnessPrev = 0;
 
-    // Tampilkan progress, sembunyikan form & hasil
     document.getElementById('section-progress').classList.remove('hidden');
     document.getElementById('section-hasil').classList.add('hidden');
     document.getElementById('log-container').innerHTML = '';
@@ -266,12 +346,10 @@ function startGA() {
     document.getElementById('progress-pct-label').innerText = '0%';
     document.getElementById('progress-title').innerText = 'Memproses Algoritma Genetika...';
 
-    // Disable tombol generate
     const btn = document.getElementById('btn-generate');
     btn.disabled  = true;
     btn.innerText = 'Sedang memproses...';
 
-    // Mulai SSE
     const url = `{{ route('jadwal.otomatis.stream') }}?tahun_akademik_id=${tahun}&populasi=${populasi}&generasi=${generasi}`;
     const es  = new EventSource(url);
 
@@ -284,7 +362,6 @@ function startGA() {
             return;
         }
 
-        // Update stats
         const pct = Math.round((data.gen / maxGen) * 100);
         document.getElementById('stat-gen').innerText     = data.gen;
         document.getElementById('stat-fitness').innerText = data.fitness + '%';
@@ -292,11 +369,10 @@ function startGA() {
         document.getElementById('progress-bar').style.width = pct + '%';
         document.getElementById('progress-pct-label').innerText = pct + '%';
 
-        // Tambah log
         const isBest = data.fitness > bestFitnessPrev;
         if (isBest) bestFitnessPrev = data.fitness;
 
-        const log = document.getElementById('log-container');
+        const log  = document.getElementById('log-container');
         const line = document.createElement('div');
         line.className = 'flex gap-3 py-0.5' + (isBest ? ' text-teal-700 font-semibold' : '');
         line.innerHTML = `
@@ -316,7 +392,6 @@ function startGA() {
 }
 
 function onSelesai(data) {
-    // Sembunyikan progress, tampilkan hasil
     document.getElementById('section-hasil').classList.remove('hidden');
     document.getElementById('dot-pulse').classList.remove('animate-pulse');
     document.getElementById('dot-pulse').classList.add('bg-green-500');
@@ -327,12 +402,12 @@ function onSelesai(data) {
     document.getElementById('stat-fitness').innerText = data.fitness + '%';
     document.getElementById('stat-kelas').innerText   = data.total_kelas;
 
-    // Fitness summary
-    const fit    = data.fitness;
-    const badge  = document.getElementById('hasil-fitness-badge');
-    const bar    = document.getElementById('hasil-progress-bar');
-    const note   = document.getElementById('hasil-fitness-note');
+    const fit   = data.fitness;
+    const badge = document.getElementById('hasil-fitness-badge');
+    const bar   = document.getElementById('hasil-progress-bar');
+    const note  = document.getElementById('hasil-fitness-note');
     bar.style.width = fit + '%';
+
     if (fit >= 90) {
         badge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700';
         badge.innerText = fit + '% — Sangat Baik';
@@ -354,7 +429,6 @@ function onSelesai(data) {
     document.getElementById('hasil-stat-gen').innerText     = data.generasi + ' generasi';
     document.getElementById('hasil-stat-kelas').innerText   = data.total_kelas + ' kelas';
 
-    // Render tabel
     const tbody = document.getElementById('hasil-tbody');
     tbody.innerHTML = '';
     data.jadwal_rows.forEach((row, i) => {
@@ -378,16 +452,13 @@ function onSelesai(data) {
         tbody.appendChild(tr);
     });
 
-    // Isi form simpan
     document.getElementById('inp-jadwal-json').value  = JSON.stringify(data.jadwal_rows);
     document.getElementById('inp-tahun-hidden').value = document.getElementById('inp-tahun').value;
 
-    // Re-enable tombol
     const btn = document.getElementById('btn-generate');
     btn.disabled  = false;
     btn.innerText = 'Jalankan Algoritma Genetika';
 
-    // Scroll ke hasil
     document.getElementById('section-hasil').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 

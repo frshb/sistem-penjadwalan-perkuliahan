@@ -13,6 +13,7 @@ class TahunAkademik extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'id_tahunakademik',
         'nama_tahunakademik',
         'tahun_ajaran',
         'status_aktif',

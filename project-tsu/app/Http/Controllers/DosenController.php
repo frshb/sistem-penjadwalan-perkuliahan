@@ -24,16 +24,12 @@ class DosenController extends Controller
         $user = Auth::user();
         $userProdiName = null;
         $searchTerm = $request->search;
-        $query = Dosen::with(['prodi', 'mataKuliahs']);
+        $query = Dosen::with(['prodi', 'mataKuliahs'])
+            ->orderBy('id_prodi')
+            ->orderBy('nama_dosen');
         if ($request->filled('search')) {
-
-            $query->where(
-                'nama_dosen',
-                'like',
-                '%' . $request->search . '%'
-            );
-
-        }
+                $query->where('nama_dosen', 'like', '%' . $request->search . '%');
+            }
 
         if ($user && $user->isKaprodi()) {
             if ($user->id_prodi) {
@@ -45,10 +41,7 @@ class DosenController extends Controller
             }
         }
 
-        $dosens = $query
-            ->paginate(10)
-            ->appends($request->query())
-            ->onEachSide(1);
+        $dosens = $query->get()->groupBy('id_prodi');
         $prodis = Prodi::all();
         $kurikulums = Kurikulum::all();
         $mataKuliahs = MataKuliah::orderBy('semester')->get();
@@ -155,8 +148,9 @@ class DosenController extends Controller
             }
         }
 
+        // update
         return redirect()
-            ->route('dosen.index', ['page' => $request->page])
+            ->route('dosen.index')
             ->with('success', 'Data dosen berhasil diperbarui.');
     }
 
@@ -167,10 +161,9 @@ class DosenController extends Controller
     {
         $dosen->delete();
 
+        // destroy
         return redirect()
-            ->route('dosen.index', [
-                'page' => $request->page
-            ])
+            ->route('dosen.index')
             ->with('success', 'Data dosen berhasil dihapus.');
     }
 
