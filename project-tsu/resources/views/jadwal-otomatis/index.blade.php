@@ -58,7 +58,7 @@
                 {{-- Populasi --}}
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                        Jumlah Individu (Populasi)
+                        Jumlah Jadwal Acak yang Terbentuk
                     </label>
 
                     {{-- Penjelasan awam --}}
@@ -95,7 +95,7 @@
                 {{-- Generasi --}}
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                        Jumlah Generasi
+                        Jumlah Putaran Penyempurnaan Jadwal
                     </label>
 
                     {{-- Penjelasan awam --}}
