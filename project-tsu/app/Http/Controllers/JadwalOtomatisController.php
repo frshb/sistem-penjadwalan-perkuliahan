@@ -29,14 +29,22 @@ class JadwalOtomatisController extends Controller
 
         $tahunAkademikId = $request->tahun_akademik_id;
 
+        $user = auth()->user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+
         // Ambil semua kelas untuk tahun akademik ini beserta relasi yang dibutuhkan
-        $kelas = Kelas::with([
+        $kelasQuery = Kelas::with([
                 'matakuliah.ruangans',
                 'dosen',
                 'prodi',
             ])
-            ->where('id_tahunakademik', $tahunAkademikId)
-            ->get();
+            ->where('id_tahunakademik', $tahunAkademikId);
+
+        if ($prodiId) {
+            $kelasQuery->where('id_prodi', $prodiId);
+        }
+
+        $kelas = $kelasQuery->get();
 
         if ($kelas->isEmpty()) {
             return back()->withErrors(['kelas' => 'Tidak ada data kelas untuk tahun akademik ini.']);
@@ -167,9 +175,17 @@ class JadwalOtomatisController extends Controller
 
         $tahunAkademikId = $request->tahun_akademik_id;
 
-        $kelas = Kelas::with(['matakuliah.ruangans', 'dosen', 'prodi'])
-            ->where('id_tahunakademik', $tahunAkademikId)
-            ->get();
+        $user = auth()->user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+
+        $kelasQuery = Kelas::with(['matakuliah.ruangans', 'dosen', 'prodi'])
+            ->where('id_tahunakademik', $tahunAkademikId);
+
+        if ($prodiId) {
+            $kelasQuery->where('id_prodi', $prodiId);
+        }
+
+        $kelas = $kelasQuery->get();
 
         $slots = Slot_waktu::orderBy('id_slot')->get()
             ->map(fn($s) => [

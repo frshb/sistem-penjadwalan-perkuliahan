@@ -25,9 +25,7 @@ class KelasController extends Controller
 
     public function index(Request $request)
     {
-        if (auth()->check() && auth()->user()->isKaprodi()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $user = auth()->user();
 
         // ambil id tahun akademik dari URL
         $idTahun = $request->tahun;
@@ -47,6 +45,13 @@ class KelasController extends Controller
             'dosen'
         ])
         ->where('id_tahunakademik', $idTahun);
+
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $query->where('id_prodi', $prodiId);
+            }
+        }
 
         // search
         if ($searchTerm) {
@@ -104,20 +109,26 @@ class KelasController extends Controller
             ->sortKeys();
 
         // data dropdown
-        $prodis = Prodi::orderBy('nama_prodi')->get();
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $prodis = Prodi::where('id_prodi', $prodiId)->orderBy('nama_prodi')->get();
+                $mataKuliahs = MataKuliah::with(['pengampus.dosen'])
+                    ->where('id_prodi', $prodiId)
+                    ->orderBy('nama_matkul')
+                    ->get();
+            } else {
+                $prodis = Prodi::orderBy('nama_prodi')->get();
+                $mataKuliahs = MataKuliah::with(['pengampus.dosen'])->orderBy('nama_matkul')->get();
+            }
+        } else {
+            $prodis = Prodi::orderBy('nama_prodi')->get();
+            $mataKuliahs = MataKuliah::with(['pengampus.dosen'])->orderBy('nama_matkul')->get();
+        }
 
-        $kurikulums = Kurikulum::orderBy(
-            'nama_kurikulum'
-        )->get();
-
+        $kurikulums = Kurikulum::orderBy('nama_kurikulum')->get();
         $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
-
-        // tahun aktif dipilih
         $tahunAkademik = TahunAkademik::find($idTahun);
-
-        $mataKuliahs = MataKuliah::with([
-            'pengampus.dosen'
-        ])->orderBy('nama_matkul')->get();
 
         return view('management.kelas.index', compact(
             'kelas',
@@ -136,7 +147,17 @@ class KelasController extends Controller
      */
     public function create()
     {
-        $prodis = Prodi::orderBy('nama_prodi', 'asc')->get();
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $prodis = Prodi::where('id_prodi', $prodiId)->orderBy('nama_prodi', 'asc')->get();
+            } else {
+                $prodis = Prodi::orderBy('nama_prodi', 'asc')->get();
+            }
+        } else {
+            $prodis = Prodi::orderBy('nama_prodi', 'asc')->get();
+        }
         $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
         $kurikulums = Kurikulum::orderBy('nama_kurikulum')->get();
 
@@ -182,7 +203,17 @@ class KelasController extends Controller
      */
     public function edit(Kelas $kela)
     {
-        $prodis = Prodi::orderBy('nama_prodi', 'asc')->get();
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $prodis = Prodi::where('id_prodi', $prodiId)->orderBy('nama_prodi', 'asc')->get();
+            } else {
+                $prodis = Prodi::orderBy('nama_prodi', 'asc')->get();
+            }
+        } else {
+            $prodis = Prodi::orderBy('nama_prodi', 'asc')->get();
+        }
         $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
         $kurikulums = Kurikulum::orderBy('nama_kurikulum')->get();
 
@@ -255,18 +286,24 @@ class KelasController extends Controller
     /**
      * Export Excel.
      */
-    public function exportExcel()
+    public function exportExcel(Request $request)
     {
-        return Excel::download(new KelasExport, 'daftar-kelas.xlsx');
+        $user = auth()->user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+        $tahunId = $request->tahun;
+        return Excel::download(new KelasExport(false, $prodiId, $tahunId), 'daftar-kelas.xlsx');
     }
 
     /**
      * Export PDF.
      */
-    public function exportPdf()
+    public function exportPdf(Request $request)
     {
+        $user = auth()->user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+        $tahunId = $request->tahun;
         return Excel::download(
-            new KelasExport(true),
+            new KelasExport(true, $prodiId, $tahunId),
             'daftar-kelas.pdf',
             \Maatwebsite\Excel\Excel::DOMPDF
         );

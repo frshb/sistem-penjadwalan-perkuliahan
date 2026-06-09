@@ -57,10 +57,10 @@ class User extends Authenticatable
         return $this->belongsTo(Dosen::class, 'id_dosen', 'id_dosen');
     }
 
-    // public function prodi()
-    // {
-    //     return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
-    // }
+    public function prodi()
+    {
+        return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
+    }
 
     // public function mahasiswa()
     // {
@@ -97,5 +97,32 @@ class User extends Authenticatable
     public function isDosen()
     {
         return $this->id_role === self::ROLE_DOSEN;
+    }
+
+    public function getProdiId()
+    {
+        if ($this->id_prodi) {
+            return $this->id_prodi;
+        }
+
+        if ($this->dosen) {
+            return $this->dosen->id_prodi;
+        }
+
+        return null;
+    }
+
+    public function hasPermission($module, $item = null)
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $role = $this->role;
+        if (!$role) {
+            return false;
+        }
+
+        return $role->hasPermission($module, $item);
     }
 }

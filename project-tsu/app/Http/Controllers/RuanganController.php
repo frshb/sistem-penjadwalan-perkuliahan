@@ -15,11 +15,6 @@ class RuanganController extends Controller
      */
     public function index(Request $request) 
     {
-        // Kaprodi tidak boleh akses
-        if (auth()->check() && auth()->user()->isKaprodi()) {
-            abort(403, 'Unauthorized action.');
-        }
-
         // 1. Ambil kata kunci pencarian
         $searchTerm = $request->input('search');
 

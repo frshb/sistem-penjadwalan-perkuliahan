@@ -12,7 +12,17 @@ class ProdiController extends Controller
 {
     public function index()
     {
-        $prodis = Prodi::all();
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $prodis = Prodi::where('id_prodi', $prodiId)->get();
+            } else {
+                $prodis = Prodi::all();
+            }
+        } else {
+            $prodis = Prodi::all();
+        }
         return view('management.prodi.index', [
             'prodis' => $prodis
         ]);
@@ -20,6 +30,13 @@ class ProdiController extends Controller
 
     public function show($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId && $prodiId != $id) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
         $prodi = Prodi::findOrFail($id);
         
 
@@ -94,9 +111,15 @@ class ProdiController extends Controller
         return redirect()->route('prodi.index')->with('success', 'Program Studi berhasil ditambahkan.');
     }
 
-    // ... (method update, destroy, dll tetap sama) ...
-public function update(Request $request, $id)
+    public function update(Request $request, $id)
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId && $prodiId != $id) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
         $prodi = Prodi::findOrFail($id);
 
         $request->validate([
@@ -130,6 +153,13 @@ public function update(Request $request, $id)
 
     public function destroy($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId && $prodiId != $id) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
         try {
             $prodi = Prodi::findOrFail($id);
             $prodi->delete();

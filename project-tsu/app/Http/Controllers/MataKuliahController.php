@@ -26,14 +26,15 @@ class MataKuliahController extends Controller
         $userProdiName = null;
         $searchTerm = $request->input('search');
 
-        if ($user && $user->isKaprodi()) {
-            if ($user->id_prodi) {
-                $query->where('id_prodi', $user->id_prodi);
-                $userProdiName = $user->prodi->nama_prodi ?? '';
-            }
-            elseif ($user->dosen && $user->dosen->id_prodi) {
-                $query->where('id_prodi', $user->dosen->id_prodi);
-                $userProdiName = $user->dosen->prodi->nama_prodi ?? '';
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $query->where('id_prodi', $prodiId);
+                if ($user->id_prodi) {
+                    $userProdiName = $user->prodi->nama_prodi ?? '';
+                } elseif ($user->dosen && $user->dosen->id_prodi) {
+                    $userProdiName = $user->dosen->prodi->nama_prodi ?? '';
+                }
             }
         }
 
@@ -85,7 +86,17 @@ class MataKuliahController extends Controller
         // Paginate hasil query, dan tambahkan filter ke link pagination
         // USER REQUEST: Munculin semua data (limit diperbesar)
         $matkuls = $query->orderBy('semester')->paginate(100)->appends($request->query());$matkuls = $query->paginate(100)->appends($request->query());
-        $prodis = Prodi::all();
+        
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $prodis = Prodi::where('id_prodi', $prodiId)->get();
+            } else {
+                $prodis = Prodi::all();
+            }
+        } else {
+            $prodis = Prodi::all();
+        }
         $ruangans = Ruangan::all();
 
         // Kirim data matkul DAN kurikulum ke view
@@ -174,7 +185,9 @@ class MataKuliahController extends Controller
      */
     public function exportPDF()
     {
-        return Excel::download(new MataKuliahExport(true), 'daftar-mata-kuliah.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        $user = Auth::user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+        return Excel::download(new MataKuliahExport(true, $prodiId), 'daftar-mata-kuliah.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
     }
 
     /**
@@ -196,6 +209,8 @@ class MataKuliahController extends Controller
      */
     public function exportExcel()
     {
-        return Excel::download(new MataKuliahExport, 'daftar-mata-kuliah.xlsx');
+        $user = Auth::user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+        return Excel::download(new MataKuliahExport(false, $prodiId), 'daftar-mata-kuliah.xlsx');
     }
 }

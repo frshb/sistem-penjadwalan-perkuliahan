@@ -13,10 +13,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 class MahasiswaExport implements FromView, ShouldAutoSize, WithEvents
 {
     protected $isPdf;
+    protected $prodiId;
 
-    public function __construct(bool $isPdf = false)
+    public function __construct(bool $isPdf = false, $prodiId = null)
     {
         $this->isPdf = $isPdf;
+        $this->prodiId = $prodiId;
     }
 
     public function view(): View

@@ -39,13 +39,15 @@ class DosenController extends Controller
             $query->where('id_prodi', $request->prodi);
         }
 
-        if ($user && $user->isKaprodi()) {
-            if ($user->id_prodi) {
-                $query->where('id_prodi', $user->id_prodi);
-                $userProdiName = $user->prodi->nama_prodi ?? '';
-            } elseif ($user->dosen && $user->dosen->id_prodi) {
-                $query->where('id_prodi', $user->dosen->id_prodi);
-                $userProdiName = $user->dosen->prodi->nama_prodi ?? '';
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $query->where('id_prodi', $prodiId);
+                if ($user->id_prodi) {
+                    $userProdiName = $user->prodi->nama_prodi ?? '';
+                } elseif ($user->dosen && $user->dosen->id_prodi) {
+                    $userProdiName = $user->dosen->prodi->nama_prodi ?? '';
+                }
             }
         }
 
@@ -53,9 +55,21 @@ class DosenController extends Controller
             ->paginate(10)
             ->appends($request->query())
             ->onEachSide(1);
-        $prodis = Prodi::all();
+
+        if ($user && !$user->isAdmin() && !$user->isDekan()) {
+            $prodiId = $user->getProdiId();
+            if ($prodiId) {
+                $prodis = Prodi::where('id_prodi', $prodiId)->get();
+                $mataKuliahs = MataKuliah::where('id_prodi', $prodiId)->orderBy('semester')->get();
+            } else {
+                $prodis = Prodi::all();
+                $mataKuliahs = MataKuliah::orderBy('semester')->get();
+            }
+        } else {
+            $prodis = Prodi::all();
+            $mataKuliahs = MataKuliah::orderBy('semester')->get();
+        }
         $kurikulums = Kurikulum::all();
-        $mataKuliahs = MataKuliah::orderBy('semester')->get();
 
         return view('management.dosen.index', compact('dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs', 'searchTerm'));
     }
@@ -183,7 +197,9 @@ class DosenController extends Controller
      */
     public function exportExcel()
     {
-        return Excel::download(new DosenExport, 'daftar-dosen.xlsx');
+        $user = Auth::user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+        return Excel::download(new DosenExport(false, $prodiId), 'daftar-dosen.xlsx');
     }
 
     /**
@@ -191,8 +207,10 @@ class DosenController extends Controller
      */
     public function exportPdf()
     {
+        $user = Auth::user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
         return Excel::download(
-            new DosenExport(true),
+            new DosenExport(true, $prodiId),
             'daftar-dosen.pdf',
             \Maatwebsite\Excel\Excel::DOMPDF
         );

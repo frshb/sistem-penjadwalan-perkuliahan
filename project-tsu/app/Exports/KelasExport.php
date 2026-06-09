@@ -2,35 +2,39 @@
 
 namespace App\Exports;
 
-use App\Models\MataKuliah;
+use App\Models\Kelas;
 use Illuminate\Contracts\View\View;
 use Maatwebsite\Excel\Concerns\FromView;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 
-class MataKuliahExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWidths
+class KelasExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWidths
 {
     protected $isPdf;
     protected $prodiId;
+    protected $tahunId;
 
-    public function __construct(bool $isPdf = false, $prodiId = null)
+    public function __construct(bool $isPdf = false, $prodiId = null, $tahunId = null)
     {
         $this->isPdf = $isPdf;
         $this->prodiId = $prodiId;
+        $this->tahunId = $tahunId;
     }
 
     public function view(): View
     {
-        $query = MataKuliah::with(['kurikulum', 'program_studi']);
+        $query = Kelas::with(['prodi', 'tahunAkademik', 'matakuliah', 'dosen']);
         if ($this->prodiId) {
             $query->where('id_prodi', $this->prodiId);
         }
-        return view('exports.matakuliah', [
-            'matkuls' => $query->get(),
+        if ($this->tahunId) {
+            $query->where('id_tahunakademik', $this->tahunId);
+        }
+        return view('exports.kelas', [
+            'kelas' => $query->get(),
             'isPdf' => $this->isPdf
         ]);
     }
@@ -39,12 +43,12 @@ class MataKuliahExport implements FromView, ShouldAutoSize, WithEvents, WithColu
     {
         return [
             'A' => 5,
-            'B' => 15, // Kode
-            'C' => 45, // Nama Matkul
-            'D' => 8,  // SKS
-            'E' => 12, // Tipe
-            'F' => 10, // Semester
-            'G' => 25, // Kurikulum
+            'B' => 15, // Nama Kelas
+            'C' => 10, // Semester
+            'D' => 45, // Mata Kuliah
+            'E' => 10, // Kapasitas
+            'F' => 35, // Dosen Pengampu
+            'G' => 25, // Prodi
         ];
     }
 

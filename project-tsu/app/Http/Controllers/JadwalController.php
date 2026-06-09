@@ -44,24 +44,32 @@ class JadwalController extends Controller
 
         $tahunAkademik = TahunAkademik::findOrFail($idTahun);
 
-        // Kelas yang terdaftar di tahun akademik ini
-        $kelas = Kelas::with([
+        $user = auth()->user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+
+        $kelasQuery = Kelas::with([
             'matakuliah.ruangans',
             'prodi',
             'dosen',
             'matakuliah',
             'jadwals' => fn($q) => $q->where('id_tahunakademik', $idTahun),
         ])
-        ->where('id_tahunakademik', $idTahun)
-        ->orderBy('semester')
-        ->get();
+        ->where('id_tahunakademik', $idTahun);
+
+        if ($prodiId) {
+            $kelasQuery->where('id_prodi', $prodiId);
+        }
+
+        $kelas = $kelasQuery
+            ->orderBy('semester')
+            ->get();
 
         $hari      = Hari::all();
         $slotWaktu = Slot_waktu::orderBy('jam_ke')->get();
         $ruangan   = Ruangan::all();
 
         // Jadwal yang sudah tersimpan untuk tahun akademik ini
-        $jadwalTersimpan = Jadwal::with([
+        $jadwalQuery = Jadwal::with([
             'kelas.matakuliah',
             'kelas.dosen',
             'kelas.prodi',
@@ -69,8 +77,15 @@ class JadwalController extends Controller
             'hari',
             'ruangan',
         ])
-        ->where('id_tahunakademik', $idTahun)
-        ->get();
+        ->where('id_tahunakademik', $idTahun);
+
+        if ($prodiId) {
+            $jadwalQuery->whereHas('kelas', function ($q) use ($prodiId) {
+                $q->where('id_prodi', $prodiId);
+            });
+        }
+
+        $jadwalTersimpan = $jadwalQuery->get();
 
         // ✅ Tambahkan ini — encode ke array bersih untuk JS
         $jadwalJson = $jadwalTersimpan->map(fn($j) => [

@@ -15,16 +15,22 @@ use Maatwebsite\Excel\Concerns\WithColumnWidths;
 class DosenExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWidths
 {
     protected $isPdf;
+    protected $prodiId;
 
-    public function __construct(bool $isPdf = false)
+    public function __construct(bool $isPdf = false, $prodiId = null)
     {
         $this->isPdf = $isPdf;
+        $this->prodiId = $prodiId;
     }
 
     public function view(): View
     {
+        $query = Dosen::with(['prodi', 'mataKuliahs']);
+        if ($this->prodiId) {
+            $query->where('id_prodi', $this->prodiId);
+        }
         return view('exports.dosen', [
-            'dosens' => Dosen::with(['prodi', 'mataKuliahs'])->get(),
+            'dosens' => $query->get(),
             'isPdf' => $this->isPdf
         ]);
     }

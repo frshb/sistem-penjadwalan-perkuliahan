@@ -20,6 +20,13 @@ class UpdateRoleTableSeeder extends Seeder
         DB::table('role')->where('id_role', 1)->update(['nama_role' => 'admin']);
         DB::table('role')->where('id_role', 2)->update(['nama_role' => 'kaprodi']);
         
+        // 3. Reset/Update permissions to default values
+        $roles = \App\Models\Role::all();
+        foreach ($roles as $role) {
+            $role->permissions = $role->getDefaultPermissions();
+            $role->save();
+        }
+
         $this->command->info('Role table updated successfully.');
     }
 }

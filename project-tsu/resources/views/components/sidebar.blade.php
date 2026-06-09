@@ -22,57 +22,76 @@
             Dashboard
         </a>
 
-
+        @if(Auth::user()->hasPermission('management_data'))
         <p class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Management Data</p>
 
+        @if(Auth::user()->hasPermission('management_data', 'Management Prodi'))
         <a href="{{ route('prodi.index') }}" class="flex items-center {{ request()->routeIs('prodi.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
             Management Prodi
         </a>
+        @endif
 
-        @if(!Auth::user()->isKaprodi())
+        @if(Auth::user()->hasPermission('management_data', 'Management Ruangan'))
         <a href="{{ route('ruangan.index') }}" class="flex items-center {{ request()->routeIs('ruangan.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
             Management Data Ruangan
         </a>
         @endif
 
+        @if(Auth::user()->hasPermission('management_data', 'Management Mata Kuliah'))
         <a href="{{ route('matakuliah.index') }}" class="flex items-center {{ request()->routeIs('matakuliah.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
             Management Mata Kuliah
         </a>
+        @endif
 
+        @if(Auth::user()->hasPermission('management_data', 'Management Data Dosen'))
         <a href="{{ route('dosen.index') }}" class="flex items-center {{ request()->routeIs('dosen.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
             Management Data Dosen
         </a>
+        @endif
 
+        @if(Auth::user()->hasPermission('management_data', 'Management Kelas'))
         <a href="{{ route('kelas.index') }}" class="flex items-center {{ request()->routeIs('kelas.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10M6 5v14M18 5v14"></path></svg>
             Management Kelas
         </a>
+        @endif
 
-        <a href="{{ route('mahasiswa.index') }}" class="flex items-center {{ request()->routeIs('mahasiswa.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration=20０">
+        @if(Auth::user()->hasPermission('management_data', 'Management Data Mahasiswa'))
+        <a href="{{ route('mahasiswa.index') }}" class="flex items-center {{ request()->routeIs('mahasiswa.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             Management Data Mahasiswa
         </a>
+        @endif
 
+        @if(Auth::user()->hasPermission('management_data', 'Management KP & Skripsi'))
         <a href="{{ route('management.kpskripsi.index') }}" class="flex items-center {{ request()->routeIs('management.kpskripsi.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             Management KP & Skripsi
         </a>
+        @endif
+        @endif
 
+        @if(Auth::user()->hasPermission('modul_penjadwalan'))
         <p class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Modul Penjadwalan</p>
 
-        <a href="{{ route('jadwal.otomatis.index') }}" class="flex items-center {{ request()->routeIs('jadwal.otomatis.step1') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
+        @if(Auth::user()->hasPermission('modul_penjadwalan', 'Penjadwalan Otomatis'))
+        <a href="{{ route('jadwal.otomatis.index') }}" class="flex items-center {{ request()->routeIs('jadwal.otomatis.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
             Penjadwalan Otomatis
         </a>
+        @endif
 
+        @if(Auth::user()->hasPermission('modul_penjadwalan', 'Penjadwalan Manual'))
         <a href="{{ route('jadwal.manual') }}" class="flex items-center {{ request()->routeIs('jadwal.manual') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             Penjadwalan Manual
         </a>
+        @endif
+        @endif
     </nav>
     <div class="px-4 py-4 border-t border-gray-200">
         @if(Auth::user()->isAdmin())
