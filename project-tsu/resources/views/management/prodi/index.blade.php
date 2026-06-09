@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, isLoading: true, editData: { id: '', nama: '', kode: '' }, init() { setTimeout(() => this.isLoading = false, 2000) } }"  @close-modal.window="showAddModal = false; showEditModal = false;" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
+<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, showExportMenu: false, isLoading: true, editData: { id: '', nama: '', kode: '' }, init() { setTimeout(() => this.isLoading = false, 2000) } }"  @close-modal.window="showAddModal = false; showEditModal = false;" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
     <div class="flex min-h-screen">
         @include('components.sidebar')
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
@@ -58,14 +58,36 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">Daftar Program Studi</h2>
 
-                    <div class="flex space-x-2">
-                        <a href="{{ route('prodi.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
-                            Export Excel
-                        </a>
-                        <a href="{{ route('prodi.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
-                            Export PDF
-                        </a>
-                        <button @click="showAddModal = true" class="flex items-center px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
+                    <div class="flex items-center space-x-2">
+                        <!-- Dropdown Menu Export -->
+                        <div class="relative" @click.away="showExportMenu = false">
+                            <button @click="showExportMenu = !showExportMenu" class="inline-flex items-center px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Export
+                                <svg class="w-3.5 h-3.5 ml-1.5 transition-transform duration-200" :class="showExportMenu ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <div x-show="showExportMenu" 
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 p-1" 
+                                 style="display: none;">
+                                <a href="{{ route('prodi.export.excel') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-md hover:bg-teal-50 hover:text-teal-800 transition-colors">
+                                    <svg class="w-4 h-4 mr-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Export Excel
+                                </a>
+                                <a href="{{ route('prodi.export.pdf') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-md hover:bg-teal-50 hover:text-teal-800 transition-colors">
+                                    <svg class="w-4 h-4 mr-2.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    Export PDF
+                                </a>
+                            </div>
+                        </div>
+                        <button @click="showAddModal = true" class="flex items-center px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Tambah Prodi
                         </button>

@@ -16,7 +16,19 @@
     sidebarOpen: true,
     showAddModal: false,
     showEditModal: false,
+    showExportMenu: false,
     isLoading: true,
+
+    semestersList: [
+        { val: 1, label: 'Semester 1', type: 'ganjil' },
+        { val: 2, label: 'Semester 2', type: 'genap' },
+        { val: 3, label: 'Semester 3', type: 'ganjil' },
+        { val: 4, label: 'Semester 4', type: 'genap' },
+        { val: 5, label: 'Semester 5', type: 'ganjil' },
+        { val: 6, label: 'Semester 6', type: 'genap' },
+        { val: 7, label: 'Semester 7', type: 'ganjil' },
+        { val: 8, label: 'Semester 8', type: 'genap' }
+    ],
 
     // =========================
     // ADD DOSEN
@@ -26,6 +38,7 @@
     addFilterProdi: '',
     addKurikulum: '',
     addSemester: '',
+    addJenisSemester: '',
     addSelectedMatkuls: [],
 
     // =========================
@@ -40,6 +53,7 @@
     editFilterProdi: '',
     editKurikulum: '',
     editSemester: '',
+    editJenisSemester: '',
     editSelectedMatkuls: [],
 
     editUrl: '',
@@ -148,14 +162,36 @@
                     <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">
                         Daftar Dosen
                     </h2>
-                    <div class="flex space-x-2">
-                        <a href="{{ route('dosen.export.excel') }}" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75">
-                            Export Excel
-                        </a>
-                        <a href="{{ route('dosen.export.pdf') }}" class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75">
-                            Export PDF
-                        </a>
-                        <button @click="showAddModal = true" class="px-5 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
+                    <div class="flex items-center space-x-2">
+                        <!-- Dropdown Menu Export -->
+                        <div class="relative" @click.away="showExportMenu = false">
+                            <button @click="showExportMenu = !showExportMenu" class="inline-flex items-center px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Export
+                                <svg class="w-3.5 h-3.5 ml-1.5 transition-transform duration-200" :class="showExportMenu ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <div x-show="showExportMenu" 
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 p-1" 
+                                 style="display: none;">
+                                <a href="{{ route('dosen.export.excel') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-md hover:bg-teal-50 hover:text-teal-800 transition-colors">
+                                    <svg class="w-4 h-4 mr-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Export Excel
+                                </a>
+                                <a href="{{ route('dosen.export.pdf') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-md hover:bg-teal-50 hover:text-teal-800 transition-colors">
+                                    <svg class="w-4 h-4 mr-2.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    Export PDF
+                                </a>
+                            </div>
+                        </div>
+                        <button @click="showAddModal = true" class="px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
                             Tambah Dosen
                         </button>
                     </div>
@@ -241,7 +277,7 @@
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ ($dosens->currentPage() - 1) * $dosens->perPage() + $loop->iteration }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->prodi->nama_prodi ?? 'Belum Dipilih' }}</td>
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nama_dosen }}</td>
+                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap font-medium text-gray-900">{{ $dosen->nama_dosen }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nuptk }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nidn }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
@@ -403,7 +439,7 @@
 
                                                 <select
                                                     x-model="addKurikulum"
-                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
                                                 >
                                                     <option value="">Semua</option>
 
@@ -415,23 +451,36 @@
                                                 </select>
                                             </div>
 
+                                            {{-- TIPE SEMESTER --}}
+                                            <div class="w-36">
+                                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                    Tipe Semester
+                                                </label>
+                                                <select
+                                                    x-model="addJenisSemester"
+                                                    @change="addSemester = ''"
+                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
+                                                >
+                                                    <option value="">Semua</option>
+                                                    <option value="ganjil">Semester Ganjil</option>
+                                                    <option value="genap">Semester Genap</option>
+                                                </select>
+                                            </div>
+
                                             {{-- SEMESTER --}}
-                                            <div class="w-32">
+                                            <div class="w-36">
                                                 <label class="block text-xs font-medium text-gray-600 mb-1">
                                                     Semester
                                                 </label>
 
                                                 <select
                                                     x-model="addSemester"
-                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
                                                 >
                                                     <option value="">Semua</option>
-
-                                                    @for($i = 1; $i <= 8; $i++)
-                                                        <option value="{{ $i }}">
-                                                            Semester {{ $i }}
-                                                        </option>
-                                                    @endfor
+                                                    <template x-for="sem in semestersList.filter(s => !addJenisSemester || s.type === addJenisSemester)" :key="sem.val">
+                                                        <option :value="sem.val" x-text="sem.label"></option>
+                                                    </template>
                                                 </select>
                                             </div>
 
@@ -443,7 +492,7 @@
 
                                                 <select
                                                     x-model="addFilterProdi"
-                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
                                                 >
                                                     <option value="">Semua Prodi</option>
 
@@ -464,7 +513,8 @@
                                             x-for="matkul in window.mataKuliahs.filter(m =>
                                                 (!addFilterProdi || m.id_prodi == addFilterProdi) &&
                                                 (!addKurikulum || m.id_kurikulum == addKurikulum) &&
-                                                (!addSemester || m.semester == addSemester)
+                                                (!addSemester || m.semester == addSemester) &&
+                                                (!addJenisSemester || (addJenisSemester === 'ganjil' && [1,3,5,7].includes(parseInt(m.semester))) || (addJenisSemester === 'genap' && [2,4,6,8].includes(parseInt(m.semester))))
                                             )"
                                             :key="matkul.kode_matkul"
                                         >
@@ -498,51 +548,67 @@
                                 </div>
                             </div>
                             {{-- MATKUL TERPILIH --}}
-                            <div class="mt-4" x-show="addSelectedMatkuls.length > 0">
+                            <div class="mt-4 border-t border-gray-150 pt-4" x-show="addSelectedMatkuls.length > 0">
+                                <!-- Fallback hidden inputs to submit all selected courses -->
+                                <template x-for="kode in addSelectedMatkuls" :key="'submit-'+kode">
+                                    <input type="hidden" name="mata_kuliah[]" :value="kode">
+                                </template>
 
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <label class="block text-sm font-bold text-gray-700 mb-3">
                                     Mata Kuliah Terpilih
                                 </label>
 
-                                <div class="flex flex-wrap gap-2">
-
-                                    <template
-                                        x-for="kode in addSelectedMatkuls"
-                                        :key="kode"
-                                    >
-                                        <div>
-                                            <input type="hidden" name="mata_kuliah[]" :value="kode">
-
-                                            <div
-                                                class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
-                                            >
-
-                                                <span
-                                                    x-text="
-                                                        (() => {
-                                                            let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
-                                                            return mk
-                                                                ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
-                                                                : kode;
-                                                        })()
-                                                    "
-                                                ></span>
-
-                                                <button
-                                                    type="button"
-                                                    @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)"
-                                                    class="text-red-500 hover:text-red-700 font-bold"
-                                                >
-                                                    ×
-                                                </button>
-
-                                            </div>
+                                <div class="space-y-3.5">
+                                    <!-- Group Ganjil -->
+                                    <div class="bg-teal-50/60 p-4 rounded-xl border border-teal-150 space-y-3" x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [1,3,5,7].includes(parseInt(mk.semester)); })">
+                                        <h4 class="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-teal-200/50 pb-1.5 mb-1">
+                                            <span class="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></span>
+                                            Semester Ganjil
+                                        </h4>
+                                        <div class="space-y-3">
+                                            <template x-for="semNum in [1, 3, 5, 7]" :key="'add-ganjil-sem-'+semNum">
+                                                <div x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
+                                                    <span class="inline-block text-[10px] font-bold text-teal-700 bg-teal-100/60 px-2 py-0.5 rounded border border-teal-200" x-text="'Semester ' + semNum"></span>
+                                                    <div class="flex flex-wrap gap-2 pt-0.5">
+                                                        <template x-for="kode in addSelectedMatkuls" :key="'add-ganjil-sem-'+semNum+'-'+kode">
+                                                            <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
+                                                                <div class="inline-flex items-center gap-1.5 bg-white border border-teal-200 text-teal-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
+                                                                    <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
+                                                                    <button type="button" @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
+                                                                </div>
+                                                            </template>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
                                         </div>
+                                    </div>
 
-                                    </template>
-
+                                    <!-- Group Genap -->
+                                    <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-150 space-y-3" x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [2,4,6,8].includes(parseInt(mk.semester)); })">
+                                        <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-200/50 pb-1.5 mb-1">
+                                            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
+                                            Semester Genap
+                                        </h4>
+                                        <div class="space-y-3">
+                                            <template x-for="semNum in [2, 4, 6, 8]" :key="'add-genap-sem-'+semNum">
+                                                <div x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
+                                                    <span class="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded border border-indigo-200" x-text="'Semester ' + semNum"></span>
+                                                    <div class="flex flex-wrap gap-2 pt-0.5">
+                                                        <template x-for="kode in addSelectedMatkuls" :key="'add-genap-sem-'+semNum+'-'+kode">
+                                                            <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
+                                                                <div class="inline-flex items-center gap-1.5 bg-white border border-indigo-200 text-indigo-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
+                                                                    <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
+                                                                    <button type="button" @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
+                                                                </div>
+                                                            </template>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
                                 </div>
-
                             </div>
 
                             {{-- BUTTON --}}
@@ -729,7 +795,7 @@
 
                                         <select
                                             x-model="editKurikulum"
-                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
                                         >
                                             <option value="">Semua</option>
 
@@ -741,8 +807,24 @@
                                         </select>
                                     </div>
 
+                                    {{-- TIPE SEMESTER --}}
+                                    <div class="w-36">
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">
+                                            Tipe Semester
+                                        </label>
+                                        <select
+                                            x-model="editJenisSemester"
+                                            @change="editSemester = ''"
+                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
+                                        >
+                                            <option value="">Semua</option>
+                                            <option value="ganjil">Semester Ganjil</option>
+                                            <option value="genap">Semester Genap</option>
+                                        </select>
+                                    </div>
+
                                     {{-- SEMESTER --}}
-                                    <div class="w-32">
+                                    <div class="w-36">
 
                                         <label class="block text-xs font-medium text-gray-600 mb-1">
                                             Semester
@@ -750,15 +832,12 @@
 
                                         <select
                                             x-model="editSemester"
-                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
                                         >
                                             <option value="">Semua</option>
-
-                                            @for($i = 1; $i <= 8; $i++)
-                                                <option value="{{ $i }}">
-                                                    Semester {{ $i }}
-                                                </option>
-                                            @endfor
+                                            <template x-for="sem in semestersList.filter(s => !editJenisSemester || s.type === editJenisSemester)" :key="sem.val">
+                                                <option :value="sem.val" x-text="sem.label"></option>
+                                            </template>
                                         </select>
                                     </div>
 
@@ -771,7 +850,7 @@
 
                                         <select
                                             x-model="editFilterProdi"
-                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
                                         >
                                             <option value="">Semua Prodi</option>
 
@@ -793,7 +872,8 @@
                                     x-for="matkul in window.mataKuliahs.filter(m =>
                                         (!editFilterProdi || m.id_prodi == editFilterProdi) &&
                                         (!editKurikulum || m.id_kurikulum == editKurikulum) &&
-                                        (!editSemester || m.semester == editSemester)
+                                        (!editSemester || m.semester == editSemester) &&
+                                        (!editJenisSemester || (editJenisSemester === 'ganjil' && [1,3,5,7].includes(parseInt(m.semester))) || (editJenisSemester === 'genap' && [2,4,6,8].includes(parseInt(m.semester))))
                                     )"
                                     :key="matkul.kode_matkul"
                                 >
@@ -828,49 +908,66 @@
                     </div>
 
                     {{-- MATKUL TERPILIH --}}
-                    <div class="mt-4" x-show="editSelectedMatkuls.length > 0">
+                    <div class="mt-4 border-t border-gray-150 pt-4" x-show="editSelectedMatkuls.length > 0">
+                        <!-- Fallback hidden inputs to submit all selected courses -->
+                        <template x-for="kode in editSelectedMatkuls" :key="'submit-edit-'+kode">
+                            <input type="hidden" name="mata_kuliah[]" :value="kode">
+                        </template>
 
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-3">
                             Mata Kuliah Terpilih
                         </label>
 
-                        <div class="flex flex-wrap gap-2">
-
-                            <template
-                                x-for="kode in editSelectedMatkuls"
-                                :key="kode"
-                            >
-                                <div>
-                                    <input type="hidden" name="mata_kuliah[]" :value="kode">
-
-                                        <div
-                                                class="bg-teal-100 text-teal-800 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
-                                            >
-
-                                            <span
-                                                x-text="
-                                                    (() => {
-                                                        let mk = window.mataKuliahs.find(m => m.kode_matkul == kode);
-                                                        return mk
-                                                            ? mk.nama_matkul + ' (' + mk.kode_matkul + ')'
-                                                            : kode;
-                                                    })()
-                                                "
-                                            ></span>
-
-                                            <button
-                                                type="button"
-                                                @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)"
-                                                class="text-red-500 hover:text-red-700 font-bold"
-                                            >
-                                                ×
-                                            </button>
-
+                        <div class="space-y-3.5">
+                            <!-- Group Ganjil -->
+                            <div class="bg-teal-50/60 p-4 rounded-xl border border-teal-150 space-y-3" x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [1,3,5,7].includes(parseInt(mk.semester)); })">
+                                <h4 class="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-teal-200/50 pb-1.5 mb-1">
+                                    <span class="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></span>
+                                    Semester Ganjil
+                                </h4>
+                                <div class="space-y-3">
+                                    <template x-for="semNum in [1, 3, 5, 7]" :key="'edit-ganjil-sem-'+semNum">
+                                        <div x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
+                                            <span class="inline-block text-[10px] font-bold text-teal-700 bg-teal-100/60 px-2 py-0.5 rounded border border-teal-200" x-text="'Semester ' + semNum"></span>
+                                            <div class="flex flex-wrap gap-2 pt-0.5">
+                                                <template x-for="kode in editSelectedMatkuls" :key="'edit-ganjil-sem-'+semNum+'-'+kode">
+                                                    <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
+                                                        <div class="inline-flex items-center gap-1.5 bg-white border border-teal-200 text-teal-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
+                                                            <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
+                                                            <button type="button" @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
+                                                        </div>
+                                                    </template>
+                                                </template>
+                                            </div>
                                         </div>
+                                    </template>
                                 </div>
+                            </div>
 
-                            </template>
-
+                            <!-- Group Genap -->
+                            <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-150 space-y-3" x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [2,4,6,8].includes(parseInt(mk.semester)); })">
+                                <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-200/50 pb-1.5 mb-1">
+                                    <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
+                                    Semester Genap
+                                </h4>
+                                <div class="space-y-3">
+                                    <template x-for="semNum in [2, 4, 6, 8]" :key="'edit-genap-sem-'+semNum">
+                                        <div x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
+                                            <span class="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded border border-indigo-200" x-text="'Semester ' + semNum"></span>
+                                            <div class="flex flex-wrap gap-2 pt-0.5">
+                                                <template x-for="kode in editSelectedMatkuls" :key="'edit-genap-sem-'+semNum+'-'+kode">
+                                                    <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
+                                                        <div class="inline-flex items-center gap-1.5 bg-white border border-indigo-200 text-indigo-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
+                                                            <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
+                                                            <button type="button" @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
+                                                        </div>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

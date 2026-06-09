@@ -49,7 +49,7 @@ class CheckRole
             return $next($request);
         }
 
-        // Allow Admin to access everything? (Optional, but "Admin full akses" was requested)
+
         if ($userRoleName === 'admin') {
             return $next($request);
         }

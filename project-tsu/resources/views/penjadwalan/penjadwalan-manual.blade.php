@@ -130,6 +130,8 @@
         showFilter: false,
         filterProdi: [],
         filterSemester: [],
+        classSidebarOpen: true,
+        focusMode: false,
     }"
     class="bg-gray-100/50 min-h-screen overflow-x-hidden"
 >
@@ -220,7 +222,7 @@
 <main :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="transition-all duration-300 p-6 sm:p-8">
 
     {{-- HEADER --}}
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between" x-show="!focusMode" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-2">
         <div>
             <div class="flex items-center gap-3">
                 <div class="flex flex-col">
@@ -241,8 +243,17 @@
     </div>
 
     {{-- ACTION BAR --}}
-    <div class="mt-8 flex items-center justify-between">
+    <div class="mt-8 flex items-center justify-between" :class="focusMode ? 'mt-0 bg-white p-3 rounded-2xl border border-gray-150 shadow-sm' : ''">
         <div class="flex items-center gap-3">
+            <!-- Focus Period Badge -->
+            <div x-show="focusMode" class="text-sm font-bold text-teal-800 bg-teal-50 px-3.5 py-2 rounded-xl border border-teal-200 flex items-center gap-2 mr-2">
+                <span class="flex h-2 w-2 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                </span>
+                <span>Periode: {{ $tahunAkademik->nama_tahunakademik }}</span>
+            </div>
+
             <button
                 id="btn-generate"
                 onclick="openGenerateModal()"
@@ -275,7 +286,7 @@
                 </svg>
                 Reset Jadwal
             </button>
-
+ 
             <button
                 onclick="simpanSemuaJadwal()"
                 id="btn-simpan-semua"
@@ -287,25 +298,66 @@
                 <span id="btn-simpan-label">Simpan Jadwal</span>
             </button>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
+            <!-- Toggle Sidebar Kelas -->
+            <button
+                @click="classSidebarOpen = !classSidebarOpen"
+                :class="classSidebarOpen ? 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'"
+                class="px-4 py-3 border rounded-xl font-semibold flex items-center gap-2 transition text-sm shadow-sm"
+                title="Tampilkan/Sembunyikan daftar kelas"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                <span x-text="classSidebarOpen ? 'Sembunyikan Kelas' : 'Tampilkan Kelas'"></span>
+            </button>
+
+            <!-- Mode Fokus -->
+            <button
+                @click="focusMode = !focusMode; sidebarOpen = !focusMode; classSidebarOpen = !focusMode"
+                :class="focusMode ? 'bg-gray-800 border-transparent text-white hover:bg-gray-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'"
+                class="px-4 py-3 border rounded-xl font-semibold flex items-center gap-2 transition text-sm shadow-sm"
+                title="Aktifkan mode fokus tanpa sidebar untuk memperluas area kerja"
+            >
+                <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="focusMode" style="display: none;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!focusMode">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                </svg>
+                <span x-text="focusMode ? 'Normal View' : 'Workspace Fokus'"></span>
+            </button>
+
             <button
                 @click="showTablePreview = !showTablePreview"
-                class="flex items-center gap-2 px-5 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold shadow transition border-2 border-dashed border-teal-400"
+                class="flex items-center gap-2 px-4 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold shadow transition border-2 border-dashed border-teal-400 text-sm"
             >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18"/>
                 </svg>
-                <span x-show="!showTablePreview">Tampilan Tabel (Export)</span>
+                <span x-show="!showTablePreview">Tampilan Tabel</span>
                 <span x-show="showTablePreview">Tutup Tabel</span>
             </button>
         </div>
     </div>
 
     {{-- CONTENT --}}
-    <div class="grid grid-cols-12 gap-6 mt-8 h-[calc(100vh-170px)] overflow-hidden">
+    <div 
+        :class="focusMode ? 'h-[calc(100vh-100px)] mt-4 gap-4' : 'h-[calc(100vh-170px)] mt-8 gap-6'"
+        class="grid grid-cols-12 overflow-hidden transition-all duration-300"
+    >
 
         {{-- SIDEBAR KELAS --}}
-        <div class="col-span-12 xl:col-span-3 min-h-0 flex">
+        <div 
+            x-show="classSidebarOpen" 
+            x-transition:enter="transition ease-out duration-350"
+            x-transition:enter-start="opacity-0 -translate-x-10"
+            x-transition:enter-end="opacity-100 translate-x-0"
+            x-transition:leave="transition ease-in duration-250"
+            x-transition:leave-start="opacity-100 translate-x-0"
+            x-transition:leave-end="opacity-0 -translate-x-10"
+            class="col-span-12 xl:col-span-3 min-h-0 flex"
+        >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col w-full overflow-hidden">
 
                 <div class="p-5 border-b border-gray-100">
@@ -444,7 +496,10 @@
         </div>
 
         {{-- WORKSPACE --}}
-        <div class="col-span-12 xl:col-span-9 flex flex-col lg:flex-row gap-4 min-h-0">
+        <div 
+            :class="classSidebarOpen ? 'xl:col-span-9' : 'xl:col-span-12'"
+            class="col-span-12 flex flex-col lg:flex-row gap-4 min-h-0 transition-all duration-300"
+        >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 w-full flex flex-col overflow-hidden">
 
                 <div class="p-5 border-b border-gray-100">
@@ -466,7 +521,7 @@
                     @foreach ($slotWaktu as $slot)
                     <div class="grid grid-cols-12 border-b border-gray-200 h-[120px]
                     {{ $loop->iteration === 6 ? 'bg-amber-50 border-l-4 border-l-amber-400' : '' }}">
-                        <div class="col-span-2 border-r border-gray-200 px-3 py-3 flex flex-col justify-start
+                        <div class="col-span-2 sticky left-0 border-r border-gray-200 px-3 py-3 flex flex-col justify-start z-20 shadow-[2px_0_5px_rgba(0,0,0,0.03)]
                             {{ $loop->iteration === 6 ? 'bg-amber-50' : 'bg-white' }}">
 
                             {{-- Waktu mulai --}}

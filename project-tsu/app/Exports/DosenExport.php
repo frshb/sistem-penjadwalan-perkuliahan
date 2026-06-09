@@ -24,7 +24,7 @@ class DosenExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
     public function view(): View
     {
         return view('exports.dosen', [
-            'dosens' => Dosen::all(),
+            'dosens' => Dosen::with(['prodi', 'mataKuliahs'])->get(),
             'isPdf' => $this->isPdf
         ]);
     }

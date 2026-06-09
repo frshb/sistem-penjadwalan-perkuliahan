@@ -27,4 +27,13 @@ class TahunAkademik extends Model
             'id_tahunakademik'
         );
     }
+
+    public function jadwals()
+    {
+        return $this->hasMany(
+            Jadwal::class,
+            'id_tahunakademik',
+            'id_tahunakademik'
+        );
+    }
 }

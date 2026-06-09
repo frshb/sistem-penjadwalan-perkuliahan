@@ -24,7 +24,9 @@ class JadwalController extends Controller
      */
     public function pilihTahun()
     {
-        $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
+        $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')
+            ->withCount(['kelas', 'jadwals'])
+            ->get();
 
         return view('penjadwalan.pilih-tahun', compact('tahunAkademiks'));
     }

@@ -10,7 +10,7 @@ use App\Services\GeneticAlgorithm\GeneticScheduler;
 
 class JadwalOtomatisController extends Controller
 {
-    // ── Tampilkan form parameter GA ──────────────────────────
+    // ── Tampilkan form parameter GA ─────────────────────────
     public function index()
     {
         $tahunAkademikList = TahunAkademik::orderByDesc('id_tahunakademik')->get();
@@ -42,7 +42,7 @@ class JadwalOtomatisController extends Controller
             return back()->withErrors(['kelas' => 'Tidak ada data kelas untuk tahun akademik ini.']);
         }
 
-        // Ambil semua slot waktu
+
         $slots = Slot_waktu::orderBy('id_slot')
             ->get()
             ->map(fn($s) => [
@@ -54,7 +54,7 @@ class JadwalOtomatisController extends Controller
 
         $hariList = [1, 2, 3, 4, 5];
 
-        // Jalankan GA
+
         $scheduler = new GeneticScheduler(
             populasiSize: (int) $request->populasi,
             maxGenerasi:  (int) $request->generasi,
@@ -63,7 +63,7 @@ class JadwalOtomatisController extends Controller
         );
 
         set_time_limit(0);
-        ini_set('memory_limit', '512M'); // 5 menit max
+        ini_set('memory_limit', '512M');
         $hasil = $scheduler->run($kelas, $slots, $hariList);
 
         // Susun data untuk ditampilkan

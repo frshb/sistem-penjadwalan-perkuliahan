@@ -21,9 +21,23 @@
             <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $index + 1 }}</td>
             <td style="border: 1px solid #000; padding: 5px;">{{ $dosen->nama_dosen }}</td>
             <td style="border: 1px solid #000; padding: 5px;">{{ $dosen->nidn }}</td>
-            <td style="border: 1px solid #000; padding: 5px;">Teknik Informatika</td> 
+            <td style="border: 1px solid #000; padding: 5px;">{{ $dosen->prodi->nama_prodi ?? 'Belum Dipilih' }}</td> 
             <td style="border: 1px solid #000; padding: 5px;">Fakultas Teknik</td>
-            <td style="border: 1px solid #000; padding: 5px;">{{ $dosen->mata_kuliah }}</td>
+            <td style="border: 1px solid #000; padding: 5px;">
+                @php
+                    $ganjil = $dosen->mataKuliahs->filter(fn($m) => ((int)$m->semester) % 2 !== 0);
+                    $genap = $dosen->mataKuliahs->filter(fn($m) => ((int)$m->semester) % 2 === 0);
+                    
+                    $lines = [];
+                    if ($ganjil->isNotEmpty()) {
+                        $lines[] = 'Ganjil: ' . $ganjil->map(fn($m) => $m->nama_matkul . ' (Sem. ' . $m->semester . ')')->implode(', ');
+                    }
+                    if ($genap->isNotEmpty()) {
+                        $lines[] = 'Genap: ' . $genap->map(fn($m) => $m->nama_matkul . ' (Sem. ' . $m->semester . ')')->implode(', ');
+                    }
+                    echo count($lines) > 0 ? implode(' | ', $lines) : 'Belum mengampu';
+                @endphp
+            </td>
         </tr>
         @endforeach
     </tbody>
