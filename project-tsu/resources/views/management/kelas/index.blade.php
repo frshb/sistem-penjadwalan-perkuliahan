@@ -315,10 +315,6 @@
                                     </th>
 
                                     <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        Dosen
-                                    </th>
-
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
                                         Kapasitas
                                     </th>
 
@@ -393,10 +389,6 @@
 
                                     <td class="text-left py-2 px-3 text-sm">
                                         {{ $kelas->matakuliah->sks ?? '-' }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        {{ $kelas->dosen->nama_dosen ?? '-' }}
                                     </td>
 
                                     <td class="text-left py-2 px-3 text-sm">
@@ -649,33 +641,6 @@
                                 readonly>
                         </div>
 
-                        <!-- Dosen -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Dosen Pengampu
-                            </label>
-
-                            <select
-                                name="id_dosen"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                required>
-
-                                <option value="">-- Pilih Dosen --</option>
-
-                                <template
-                                    x-for="dosen in filteredDosens"
-                                    :key="dosen.id_dosen">
-
-                                    <option
-                                        :value="dosen.id_dosen"
-                                        x-text="dosen.nama_dosen">
-                                    </option>
-
-                                </template>
-
-                            </select>
-                        </div>
-
                         <!-- Kapasitas -->
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -874,34 +839,6 @@
                                x-model="editData.sks"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
                                readonly>
-                    </div>
-
-                    <!-- Dosen -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Dosen Pengampu
-                        </label>
-
-                        <select
-                            name="id_dosen"
-                            x-model="editData.id_dosen"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                            required>
-
-                            <option value="">-- Pilih Dosen --</option>
-
-                            <template
-                                x-for="dosen in filteredEditDosens"
-                                :key="dosen.id_dosen">
-
-                                <option
-                                    :value="dosen.id_dosen"
-                                    x-text="dosen.nama_dosen">
-                                </option>
-
-                            </template>
-
-                        </select>
                     </div>
 
                     <!-- Kapasitas -->

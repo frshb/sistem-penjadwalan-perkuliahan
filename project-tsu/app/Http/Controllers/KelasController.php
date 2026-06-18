@@ -174,7 +174,6 @@ class KelasController extends Controller
                 'id_prodi' => 'required|integer|exists:program_studi,id_prodi',
                 'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
                 'kode_matkul' => 'required|exists:mata_kuliah,kode_matkul',
-                'id_dosen' => 'required|exists:dosen,id_dosen',
                 'kapasitas' => 'required|integer|min:1',
                 'semester' => 'required|integer|min:1|max:14',
             ]);
@@ -184,7 +183,6 @@ class KelasController extends Controller
                 'id_prodi' => $request->id_prodi,
                 'id_tahunakademik' => $request->id_tahunakademik,
                 'kode_matkul' => $request->kode_matkul,
-                'id_dosen' => $request->id_dosen,
                 'kapasitas' => $request->kapasitas,
                 'semester' => $request->semester,
             ]);
@@ -230,7 +228,6 @@ class KelasController extends Controller
                 'id_prodi' => 'required|integer|exists:program_studi,id_prodi',
                 'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
                 'kode_matkul' => 'required|exists:mata_kuliah,kode_matkul',
-                'id_dosen' => 'required|exists:dosen,id_dosen',
                 'kapasitas' => 'required|integer|min:1',
                 'semester' => 'required|integer|min:1|max:14',
             ]);
@@ -240,7 +237,6 @@ class KelasController extends Controller
                 'id_prodi' => $request->id_prodi,
                 'id_tahunakademik' => $request->id_tahunakademik,
                 'kode_matkul' => $request->kode_matkul,
-                'id_dosen' => $request->id_dosen,
                 'kapasitas' => $request->kapasitas,
                 'semester' => $request->semester,
             ]);

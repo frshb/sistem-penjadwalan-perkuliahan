@@ -11,7 +11,7 @@ use App\Http\Controllers\KelasController;
 use App\Http\Controllers\KpSkripsiController;
 use App\Http\Controllers\JadwalExportController;
 use App\Http\Controllers\JadwalOtomatisController;
-
+use App\Http\Controllers\PortalDosenPengampuController;
 
 use App\Http\Controllers\DashboardController;
 
@@ -132,6 +132,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/kelas/tahun-akademik', [KelasController::class, 'storeTahunAkademik'])->name('kelas.tahun-akademik.store');
         Route::delete('/kelas/tahun-akademik/{id}', [KelasController::class, 'destroyTahunAkademik'])->name('kelas.tahun-akademik.destroy');
         Route::put('/kelas/tahun-akademik/{id}', [KelasController::class, 'updateTahunAkademik'])->name('kelas.tahun-akademik.update');
+    });
+
+    // Portal Dosen Pengampu
+    Route::middleware(['permission:management_data,Management Kelas'])->group(function () {
+        Route::get('/dosen-pengampu/pilih-tahun', [PortalDosenPengampuController::class, 'pilihTahun'])->name('dosen-pengampu.pilih-tahun');
+        Route::get('/dosen-pengampu', [PortalDosenPengampuController::class, 'index'])->name('dosen-pengampu.index');
+        Route::post('/dosen-pengampu/simpan', [PortalDosenPengampuController::class, 'simpan'])->name('dosen-pengampu.simpan');
+        Route::post('/dosen-pengampu/hapus', [PortalDosenPengampuController::class, 'hapus'])->name('dosen-pengampu.hapus');
     });
 
     // Modul Penjadwalan - Manual

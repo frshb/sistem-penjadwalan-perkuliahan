@@ -16,9 +16,6 @@ use Illuminate\Support\Facades\Auth;
 
 class DosenController extends Controller
 {
-    /**
-     * Menampilkan halaman daftar dosen.
-     */
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -60,23 +57,20 @@ class DosenController extends Controller
             $prodiId = $user->getProdiId();
             if ($prodiId) {
                 $prodis = Prodi::where('id_prodi', $prodiId)->get();
-                $mataKuliahs = MataKuliah::where('id_prodi', $prodiId)->orderBy('semester')->get();
+                $mataKuliahs = MataKuliah::where('id_prodi', $prodiId)->get();
             } else {
                 $prodis = Prodi::all();
-                $mataKuliahs = MataKuliah::orderBy('semester')->get();
+                $mataKuliahs = MataKuliah::all();
             }
         } else {
             $prodis = Prodi::all();
-            $mataKuliahs = MataKuliah::orderBy('semester')->get();
+            $mataKuliahs = MataKuliah::all();
         }
         $kurikulums = Kurikulum::all();
 
         return view('management.dosen.index', compact('dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs', 'searchTerm'));
     }
 
-    /**
-     * Menyimpan dosen baru.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -122,9 +116,6 @@ class DosenController extends Controller
             ->with('success', 'Data dosen berhasil ditambahkan.');
     }
 
-    /**
-     * Memperbarui data dosen.
-     */
     public function update(Request $request, Dosen $dosen)
     {
         $request->validate([
@@ -178,9 +169,6 @@ class DosenController extends Controller
             ->with('success', 'Data dosen berhasil diperbarui.');
     }
 
-    /**
-     * Menghapus data dosen.
-     */
     public function destroy(Request $request, Dosen $dosen)
     {
         $dosen->delete();
@@ -202,9 +190,6 @@ class DosenController extends Controller
         return Excel::download(new DosenExport(false, $prodiId), 'daftar-dosen.xlsx');
     }
 
-    /**
-     * Export PDF.
-     */
     public function exportPdf()
     {
         $user = Auth::user();

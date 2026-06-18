@@ -21,6 +21,10 @@
         showModalEdit: false,
         tahunHapus: null,
         namaHapus: '',
+        statusFilter: 'aktif',
+        activeCount: {{ $tahunAkademiks->where('status_aktif', 1)->count() }},
+        inactiveCount: {{ $tahunAkademiks->where('status_aktif', 0)->count() }},
+        totalCount: {{ $tahunAkademiks->count() }},
         editData: {
             id: null,
             nama_tahunakademik: '',
@@ -114,12 +118,42 @@
 
         </div>
 
+        <!-- Filter Tabs -->
+        <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="bg-gray-200/60 p-1 rounded-xl flex items-center border border-gray-200/30 self-start">
+                <button
+                    @click="statusFilter = 'aktif'"
+                    :class="statusFilter === 'aktif' ? 'bg-white text-teal-800 shadow-sm font-bold' : 'text-gray-600 hover:text-gray-800'"
+                    class="px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5"
+                >
+                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                    Aktif (<span x-text="activeCount"></span>)
+                </button>
+                <button
+                    @click="statusFilter = 'nonaktif'"
+                    :class="statusFilter === 'nonaktif' ? 'bg-white text-gray-800 shadow-sm font-bold' : 'text-gray-600 hover:text-gray-800'"
+                    class="px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5"
+                >
+                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                    Nonaktif (<span x-text="inactiveCount"></span>)
+                </button>
+                <button
+                    @click="statusFilter = 'semua'"
+                    :class="statusFilter === 'semua' ? 'bg-white text-teal-800 shadow-sm font-bold' : 'text-gray-600 hover:text-gray-800'"
+                    class="px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200"
+                >
+                    Semua (<span x-text="totalCount"></span>)
+                </button>
+            </div>
+        </div>
+
         <!-- Card Tahun Akademik -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
             @forelse ($tahunAkademiks as $tahun)
 
                 <div
+                    x-show="statusFilter === 'semua' || (statusFilter === 'aktif' && {{ $tahun->status_aktif ? 1 : 0 }} == 1) || (statusFilter === 'nonaktif' && {{ $tahun->status_aktif ? 0 : 1 }} == 1)"
                     class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
 
                     <!-- Header Card -->
@@ -265,6 +299,25 @@
 
             @endforelse
 
+        </div>
+
+        <!-- Empty State Filter -->
+        <div
+            x-show="(statusFilter === 'aktif' && activeCount === 0) || (statusFilter === 'nonaktif' && inactiveCount === 0) || (statusFilter === 'semua' && totalCount === 0)"
+            class="bg-white p-12 rounded-2xl shadow-sm text-center border border-gray-100 mt-6"
+            style="display: none;"
+            x-cloak
+        >
+            <div class="flex justify-center mb-4">
+                <div class="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-3xl">
+                    📅
+                </div>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-1">
+                Tidak Ada Tahun Akademik
+            </h3>
+            <p class="text-gray-500 max-w-md mx-auto text-sm" x-text="'Tidak ditemukan tahun akademik dengan status ' + (statusFilter === 'aktif' ? 'Aktif' : (statusFilter === 'nonaktif' ? 'Nonaktif' : '')) + '.'">
+            </p>
         </div>
 
     </div>

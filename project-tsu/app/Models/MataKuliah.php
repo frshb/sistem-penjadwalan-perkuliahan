@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class MataKuliah extends Model
 {
-    //
     use HasFactory;
 
     protected $table = 'mata_kuliah';
@@ -16,10 +15,6 @@ class MataKuliah extends Model
     public $incrementing = true;
     protected $keyType = 'int';
     public $timestamps = false;
-
-    /**
-     * Kolom yang bisa diisi.
-     */
     protected $fillable = [
         'kode_matkul',
         'nama_matkul',

@@ -54,9 +54,13 @@
         @endif
 
         @if(Auth::user()->hasPermission('management_data', 'Management Kelas'))
-        <a href="{{ route('kelas.index') }}" class="flex items-center {{ request()->routeIs('kelas.index') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
+        <a href="{{ route('kelas.pilih-tahun') }}" class="flex items-center {{ request()->routeIs('kelas.*') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10M6 5v14M18 5v14"></path></svg>
             Management Kelas
+        </a>
+        <a href="{{ route('dosen-pengampu.pilih-tahun') }}" class="flex items-center {{ request()->routeIs('dosen-pengampu.*') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            Portal Dosen Pengampu
         </a>
         @endif
 
