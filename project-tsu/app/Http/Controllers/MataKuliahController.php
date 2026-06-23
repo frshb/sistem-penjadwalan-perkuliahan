@@ -11,103 +11,49 @@ use PDF; // Untuk export PDF
 use Maatwebsite\Excel\Facades\Excel; // Untuk export Excel
 use App\Exports\MataKuliahExport; // Untuk export Excel
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\ProdiFilter;
 
 class MataKuliahController extends Controller
 {
     /**
      * Menampilkan halaman daftar mata kuliah (dengan filter).
      */
-    public function index(Request $request) // Tambahkan Request $request
+    public function index(Request $request)
     {
-        // Mulai query
-        $query = MataKuliah::with(['kurikulum', 'program_studi','ruangans']); // Eager load relasi kurikulum, prodi, dan ruangans
+        $user        = Auth::user();
+        $prodiId     = ProdiFilter::getProdiId(); // ✅
+        $searchTerm  = $request->input('search');
 
-        $user = Auth::user();
-        $userProdiName = null;
-        $searchTerm = $request->input('search');
+        $query = MataKuliah::with(['kurikulum', 'program_studi', 'ruangans']);
 
-        if ($user && !$user->isAdmin() && !$user->isDekan()) {
-            $prodiId = $user->getProdiId();
-            if ($prodiId) {
-                $query->where('id_prodi', $prodiId);
-                if ($user->id_prodi) {
-                    $userProdiName = $user->prodi->nama_prodi ?? '';
-                } elseif ($user->dosen && $user->dosen->id_prodi) {
-                    $userProdiName = $user->dosen->prodi->nama_prodi ?? '';
-                }
-            }
+        if ($prodiId) {
+            $query->where('id_prodi', $prodiId);
         }
 
-        // Terapkan filter jika ada
-        // if ($request->filled('semester')) {
-        //     $query->where('semester', $request->semester);
-        // }
-
-        // if ($request->filled('kurikulum')) {
-        //     $query->where('id_kurikulum', $request->kurikulum);
-        // }
-        if ($request->filled('prodi')) {
+        // Filter manual prodi (hanya aktif untuk admin/dekan)
+        if (!$prodiId && $request->filled('prodi')) {
             $query->where('id_prodi', $request->prodi);
         }
 
-        // SEARCH
         if ($searchTerm) {
-
             $query->where(function ($q) use ($searchTerm) {
-
-                // nama matkul
-                $q->where(
-                    'nama_matkul',
-                    'like',
-                    '%' . $searchTerm . '%'
-                )
-
-                // kode matkul
-                ->orWhere(
-                    'kode_matkul',
-                    'like',
-                    '%' . $searchTerm . '%'
-                )
-
-                // jenis matkul
-                ->orWhere(
-                    'jenis',
-                    'like',
-                    '%' . $searchTerm . '%'
-                );
-
+                $q->where('nama_matkul', 'like', '%' . $searchTerm . '%')
+                ->orWhere('kode_matkul', 'like', '%' . $searchTerm . '%')
+                ->orWhere('jenis', 'like', '%' . $searchTerm . '%');
             });
-
         }
 
-        // Ambil semua kurikulum untuk dropdown
-        $kurikulums = Kurikulum::all(); // <-- PASTIKAN BARIS INI ADA
+        $matkuls   = $query->paginate(100)->appends($request->query());
+        $kurikulums = Kurikulum::all();
+        $ruangans   = Ruangan::all();
+        $prodis     = $prodiId ? Prodi::where('id_prodi', $prodiId)->get()
+                            : Prodi::all();
 
-        // Paginate hasil query, dan tambahkan filter ke link pagination
-        // USER REQUEST: Munculin semua data (limit diperbesar)
-        $matkuls = $query->paginate(100)->appends($request->query());
-        
-        if ($user && !$user->isAdmin() && !$user->isDekan()) {
-            $prodiId = $user->getProdiId();
-            if ($prodiId) {
-                $prodis = Prodi::where('id_prodi', $prodiId)->get();
-            } else {
-                $prodis = Prodi::all();
-            }
-        } else {
-            $prodis = Prodi::all();
-        }
-        $ruangans = Ruangan::all();
+        $userProdiName = $prodiId ? ($prodis->first()->nama_prodi ?? '') : null;
 
-        // Kirim data matkul DAN kurikulum ke view
-        return view('management.matakuliah.index', [
-            'matkuls' => $matkuls,
-            'kurikulums' => $kurikulums, // <-- PASTIKAN $kurikulums DIKIRIM KE VIEW
-            'prodis' => $prodis,
-            'ruangans' => $ruangans,
-            'userProdiName' => $userProdiName,
-            'searchTerm' => $searchTerm
-        ]);
+        return view('management.matakuliah.index', compact(
+            'matkuls', 'kurikulums', 'prodis', 'ruangans', 'userProdiName', 'searchTerm'
+        ));
     }
     /**
      * Menyimpan mata kuliah baru ke database.

@@ -15,9 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             'revalidate' => \App\Http\Middleware\PreventBackHistory::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
         ]);
         $middleware->redirectUsersTo('/dashboard');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
+

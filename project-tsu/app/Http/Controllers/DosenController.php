@@ -12,63 +12,49 @@ use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\DosenExport;
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\ProdiFilter;
 
 
 class DosenController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
-        $userProdiName = null;
-        $searchTerm = $request->search;
+        $user        = Auth::user();
+        $prodiId     = ProdiFilter::getProdiId();
+        $searchTerm  = $request->search;
+
         $query = Dosen::with(['prodi', 'mataKuliahs']);
-        if ($request->filled('search')) {
 
-            $query->where(
-                'nama_dosen',
-                'like',
-                '%' . $request->search . '%'
-            );
-
+        // ✅ Filter by prodi (otomatis untuk kaprodi/dosen)
+        if ($prodiId) {
+            $query->where('id_prodi', $prodiId);
         }
 
-        if ($request->filled('prodi')) {
+        // Filter manual by prodi (hanya untuk admin/dekan yang bisa pilih)
+        if (!$prodiId && $request->filled('prodi')) {
             $query->where('id_prodi', $request->prodi);
         }
 
-        if ($user && !$user->isAdmin() && !$user->isDekan()) {
-            $prodiId = $user->getProdiId();
-            if ($prodiId) {
-                $query->where('id_prodi', $prodiId);
-                if ($user->id_prodi) {
-                    $userProdiName = $user->prodi->nama_prodi ?? '';
-                } elseif ($user->dosen && $user->dosen->id_prodi) {
-                    $userProdiName = $user->dosen->prodi->nama_prodi ?? '';
-                }
-            }
+        // Search
+        if ($request->filled('search')) {
+            $query->where('nama_dosen', 'like', '%' . $searchTerm . '%');
         }
 
-        $dosens = $query
-            ->paginate(10)
-            ->appends($request->query())
-            ->onEachSide(1);
+        $dosens = $query->paginate(10)->appends($request->query())->onEachSide(1);
 
-        if ($user && !$user->isAdmin() && !$user->isDekan()) {
-            $prodiId = $user->getProdiId();
-            if ($prodiId) {
-                $prodis = Prodi::where('id_prodi', $prodiId)->get();
-                $mataKuliahs = MataKuliah::where('id_prodi', $prodiId)->get();
-            } else {
-                $prodis = Prodi::all();
-                $mataKuliahs = MataKuliah::all();
-            }
-        } else {
-            $prodis = Prodi::all();
-            $mataKuliahs = MataKuliah::all();
-        }
-        $kurikulums = Kurikulum::all();
+        // Dropdown data — dibatasi sesuai prodi jika kaprodi/dosen
+        $prodis      = $prodiId ? Prodi::where('id_prodi', $prodiId)->get()
+                                : Prodi::all();
+        $mataKuliahs = $prodiId ? MataKuliah::where('id_prodi', $prodiId)->get()
+                                : MataKuliah::all();
+        $kurikulums  = Kurikulum::all();
 
-        return view('management.dosen.index', compact('dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs', 'searchTerm'));
+        // Nama prodi untuk ditampilkan di header (jika kaprodi/dosen)
+        $userProdiName = $prodiId ? ($prodis->first()->nama_prodi ?? '') : null;
+
+        return view('management.dosen.index', compact(
+            'dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs', 'searchTerm'
+        ));
     }
 
     public function store(Request $request)

@@ -12,6 +12,7 @@ use App\Http\Controllers\KpSkripsiController;
 use App\Http\Controllers\JadwalExportController;
 use App\Http\Controllers\JadwalOtomatisController;
 use App\Http\Controllers\PortalDosenPengampuController;
+use App\Http\Controllers\RoleManagementController;
 
 use App\Http\Controllers\DashboardController;
 
@@ -49,14 +50,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin Only
     Route::middleware(['role:admin'])->group(function () {
-        // Main Settings Page
         Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
 
-        // Role Management
-        Route::get('/settings/roles', [\App\Http\Controllers\RoleManagementController::class, 'index'])->name('settings.roles.index');
-        Route::post('/settings/roles', [\App\Http\Controllers\RoleManagementController::class, 'update'])->name('settings.roles.update');
+        // ✅ Pindahkan Role Management ke sini, hapus yang duplikat di bawah
+        Route::get('/settings/roles', [RoleManagementController::class, 'index'])->name('settings.roles.index');
+        Route::post('/settings/roles', [RoleManagementController::class, 'update'])->name('settings.roles.update');
 
-        // Academic Calendar Settings
+        // Academic Calendar
         Route::get('/settings/academic-calendar', [\App\Http\Controllers\AcademicCalendarController::class, 'index'])->name('settings.academic_calendar.index');
         Route::post('/settings/academic-calendar', [\App\Http\Controllers\AcademicCalendarController::class, 'store'])->name('settings.academic_calendar.store');
         Route::put('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'update'])->name('settings.academic_calendar.update');
@@ -72,39 +72,28 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/management/kp-skripsi', [App\Http\Controllers\KpSkripsiController::class, 'index'])->name('management.kpskripsi.index');
     });
 
-    // Management Prodi
-    Route::middleware(['permission:management_data,Management Prodi'])->group(function () {
+    // Program Studi
+    Route::middleware(['permission:management_data,Program Studi'])->group(function () {
+        Route::get('/management/prodi', [ProdiController::class, 'index'])->name('prodi.index');
         Route::get('/management/prodi/export-excel', [ProdiController::class, 'exportExcel'])->name('prodi.export.excel');
         Route::get('/management/prodi/export-pdf', [ProdiController::class, 'exportPdf'])->name('prodi.export.pdf');
-        Route::get('/management/prodi', [ProdiController::class, 'index'])->name('prodi.index');
         Route::get('/management/prodi/{id}', [ProdiController::class, 'show'])->name('prodi.show');
         Route::post('/management/prodi', [ProdiController::class, 'store'])->name('prodi.store');
-        Route::delete('/management/prodi/{prodi}', [ProdiController::class, 'destroy'])->name('prodi.destroy');
         Route::put('/management/prodi/{id}', [ProdiController::class, 'update'])->name('prodi.update');
+        Route::delete('/management/prodi/{prodi}', [ProdiController::class, 'destroy'])->name('prodi.destroy');
     });
 
-    // Management Ruangan
-    Route::middleware(['permission:management_data,Management Ruangan'])->group(function () {
+    // Ruangan
+    Route::middleware(['permission:management_data,Ruangan'])->group(function () {
+        Route::get('/management/ruangan', [RuanganController::class, 'index'])->name('ruangan.index');
         Route::get('/management/ruangan/export-excel', [RuanganController::class, 'exportExcel'])->name('ruangan.export.excel');
         Route::get('/management/ruangan/export-pdf', [RuanganController::class, 'exportPdf'])->name('ruangan.export.pdf');
-        Route::get('/management/ruangan', [RuanganController::class, 'index'])->name('ruangan.index');
         Route::resource('/management/ruangan', RuanganController::class)
-            ->except(['show', 'index'])
-            ->names('ruangan');
+            ->except(['show', 'index'])->names('ruangan');
     });
 
-    // Management Dosen
-    Route::middleware(['permission:management_data,Management Data Dosen'])->group(function () {
-        Route::get('/management/dosen', [DosenController::class, 'index'])->name('dosen.index');
-        Route::get('/management/dosen/export-excel', [DosenController::class, 'exportExcel'])->name('dosen.export.excel');
-        Route::get('/management/dosen/export-pdf', [DosenController::class, 'exportPdf'])->name('dosen.export.pdf');
-        Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
-        Route::put('/management/dosen/{dosen:nuptk}', [DosenController::class, 'update'])->name('dosen.update');
-        Route::delete('/management/dosen/{dosen:nuptk}', [DosenController::class, 'destroy'])->name('dosen.destroy');
-    });
-
-    // Management Mata Kuliah
-    Route::middleware(['permission:management_data,Management Mata Kuliah'])->group(function () {
+    // Mata Kuliah
+    Route::middleware(['permission:management_data,Mata Kuliah'])->group(function () {
         Route::get('/management/matakuliah', [MataKuliahController::class, 'index'])->name('matakuliah.index');
         Route::post('/management/matakuliah', [MataKuliahController::class, 'store'])->name('matakuliah.store');
         Route::put('/management/matakuliah/{kode_matkul}', [MataKuliahController::class, 'update'])->name('matakuliah.update');
@@ -113,15 +102,26 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/management/matakuliah/export-pdf', [MataKuliahController::class, 'exportPDF'])->name('matakuliah.export.pdf');
     });
 
-    // Management Mahasiswa
-    Route::middleware(['permission:management_data,Management Data Mahasiswa'])->group(function () {
-        Route::get('/management/mahasiswa/export-excel', [MahasiswaController::class, 'exportExcel'])->name('mahasiswa.export.excel');
-        Route::get('/management/mahasiswa/export-pdf', [MahasiswaController::class, 'exportPdf'])->name('mahasiswa.export.pdf');
-        Route::get('/management/mahasiswa', [MahasiswaController::class, 'index'])->name('mahasiswa.index');
+    // Dosen
+    Route::middleware(['permission:management_data,Dosen'])->group(function () {
+        Route::get('/management/dosen', [DosenController::class, 'index'])->name('dosen.index');
+        Route::get('/management/dosen/export-excel', [DosenController::class, 'exportExcel'])->name('dosen.export.excel');
+        Route::get('/management/dosen/export-pdf', [DosenController::class, 'exportPdf'])->name('dosen.export.pdf');
+        Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
+        Route::put('/management/dosen/{dosen:nuptk}', [DosenController::class, 'update'])->name('dosen.update');
+        Route::delete('/management/dosen/{dosen:nuptk}', [DosenController::class, 'destroy'])->name('dosen.destroy');
     });
 
-    // Management Kelas
-    Route::middleware(['permission:management_data,Management Kelas'])->group(function () {
+    // Pengampu Mata Kuliah
+    Route::middleware(['permission:management_data,Pengampu Mata Kuliah'])->group(function () {
+        Route::get('/dosen-pengampu/pilih-tahun', [PortalDosenPengampuController::class, 'pilihTahun'])->name('dosen-pengampu.pilih-tahun');
+        Route::get('/dosen-pengampu', [PortalDosenPengampuController::class, 'index'])->name('dosen-pengampu.index');
+        Route::post('/dosen-pengampu/simpan', [PortalDosenPengampuController::class, 'simpan'])->name('dosen-pengampu.simpan');
+        Route::post('/dosen-pengampu/hapus', [PortalDosenPengampuController::class, 'hapus'])->name('dosen-pengampu.hapus');
+    });
+
+    // Kelas Paralel
+    Route::middleware(['permission:management_data,Kelas Paralel'])->group(function () {
         Route::get('/management/kelas/pilih-tahun', [KelasController::class, 'pilihTahun'])->name('kelas.pilih-tahun');
         Route::get('/management/kelas', [KelasController::class, 'index'])->name('kelas.index');
         Route::get('/management/kelas/export/excel', [KelasController::class, 'exportExcel'])->name('kelas.export.excel');
@@ -134,32 +134,37 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/kelas/tahun-akademik/{id}', [KelasController::class, 'updateTahunAkademik'])->name('kelas.tahun-akademik.update');
     });
 
-    // Portal Dosen Pengampu
-    Route::middleware(['permission:management_data,Management Kelas'])->group(function () {
-        Route::get('/dosen-pengampu/pilih-tahun', [PortalDosenPengampuController::class, 'pilihTahun'])->name('dosen-pengampu.pilih-tahun');
-        Route::get('/dosen-pengampu', [PortalDosenPengampuController::class, 'index'])->name('dosen-pengampu.index');
-        Route::post('/dosen-pengampu/simpan', [PortalDosenPengampuController::class, 'simpan'])->name('dosen-pengampu.simpan');
-        Route::post('/dosen-pengampu/hapus', [PortalDosenPengampuController::class, 'hapus'])->name('dosen-pengampu.hapus');
+    // Mahasiswa
+    Route::middleware(['permission:management_data,Mahasiswa'])->group(function () {
+        Route::get('/management/mahasiswa', [MahasiswaController::class, 'index'])->name('mahasiswa.index');
+        Route::get('/management/mahasiswa/export-excel', [MahasiswaController::class, 'exportExcel'])->name('mahasiswa.export.excel');
+        Route::get('/management/mahasiswa/export-pdf', [MahasiswaController::class, 'exportPdf'])->name('mahasiswa.export.pdf');
     });
 
-    // Modul Penjadwalan - Manual
-    Route::middleware(['permission:modul_penjadwalan,Penjadwalan Manual'])->group(function () {
-        Route::get('/modul-penjadwalan',[JadwalController::class, 'index'])->name('jadwal.index');
-        Route::get('/penjadwalan/pilih-tahun',[JadwalController::class, 'pilihTahun'])->name('jadwal.pilih-tahun');
-        Route::get('/penjadwalan/manual',[JadwalController::class, 'manual'])->name('jadwal.manual');
-        Route::post('/jadwal/simpan-slot', [JadwalController::class, 'simpanSlot'])->name('jadwal.simpan-slot');
-        Route::delete('/jadwal/hapus-slot/{id}', [JadwalController::class, 'hapusSlot'])->name('jadwal.hapus-slot');
-        Route::post('/modul-penjadwalan/generate-ga', [JadwalController::class, 'generateGA'])->name('jadwal.generate_ga');
-        Route::get('/jadwal/{tahunAkademikId}/export/excel', [JadwalExportController::class, 'exportExcel'])->name('jadwal.export.excel');
-        Route::get('/jadwal/{tahunAkademikId}/export/pdf',   [JadwalExportController::class, 'exportPdf'])->name('jadwal.export.pdf');
+    // KP & Skripsi
+    Route::middleware(['permission:management_data,KP & Skripsi'])->group(function () {
+        Route::get('/management/kp-skripsi', [KpSkripsiController::class, 'index'])->name('management.kpskripsi.index');
     });
 
-    // Modul Penjadwalan - Otomatis
-    Route::middleware(['permission:modul_penjadwalan,Penjadwalan Otomatis'])->group(function () {
-        Route::get('/jadwal-otomatis',         [JadwalOtomatisController::class, 'index'])->name('jadwal.otomatis.index');
+    // Generate Jadwal (Otomatis)
+    Route::middleware(['permission:modul_penjadwalan,Generate Jadwal'])->group(function () {
+        Route::get('/jadwal-otomatis', [JadwalOtomatisController::class, 'index'])->name('jadwal.otomatis.index');
         Route::post('/jadwal-otomatis/proses', [JadwalOtomatisController::class, 'proses'])->name('jadwal.otomatis.proses');
         Route::post('/jadwal-otomatis/simpan', [JadwalOtomatisController::class, 'simpan'])->name('jadwal.otomatis.simpan');
         Route::get('/jadwal-otomatis/stream', [JadwalOtomatisController::class, 'stream'])->name('jadwal.otomatis.stream');
+    });
+
+    // Penyesuaian Jadwal (Manual)
+    Route::middleware(['permission:modul_penjadwalan,Penyesuaian Jadwal'])->group(function () {
+        Route::get('/modul-penjadwalan', [JadwalController::class, 'index'])->name('jadwal.index');
+        Route::get('/penjadwalan/pilih-tahun', [JadwalController::class, 'pilihTahun'])->name('jadwal.pilih-tahun');
+        Route::get('/penjadwalan/manual', [JadwalController::class, 'manual'])->name('jadwal.manual');
+        Route::post('/jadwal/simpan-slot', [JadwalController::class, 'simpanSlot'])->name('jadwal.simpan-slot');
+        Route::delete('/jadwal/hapus-slot/{id}', [JadwalController::class, 'hapusSlot'])->name('jadwal.hapus-slot');
+        Route::post('/jadwal/optimasi', [JadwalController::class, 'optimasi'])->name('jadwal.optimasi');
+        Route::get('/jadwal/status-bentrok', [JadwalController::class, 'statusBentrok'])->name('jadwal.status-bentrok');
+        Route::get('/jadwal/{tahunAkademikId}/export/excel', [JadwalExportController::class, 'exportExcel'])->name('jadwal.export.excel');
+        Route::get('/jadwal/{tahunAkademikId}/export/pdf', [JadwalExportController::class, 'exportPdf'])->name('jadwal.export.pdf');
     });
 
 });

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -11,18 +10,17 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $table = 'user';
+    protected $table      = 'user';
     protected $primaryKey = 'id_user';
-    public $timestamps = false; // Migration didn't show timestamps, verifying...
+    public    $timestamps = false;
 
     protected $fillable = [
-        'id_user', // Manually assigning ID? Migration wasn't auto-increment.
         'username',
         'password_hash',
         'id_role',
         'id_dosen',
         'id_mhs',
-        'id_prodi'
+        'id_prodi',
     ];
 
     protected $hidden = [
@@ -30,23 +28,22 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    public function getAuthPassword()
+    // ✅ Sesuaikan casts hanya dengan kolom yang benar-benar ada di tabel
+    protected function casts(): array
+    {
+        return [];
+    }
+
+    // ✅ Wajib ada agar Laravel Auth bisa verifikasi password di kolom password_hash
+    public function getAuthPassword(): string
     {
         return $this->password_hash;
     }
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    // =========================================================
+    // RELASI
+    // =========================================================
+
     public function role()
     {
         return $this->belongsTo(Role::class, 'id_role', 'id_role');
@@ -67,62 +64,86 @@ class User extends Authenticatable
     //     return $this->belongsTo(Mahasiswa::class, 'id_mhs', 'id_mhs');
     // }
 
-    // Constants for Role IDs (Matching Seeder)
-    const ROLE_ADMIN = 1;
-    const ROLE_KAPRODI = 2; // Formerly admin_fakultas
-    const ROLE_DEKAN = 3;
-    const ROLE_DOSEN = 4;
-    const ROLE_MAHASISWA = 5;
+    // =========================================================
+    // ROLE CONSTANTS — berbasis nama, bukan ID
+    // Lebih aman: tidak bergantung pada urutan seeder/insert
+    // =========================================================
 
-    public function hasRole($roleName)
+    const ROLE_ADMIN     = 'admin';
+    const ROLE_KAPRODI   = 'kaprodi';
+    const ROLE_DEKAN     = 'dekan';
+    const ROLE_DOSEN     = 'dosen';
+    const ROLE_MAHASISWA = 'mahasiswa';
+
+    // =========================================================
+    // HELPER ROLE
+    // =========================================================
+
+    /**
+     * Cek apakah user memiliki nama role tertentu.
+     * Aman jika relasi role null.
+     */
+    public function hasRole(string $roleName): bool
     {
-        return $this->role->nama_role === $roleName;
+        // ✅ Tambah null-check agar tidak error jika id_role tidak valid
+        return $this->role?->nama_role === $roleName;
     }
 
-    public function isAdmin()
+    public function isAdmin(): bool
     {
-        return $this->id_role === self::ROLE_ADMIN;
+        return $this->hasRole(self::ROLE_ADMIN);
     }
 
-    public function isDeKan()
+    public function isDekan(): bool
     {
-        return $this->id_role === self::ROLE_DEKAN;
+        // ✅ Fix typo: isDeKan → isDekan
+        return $this->hasRole(self::ROLE_DEKAN);
     }
 
-    public function isKaprodi()
+    public function isKaprodi(): bool
     {
-        return $this->id_role === self::ROLE_KAPRODI;
+        return $this->hasRole(self::ROLE_KAPRODI);
     }
 
-    public function isDosen()
+    public function isDosen(): bool
     {
-        return $this->id_role === self::ROLE_DOSEN;
+        return $this->hasRole(self::ROLE_DOSEN);
     }
 
-    public function getProdiId()
+    public function isMahasiswa(): bool
+    {
+        return $this->hasRole(self::ROLE_MAHASISWA);
+    }
+
+    // =========================================================
+    // HELPER LAIN
+    // =========================================================
+
+    /**
+     * Ambil id_prodi dari user langsung, atau fallback ke prodi dosen.
+     */
+    public function getProdiId(): ?int
     {
         if ($this->id_prodi) {
             return $this->id_prodi;
         }
 
-        if ($this->dosen) {
-            return $this->dosen->id_prodi;
-        }
-
-        return null;
+        // Fallback ke prodi dosen jika ada
+        return $this->dosen?->id_prodi ?? null;
     }
 
-    public function hasPermission($module, $item = null)
+    /**
+     * Cek permission berdasarkan module dan item.
+     * Admin selalu mendapat akses penuh.
+     */
+    public function hasPermission(string $module, ?string $item = null): bool
     {
+        // ✅ Admin bypass semua permission check
         if ($this->isAdmin()) {
             return true;
         }
 
-        $role = $this->role;
-        if (!$role) {
-            return false;
-        }
-
-        return $role->hasPermission($module, $item);
+        // ✅ Aman jika role null
+        return $this->role?->hasPermission($module, $item) ?? false;
     }
 }

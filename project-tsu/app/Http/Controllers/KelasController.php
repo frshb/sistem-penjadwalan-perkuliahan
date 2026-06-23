@@ -10,6 +10,7 @@ use App\Models\Kurikulum;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\KelasExport;
+use App\Helpers\ProdiFilter;
 
 class KelasController extends Controller
 {
@@ -25,120 +26,51 @@ class KelasController extends Controller
 
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $user       = auth()->user();
+        $idTahun    = $request->tahun;
+        $prodiId    = ProdiFilter::getProdiId(); // ✅
+        $searchTerm = $request->input('search');
 
-        // ambil id tahun akademik dari URL
-        $idTahun = $request->tahun;
-
-        // jika tidak ada tahun dipilih
         if (!$idTahun) {
             return redirect()->route('kelas.pilih-tahun');
         }
 
-        $searchTerm = $request->input('search');
+        $query = Kelas::with(['prodi', 'tahunAkademik', 'matakuliah', 'dosen'])
+            ->where('id_tahunakademik', $idTahun);
 
-        // query
-        $query = Kelas::with([
-            'prodi',
-            'tahunAkademik',
-            'matakuliah',
-            'dosen'
-        ])
-        ->where('id_tahunakademik', $idTahun);
-
-        if ($user && !$user->isAdmin() && !$user->isDekan()) {
-            $prodiId = $user->getProdiId();
-            if ($prodiId) {
-                $query->where('id_prodi', $prodiId);
-            }
+        if ($prodiId) {
+            $query->where('id_prodi', $prodiId);
         }
 
-        // search
         if ($searchTerm) {
-
             $query->where(function ($q) use ($searchTerm) {
-
-                // nama kelas
-                $q->where(
-                    'nama_kelas',
-                    'like',
-                    '%' . $searchTerm . '%'
-                )
-
-                // kode matkul
-                ->orWhere(
-                    'kode_matkul',
-                    'like',
-                    '%' . $searchTerm . '%'
-                )
-
-                // nama matkul
-                ->orWhereHas('matakuliah', function ($matkul) use ($searchTerm) {
-
-                    $matkul->where(
-                        'nama_matkul',
-                        'like',
-                        '%' . $searchTerm . '%'
-                    );
-
-                })
-
-                // nama dosen
-                ->orWhereHas('dosen', function ($dosen) use ($searchTerm) {
-
-                    $dosen->where(
-                        'nama_dosen',
-                        'like',
-                        '%' . $searchTerm . '%'
-                    );
-
-                });
-
+                $q->where('nama_kelas', 'like', '%' . $searchTerm . '%')
+                ->orWhere('kode_matkul', 'like', '%' . $searchTerm . '%')
+                ->orWhereHas('matakuliah', fn($m) => $m->where('nama_matkul', 'like', '%' . $searchTerm . '%'))
+                ->orWhereHas('dosen', fn($d) => $d->where('nama_dosen', 'like', '%' . $searchTerm . '%'));
             });
-
         }
 
-        $kelas = $query
-            ->orderBy('semester')
-            ->orderBy('nama_kelas')
-            ->get();
+        $kelas = $query->orderBy('semester')->orderBy('nama_kelas')->get();
 
-        // grouping prodi
         $kelasByProdi = $kelas
             ->groupBy(fn($item) => $item->prodi->nama_prodi ?? 'Tanpa Prodi')
             ->sortKeys();
 
-        // data dropdown
-        if ($user && !$user->isAdmin() && !$user->isDekan()) {
-            $prodiId = $user->getProdiId();
-            if ($prodiId) {
-                $prodis = Prodi::where('id_prodi', $prodiId)->orderBy('nama_prodi')->get();
-                $mataKuliahs = MataKuliah::with(['pengampus.dosen'])
-                    ->where('id_prodi', $prodiId)
-                    ->orderBy('nama_matkul')
-                    ->get();
-            } else {
-                $prodis = Prodi::orderBy('nama_prodi')->get();
-                $mataKuliahs = MataKuliah::with(['pengampus.dosen'])->orderBy('nama_matkul')->get();
-            }
-        } else {
-            $prodis = Prodi::orderBy('nama_prodi')->get();
-            $mataKuliahs = MataKuliah::with(['pengampus.dosen'])->orderBy('nama_matkul')->get();
-        }
+        // Dropdown — dibatasi jika kaprodi/dosen
+        $prodis      = $prodiId ? Prodi::where('id_prodi', $prodiId)->orderBy('nama_prodi')->get()
+                                : Prodi::orderBy('nama_prodi')->get();
+        $mataKuliahs = $prodiId
+            ? MataKuliah::with(['pengampus.dosen'])->where('id_prodi', $prodiId)->orderBy('nama_matkul')->get()
+            : MataKuliah::with(['pengampus.dosen'])->orderBy('nama_matkul')->get();
 
-        $kurikulums = Kurikulum::orderBy('nama_kurikulum')->get();
+        $kurikulums     = Kurikulum::orderBy('nama_kurikulum')->get();
         $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
-        $tahunAkademik = TahunAkademik::find($idTahun);
+        $tahunAkademik  = TahunAkademik::find($idTahun);
 
         return view('management.kelas.index', compact(
-            'kelas',
-            'kelasByProdi',
-            'searchTerm',
-            'prodis',
-            'tahunAkademiks',
-            'tahunAkademik',
-            'mataKuliahs',
-            'kurikulums'
+            'kelas', 'kelasByProdi', 'searchTerm', 'prodis',
+            'tahunAkademiks', 'tahunAkademik', 'mataKuliahs', 'kurikulums'
         ));
     }
 

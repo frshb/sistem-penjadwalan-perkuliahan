@@ -27,174 +27,140 @@ class Role extends Model
         return $this->hasMany(User::class, 'id_role', 'id_role');
     }
 
-    public function getDefaultPermissions()
+    public function getDefaultPermissions(): array
     {
         $roleNameLower = strtolower($this->nama_role);
 
         $managementDataItems = [
-            ['name' => 'Management Prodi', 'enabled' => false],
-            ['name' => 'Management Ruangan', 'enabled' => false],
-            ['name' => 'Management Mata Kuliah', 'enabled' => false],
-            ['name' => 'Management Data Dosen', 'enabled' => false],
-            ['name' => 'Management Kelas', 'enabled' => false],
-            ['name' => 'Management Data Mahasiswa', 'enabled' => false],
-            ['name' => 'Management KP & Skripsi', 'enabled' => false],
+            ['name' => 'Program Studi',        'enabled' => false],
+            ['name' => 'Ruangan',              'enabled' => false],
+            ['name' => 'Mata Kuliah',          'enabled' => false],
+            ['name' => 'Dosen',                'enabled' => false],
+            ['name' => 'Pengampu Mata Kuliah', 'enabled' => false],
+            ['name' => 'Kelas Paralel',        'enabled' => false],
+            ['name' => 'Mahasiswa',            'enabled' => false],
+            ['name' => 'KP & Skripsi',         'enabled' => false],
         ];
 
         $modulPenjadwalanItems = [
-            ['name' => 'Penjadwalan Otomatis', 'enabled' => false],
-            ['name' => 'Penjadwalan Manual', 'enabled' => false],
+            ['name' => 'Generate Jadwal',     'enabled' => false],
+            ['name' => 'Penyesuaian Jadwal',  'enabled' => false],
         ];
 
-        if ($roleNameLower === 'admin' || $roleNameLower === 'super admin' || $roleNameLower === 'super_admin') {
-            foreach ($managementDataItems as &$item) {
+        $enableItems = function (array &$items, array $names): void {
+            foreach ($items as &$item) {
+                if (in_array($item['name'], $names, true)) {
+                    $item['enabled'] = true;
+                }
+            }
+            unset($item);
+        };
+
+        $enableAll = function (array &$items): void {
+            foreach ($items as &$item) {
                 $item['enabled'] = true;
             }
-            foreach ($modulPenjadwalanItems as &$item) {
-                $item['enabled'] = true;
-            }
+            unset($item);
+        };
+
+        // Super Admin
+        if (in_array($roleNameLower, ['admin', 'super admin', 'super_admin'], true)) {
+            $enableAll($managementDataItems);
+            $enableAll($modulPenjadwalanItems);
             return [
-                'management_data' => ['enabled' => true, 'items' => $managementDataItems],
+                'management_data'   => ['enabled' => true, 'items' => $managementDataItems],
                 'modul_penjadwalan' => ['enabled' => true, 'items' => $modulPenjadwalanItems],
             ];
         }
 
+        // Kaprodi
         if ($roleNameLower === 'kaprodi') {
-            // Enable Prodi, Ruangan, Mata Kuliah, Dosen, Kelas, Mahasiswa
-            foreach ($managementDataItems as &$item) {
-                if (in_array($item['name'], [
-                    'Management Prodi',
-                    'Management Ruangan',
-                    'Management Mata Kuliah',
-                    'Management Data Dosen',
-                    'Management Kelas',
-                    'Management Data Mahasiswa'
-                ])) {
-                    $item['enabled'] = true;
-                }
-            }
+            $enableItems($managementDataItems, [
+                'Program Studi', 'Ruangan', 'Mata Kuliah',
+                'Dosen', 'Pengampu Mata Kuliah', 'Kelas Paralel', 'Mahasiswa',
+            ]);
+            $enableAll($modulPenjadwalanItems);
             return [
-                'management_data' => ['enabled' => true, 'items' => $managementDataItems],
-                'modul_penjadwalan' => [
-                    'enabled' => true,
-                    'items' => [
-                        ['name' => 'Penjadwalan Otomatis', 'enabled' => true],
-                        ['name' => 'Penjadwalan Manual', 'enabled' => true],
-                    ]
-                ],
+                'management_data'   => ['enabled' => true, 'items' => $managementDataItems],
+                'modul_penjadwalan' => ['enabled' => true, 'items' => $modulPenjadwalanItems],
             ];
         }
 
+        // Dekan
         if ($roleNameLower === 'dekan') {
-            // Enable Prodi, Mata Kuliah, Dosen
-            foreach ($managementDataItems as &$item) {
-                if (in_array($item['name'], [
-                    'Management Prodi',
-                    'Management Mata Kuliah',
-                    'Management Data Dosen'
-                ])) {
-                    $item['enabled'] = true;
-                }
-            }
+            $enableItems($managementDataItems, [
+                'Program Studi', 'Mata Kuliah', 'Dosen',
+            ]);
+            $enableAll($modulPenjadwalanItems);
             return [
-                'management_data' => ['enabled' => true, 'items' => $managementDataItems],
-                'modul_penjadwalan' => [
-                    'enabled' => true,
-                    'items' => [
-                        ['name' => 'Penjadwalan Otomatis', 'enabled' => true],
-                        ['name' => 'Penjadwalan Manual', 'enabled' => true],
-                    ]
-                ],
+                'management_data'   => ['enabled' => true, 'items' => $managementDataItems],
+                'modul_penjadwalan' => ['enabled' => true, 'items' => $modulPenjadwalanItems],
             ];
         }
 
+        // Dosen
         if ($roleNameLower === 'dosen') {
-            // Enable KP & Skripsi
-            foreach ($managementDataItems as &$item) {
-                if ($item['name'] === 'Management KP & Skripsi') {
-                    $item['enabled'] = true;
-                }
-            }
+            $enableItems($managementDataItems, ['KP & Skripsi']);
             return [
-                'management_data' => ['enabled' => true, 'items' => $managementDataItems],
-                'modul_penjadwalan' => ['enabled' => false, 'items' => $modulPenjadwalanItems],
+                'management_data'   => ['enabled' => true,  'items' => $managementDataItems],
+                'modul_penjadwalan' => ['enabled' => false,  'items' => $modulPenjadwalanItems],
             ];
         }
 
+        // Mahasiswa
         if ($roleNameLower === 'mahasiswa') {
-            // Enable KP & Skripsi
-            foreach ($managementDataItems as &$item) {
-                if ($item['name'] === 'Management KP & Skripsi') {
-                    $item['enabled'] = true;
-                }
-            }
+            $enableItems($managementDataItems, ['KP & Skripsi']);
             return [
-                'management_data' => ['enabled' => true, 'items' => $managementDataItems],
-                'modul_penjadwalan' => ['enabled' => false, 'items' => $modulPenjadwalanItems],
+                'management_data'   => ['enabled' => true,  'items' => $managementDataItems],
+                'modul_penjadwalan' => ['enabled' => false,  'items' => $modulPenjadwalanItems],
             ];
         }
 
         return [
-            'management_data' => ['enabled' => false, 'items' => $managementDataItems],
+            'management_data'   => ['enabled' => false, 'items' => $managementDataItems],
             'modul_penjadwalan' => ['enabled' => false, 'items' => $modulPenjadwalanItems],
         ];
     }
 
-    public function getMergedPermissions()
+    public function getMergedPermissions(): array
     {
-        $permissions = $this->permissions;
+        $saved    = $this->permissions;
         $defaults = $this->getDefaultPermissions();
 
-        if (empty($permissions) || !is_array($permissions)) {
+        // Jika belum ada permissions tersimpan, kembalikan default
+        if (empty($saved) || !is_array($saved)) {
             return $defaults;
         }
 
-        // Merge management_data items
-        if (isset($permissions['management_data'])) {
-            $defaults['management_data']['enabled'] = (bool)($permissions['management_data']['enabled'] ?? $defaults['management_data']['enabled']);
-            
-            // Map items by name
-            $storedItems = [];
-            if (isset($permissions['management_data']['items']) && is_array($permissions['management_data']['items'])) {
-                foreach ($permissions['management_data']['items'] as $item) {
-                    if (isset($item['name'])) {
-                        $storedItems[$item['name']] = (bool)($item['enabled'] ?? false);
-                    }
+        foreach (['management_data', 'modul_penjadwalan'] as $module) {
+            if (!isset($saved[$module])) {
+                continue;
+            }
+
+            // Override enabled flag dari data tersimpan
+            $defaults[$module]['enabled'] = (bool) ($saved[$module]['enabled'] ?? $defaults[$module]['enabled']);
+
+            // Buat map nama => enabled dari data tersimpan
+            $savedItemMap = [];
+            foreach ($saved[$module]['items'] ?? [] as $item) {
+                if (isset($item['name'])) {
+                    $savedItemMap[$item['name']] = (bool) ($item['enabled'] ?? false);
                 }
             }
 
-            foreach ($defaults['management_data']['items'] as &$defaultItem) {
-                if (isset($storedItems[$defaultItem['name']])) {
-                    $defaultItem['enabled'] = $storedItems[$defaultItem['name']];
+            // Terapkan ke default items (item baru yang belum ada di DB tetap muncul)
+            foreach ($defaults[$module]['items'] as &$defaultItem) {
+                if (array_key_exists($defaultItem['name'], $savedItemMap)) {
+                    $defaultItem['enabled'] = $savedItemMap[$defaultItem['name']];
                 }
             }
-        }
-
-        // Merge modul_penjadwalan items
-        if (isset($permissions['modul_penjadwalan'])) {
-            $defaults['modul_penjadwalan']['enabled'] = (bool)($permissions['modul_penjadwalan']['enabled'] ?? $defaults['modul_penjadwalan']['enabled']);
-            
-            // Map items by name
-            $storedItems = [];
-            if (isset($permissions['modul_penjadwalan']['items']) && is_array($permissions['modul_penjadwalan']['items'])) {
-                foreach ($permissions['modul_penjadwalan']['items'] as $item) {
-                    if (isset($item['name'])) {
-                        $storedItems[$item['name']] = (bool)($item['enabled'] ?? false);
-                    }
-                }
-            }
-
-            foreach ($defaults['modul_penjadwalan']['items'] as &$defaultItem) {
-                if (isset($storedItems[$defaultItem['name']])) {
-                    $defaultItem['enabled'] = $storedItems[$defaultItem['name']];
-                }
-            }
+            unset($defaultItem); // ✅ Putus reference
         }
 
         return $defaults;
     }
 
-    public function hasPermission($module, $item = null)
+    public function hasPermission(string $module, ?string $item = null): bool
     {
         $permissions = $this->getMergedPermissions();
 
@@ -203,19 +169,21 @@ class Role extends Model
         }
 
         $moduleData = $permissions[$module];
+
+        // Jika module tidak aktif, langsung false
         if (!$moduleData['enabled']) {
             return false;
         }
 
+        // Jika hanya cek module (tanpa item spesifik)
         if ($item === null) {
             return true;
         }
 
-        if (isset($moduleData['items']) && is_array($moduleData['items'])) {
-            foreach ($moduleData['items'] as $pItem) {
-                if ($pItem['name'] === $item) {
-                    return (bool)$pItem['enabled'];
-                }
+        // Cek item spesifik
+        foreach ($moduleData['items'] ?? [] as $pItem) {
+            if ($pItem['name'] === $item) {
+                return (bool) $pItem['enabled'];
             }
         }
 

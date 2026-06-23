@@ -10,115 +10,78 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        /* ── Modal Generate Config ── */
-        #modal-generate-overlay {
-            position: fixed; inset: 0; z-index: 9999;
-            background: rgba(0,0,0,0.45);
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.2s ease;
-        }
-        #modal-generate-overlay.show {
-            opacity: 1; pointer-events: auto;
-        }
-        #modal-generate-box {
-            background: #fff; border-radius: 20px;
-            width: 100%; max-width: 480px;
-            padding: 0; overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-            transform: translateY(16px) scale(0.98);
-            transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), opacity 0.2s ease;
-            opacity: 0;
-        }
-        #modal-generate-overlay.show #modal-generate-box {
-            transform: translateY(0) scale(1);
-            opacity: 1;
-        }
-        .modal-header {
-            background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
-            padding: 22px 28px 20px;
-        }
-        .modal-header h2 {
-            color: #fff; font-size: 18px; font-weight: 700; margin: 0 0 4px;
-        }
-        .modal-header p {
-            color: rgba(255,255,255,0.75); font-size: 13px; margin: 0;
-        }
-        .modal-body { padding: 24px 28px; }
-        .cfg-group { margin-bottom: 20px; }
-        .cfg-group label {
-            display: block; font-size: 12px; font-weight: 700;
-            color: #6b7280; text-transform: uppercase; letter-spacing: .06em;
-            margin-bottom: 8px;
-        }
-        .cfg-group .cfg-desc {
-            font-size: 12px; color: #9ca3af; margin-top: 4px;
-        }
-        .cfg-row {
-            display: flex; align-items: center; gap: 12px;
-        }
-        .cfg-row input[type="range"] {
-            flex: 1; accent-color: #0d9488; height: 4px;
-            cursor: pointer;
-        }
-        .cfg-val {
-            min-width: 48px; text-align: center;
-            background: #f0fdf9; border: 1.5px solid #5eead4;
-            color: #0f766e; font-weight: 700; font-size: 15px;
-            border-radius: 8px; padding: 4px 8px;
-        }
-        .cfg-divider { border: none; border-top: 1px solid #f3f4f6; margin: 8px 0 20px; }
-        .randomize-toggle {
-            display: flex; align-items: center; justify-content: space-between;
-            background: #f9fafb; border-radius: 12px; padding: 14px 16px;
-            border: 1.5px solid #e5e7eb; cursor: pointer;
-            transition: border-color 0.15s, background 0.15s;
-        }
-        .randomize-toggle:hover { border-color: #5eead4; background: #f0fdf9; }
-        .randomize-toggle.active { border-color: #14b8a6; background: #f0fdf9; }
-        .toggle-info { flex: 1; }
-        .toggle-info span { font-size: 14px; font-weight: 600; color: #111827; display: block; }
-        .toggle-info small { font-size: 12px; color: #9ca3af; }
-        .toggle-switch {
-            width: 40px; height: 22px; border-radius: 11px;
-            background: #d1d5db; position: relative; transition: background 0.2s; flex-shrink: 0;
-        }
-        .toggle-switch::after {
-            content: ''; position: absolute; top: 3px; left: 3px;
-            width: 16px; height: 16px; border-radius: 50%;
-            background: #fff; transition: transform 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,.2);
-        }
-        .toggle-switch.on { background: #14b8a6; }
-        .toggle-switch.on::after { transform: translateX(18px); }
+        /* ── Modal Optimasi ── */
+         #modal-optimasi-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.45);
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+    #modal-optimasi-overlay.show {
+        opacity: 1; pointer-events: auto;
+    }
+    #modal-optimasi-box {
+        background: #fff; border-radius: 20px;
+        width: 100%; max-width: 520px;
+        padding: 0; overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        transform: translateY(16px) scale(0.98);
+        transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), opacity 0.2s ease;
+        opacity: 0;
+    }
+    #modal-optimasi-overlay.show #modal-optimasi-box {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    .modal-header {
+        background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+        padding: 22px 28px 20px;
+    }
+    .modal-header h2 { color: #fff; font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+    .modal-header p  { color: rgba(255,255,255,0.75); font-size: 13px; margin: 0; }
+    .modal-body { padding: 24px 28px; }
 
-        .modal-footer {
-            padding: 16px 28px 24px;
-            display: flex; gap: 10px;
-        }
-        .btn-modal-cancel {
-            flex: 1; padding: 12px; border-radius: 12px;
-            border: 1.5px solid #e5e7eb; background: #fff;
-            font-weight: 600; font-size: 14px; color: #6b7280;
-            cursor: pointer; transition: background 0.15s;
-        }
-        .btn-modal-cancel:hover { background: #f9fafb; }
-        .btn-modal-run {
-            flex: 2; padding: 12px; border-radius: 12px;
-            border: none; background: #0d9488;
-            font-weight: 700; font-size: 14px; color: #fff;
-            cursor: pointer; transition: background 0.15s;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn-modal-run:hover { background: #0f766e; }
-        .btn-modal-run svg { width: 18px; height: 18px; }
+    /* ── Stat box di dalam modal hasil ── */
+    .stat-box {
+        text-align: center; border: 1.5px solid #e5e7eb;
+        border-radius: 12px; padding: 14px 10px;
+    }
+    .stat-box .stat-num { font-size: 26px; font-weight: 700; line-height: 1; }
+    .stat-box .stat-label { font-size: 11px; color: #9ca3af; margin-top: 4px; }
 
-        /* seed badge */
-        #seed-display {
-            font-size: 11px; color: #9ca3af; text-align: center;
-            margin-top: 6px; font-family: monospace;
-            min-height: 16px;
-        }
+    .modal-footer {
+        padding: 16px 28px 24px;
+        display: flex; gap: 10px;
+    }
+    .btn-modal-cancel {
+        flex: 1; padding: 12px; border-radius: 12px;
+        border: 1.5px solid #e5e7eb; background: #fff;
+        font-weight: 600; font-size: 14px; color: #6b7280;
+        cursor: pointer; transition: background 0.15s;
+    }
+    .btn-modal-cancel:hover { background: #f9fafb; }
+    .btn-modal-run {
+        flex: 2; padding: 12px; border-radius: 12px;
+        border: none; background: #0d9488;
+        font-weight: 700; font-size: 14px; color: #fff;
+        cursor: pointer; transition: background 0.15s;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-modal-run:hover   { background: #0f766e; }
+    .btn-modal-run:disabled{ background: #9ca3af; cursor: not-allowed; }
+    .btn-modal-run svg { width: 18px; height: 18px; }
+
+    /* ── Daftar bentrok sisa ── */
+    .bentrok-sisa-item {
+        background: #fff7ed; border: 1px solid #fed7aa;
+        border-radius: 10px; padding: 12px 14px; font-size: 12px;
+    }
+    .bentrok-sisa-item .kelas-nama { font-weight: 700; color: #9a3412; font-size: 13px; }
+    .bentrok-sisa-item .alasan    { color: #c2410c; margin-top: 4px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
     </style>
 </head>
 
@@ -152,71 +115,135 @@
 {{-- ============================================================ --}}
 {{-- MODAL KONFIGURASI GENERATE                                    --}}
 {{-- ============================================================ --}}
-<div id="modal-generate-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div id="modal-generate-box">
-        <div class="modal-header">
-            <h2 id="modal-title">⚙️ Konfigurasi Generate Jadwal</h2>
-            <p>Atur batasan sebelum menjalankan algoritma penjadwalan otomatis.</p>
+<div id="modal-optimasi-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-optimasi-title">
+    <div id="modal-optimasi-box">
+
+        {{-- ── State 1: Konfirmasi sebelum jalankan ── --}}
+        <div id="modal-state-konfirmasi">
+            <div class="modal-header">
+                <h2 id="modal-optimasi-title">🔧 Optimasi Jadwal Otomatis</h2>
+                <p>Sistem akan mendeteksi dan memperbaiki bentrok dari hasil Algoritma Genetika.</p>
+            </div>
+            <div class="modal-body">
+
+                {{-- Info proses --}}
+                <div class="space-y-3 mb-6">
+                    <div class="flex items-start gap-3 p-3 rounded-xl bg-teal-50 border border-teal-100">
+                        <span class="text-teal-500 text-lg mt-0.5">①</span>
+                        <div>
+                            <p class="text-sm font-semibold text-teal-800">Deteksi Bentrok</p>
+                            <p class="text-xs text-teal-600 mt-0.5">Sistem memeriksa semua konflik dosen, ruangan, dan kelas dari jadwal otomatis.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 rounded-xl bg-teal-50 border border-teal-100">
+                        <span class="text-teal-500 text-lg mt-0.5">②</span>
+                        <div>
+                            <p class="text-sm font-semibold text-teal-800">Perbaiki Otomatis</p>
+                            <p class="text-xs text-teal-600 mt-0.5">Setiap bentrok dicoba dipindahkan ke slot atau ruangan alternatif yang kosong.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+                        <span class="text-amber-500 text-lg mt-0.5">③</span>
+                        <div>
+                            <p class="text-sm font-semibold text-amber-800">Tandai Sisa Bentrok</p>
+                            <p class="text-xs text-amber-600 mt-0.5">Bentrok yang tidak bisa diperbaiki otomatis ditampilkan di workspace untuk diedit manual.</p>
+                        </div>
+                    </div>
+                </div>
+
+                @if(!$adaJadwalOtomatis)
+                <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium">
+                    ⚠ Belum ada jadwal dari penjadwalan otomatis. Jalankan Algoritma Genetika terlebih dahulu.
+                </div>
+                @endif
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" onclick="tutupModalOptimasi()">Batal</button>
+                <button
+                    class="btn-modal-run"
+                    id="btn-run-optimasi"
+                    onclick="jalankanOptimasi()"
+                    {{ !$adaJadwalOtomatis ? 'disabled' : '' }}
+                >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Jalankan Optimasi
+                </button>
+            </div>
         </div>
 
-        <div class="modal-body">
-            {{-- SKS Dosen per hari --}}
-            <div class="cfg-group">
-                <label>Maks. SKS Dosen per Hari</label>
-                <div class="cfg-row">
-                    <input type="range" id="cfg-sks-dosen" min="2" max="16" step="1" value="6"
-                           oninput="document.getElementById('val-sks-dosen').innerText = this.value">
-                    <span class="cfg-val" id="val-sks-dosen">6</span>
-                </div>
-                <div class="cfg-desc">Jumlah maksimal SKS yang bisa diajar satu dosen dalam satu hari.</div>
+        {{-- ── State 2: Loading ── --}}
+        <div id="modal-state-loading" style="display:none;">
+            <div class="modal-header">
+                <h2>🔄 Sedang Mengoptimasi...</h2>
+                <p>Harap tunggu, sistem sedang memproses jadwal.</p>
             </div>
-
-            {{-- Kelas per slot --}}
-            <div class="cfg-group">
-                <label>Maks. Kelas per Slot Waktu</label>
-                <div class="cfg-row">
-                    <input type="range" id="cfg-kelas-slot" min="1" max="20" step="1" value="4"
-                           oninput="document.getElementById('val-kelas-slot').innerText = this.value">
-                    <span class="cfg-val" id="val-kelas-slot">4</span>
+            <div class="modal-body">
+                <div class="flex flex-col items-center py-8 gap-4">
+                    <svg class="w-12 h-12 text-teal-500 spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <p class="text-sm text-gray-500" id="loading-pesan">Mendeteksi bentrok...</p>
                 </div>
-                <div class="cfg-desc">Berapa banyak kelas boleh berjalan bersamaan di satu slot.</div>
             </div>
-
-            {{-- MK per prodi per hari --}}
-            <div class="cfg-group">
-                <label>Maks. Mata Kuliah Unik per Prodi per Hari</label>
-                <div class="cfg-row">
-                    <input type="range" id="cfg-mk-prodi" min="1" max="16" step="1" value="4"
-                           oninput="document.getElementById('val-mk-prodi').innerText = this.value">
-                    <span class="cfg-val" id="val-mk-prodi">4</span>
-                </div>
-                <div class="cfg-desc">Batasi jumlah mata kuliah berbeda per program studi dalam satu hari.</div>
-            </div>
-
-            <hr class="cfg-divider">
-
-            {{-- Randomize toggle --}}
-            <div class="randomize-toggle" id="randomize-toggle" onclick="toggleRandomize()">
-                <div class="toggle-info">
-                    <span>🎲 Acak Hasil Generate</span>
-                    <small>Setiap klik Generate menghasilkan jadwal yang berbeda.</small>
-                </div>
-                <div class="toggle-switch on" id="toggle-switch-el"></div>
-            </div>
-            <div id="seed-display">seed: —</div>
         </div>
 
-        <div class="modal-footer">
-            <button class="btn-modal-cancel" onclick="closeGenerateModal()">Batal</button>
-            <button class="btn-modal-run" onclick="runGenerateFromModal()">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                Jalankan Generate
-            </button>
+        {{-- ── State 3: Hasil ── --}}
+        <div id="modal-state-hasil" style="display:none;">
+            <div class="modal-header" id="hasil-header">
+                <h2 id="hasil-judul">✅ Optimasi Selesai</h2>
+                <p id="hasil-subjudul">Jadwal berhasil dioptimasi.</p>
+            </div>
+            <div class="modal-body">
+                {{-- Stat boxes --}}
+                <div class="grid grid-cols-4 gap-2 mb-5" id="hasil-stats">
+                    <div class="stat-box">
+                        <div class="stat-num text-gray-700" id="stat-total">0</div>
+                        <div class="stat-label">Total Jadwal</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num text-red-500"   id="stat-awal">0</div>
+                        <div class="stat-label">Bentrok Awal</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num text-green-500" id="stat-fix">0</div>
+                        <div class="stat-label">Diperbaiki</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-num text-orange-500" id="stat-sisa">0</div>
+                        <div class="stat-label">Sisa Manual</div>
+                    </div>
+                </div>
+
+                {{-- Daftar sisa bentrok (kalau ada) --}}
+                <div id="sisa-bentrok-section" style="display:none;">
+                    <p class="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2">
+                        Perlu diselesaikan manual:
+                    </p>
+                    <div id="sisa-bentrok-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                </div>
+
+                {{-- Semua beres --}}
+                <div id="semua-beres-section" class="text-center py-3 text-green-600 font-semibold text-sm" style="display:none;">
+                    ✓ Tidak ada sisa bentrok. Jadwal sudah optimal!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" onclick="tutupModalOptimasi()">Tutup</button>
+                <button class="btn-modal-run" onclick="tutupModalOptimasiDanRefresh()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Refresh Workspace
+                </button>
+            </div>
         </div>
-    </div>
+
+    </div>{{-- /modal-optimasi-box --}}
 </div>
 
 <main :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="transition-all duration-300 p-6 sm:p-8">
@@ -255,16 +282,17 @@
             </div>
 
             <button
-                id="btn-generate"
-                onclick="openGenerateModal()"
+                id="btn-optimasi"
+                onclick="bukaModalOptimasi()"
                 class="px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold shadow flex items-center gap-2 transition"
             >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
-                Generate Jadwal
+                Optimasi Jadwal
             </button>
-            {{-- Ganti tombol Lihat Bentrok yang lama --}}
+
             <button
                 id="btn-lihat-bentrok"
                 onclick="lihatBentrok()"
@@ -276,6 +304,7 @@
                 </svg>
                 Lihat Bentrok
             </button>
+
             {{-- Setelah tombol "Lihat Bentrok" --}}
             <button
                 onclick="resetWorkspace()"
@@ -286,7 +315,7 @@
                 </svg>
                 Reset Jadwal
             </button>
- 
+
             <button
                 onclick="simpanSemuaJadwal()"
                 id="btn-simpan-semua"
@@ -342,25 +371,25 @@
     </div>
 
     {{-- CONTENT --}}
-    <div 
+    <div
         :class="focusMode ? 'h-[calc(100vh-100px)] mt-4 gap-4' : 'h-[calc(100vh-170px)] mt-8 gap-6'"
         class="grid grid-cols-12 overflow-hidden transition-all duration-300"
     >
 
         {{-- SIDEBAR KELAS --}}
-        <div 
-            x-show="classSidebarOpen" 
+        <div
+            x-show="classSidebarOpen"
             x-transition:enter="transition ease-out duration-350"
             x-transition:enter-start="opacity-0 -translate-x-10"
             x-transition:enter-end="opacity-100 translate-x-0"
             x-transition:leave="transition ease-in duration-250"
             x-transition:leave-start="opacity-100 translate-x-0"
             x-transition:leave-end="opacity-0 -translate-x-10"
-            class="col-span-12 xl:col-span-3 min-h-0 flex"
+            class="col-span-12 xl:col-span-3 min-h-0 flex relative z-30"
         >
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col w-full overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col w-full overflow-visible">
 
-                <div class="p-5 border-b border-gray-100">
+                <div class="p-5 border-b border-gray-100 rounded-t-2xl bg-white relative z-30">
                     <h2 class="text-lg font-bold text-gray-800">Daftar Kelas</h2>
 
                     <div class="mt-5 flex items-center gap-2">
@@ -398,14 +427,14 @@
                                 x-transition:leave-start="opacity-100 scale-100 translate-y-0"
                                 x-transition:leave-end="opacity-0 scale-95 translate-y-1"
                                 @click.outside="showFilter = false"
-                                class="absolute right-0 top-14 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden"
+                                class="absolute right-0 top-14 w-72 max-w-[85vw] max-h-[70vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 z-[100]"
                                 x-cloak
                             >
-                                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
                                     <h3 class="font-bold text-gray-800 text-sm">Filter Kelas</h3>
                                     <button @click="filterProdi = []; filterSemester = []; applyFilter()" class="text-xs text-red-500 hover:text-red-600 font-medium transition">Reset</button>
                                 </div>
-                                <div class="px-5 py-4 space-y-5 max-h-96 overflow-y-auto">
+                                <div class="px-5 py-4 space-y-5">
                                     <div>
                                         <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Program Studi</p>
                                         <div class="space-y-2">
@@ -430,7 +459,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="px-5 py-3 bg-gray-50 border-t border-gray-100">
+                                <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 sticky bottom-0">
                                     <p class="text-xs text-gray-400 text-center" id="filter-count">0 kelas ditampilkan</p>
                                 </div>
                             </div>
@@ -451,7 +480,7 @@
                     </div>
                 </div>
 
-                <div class="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
+                <div class="flex-1 overflow-y-auto min-h-0 px-2 pb-2 rounded-b-2xl">
                     @forelse ($kelas as $item)
                     <div
                         id="kelas-{{ $item->id_kelas }}"
@@ -496,9 +525,9 @@
         </div>
 
         {{-- WORKSPACE --}}
-        <div 
+        <div
             :class="classSidebarOpen ? 'xl:col-span-9' : 'xl:col-span-12'"
-            class="col-span-12 flex flex-col lg:flex-row gap-4 min-h-0 transition-all duration-300"
+            class="col-span-12 flex flex-col lg:flex-row gap-4 min-h-0 transition-all duration-300 relative z-10"
         >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 w-full flex flex-col overflow-hidden">
 
@@ -744,6 +773,8 @@ const CARD_WIDTH     = 185;
 const CARD_GAP       = 12;
 const CSRF_TOKEN     = document.querySelector('meta[name="csrf-token"]').content;
 const TAHUN_AKADEMIK = document.querySelector('meta[name="tahun-akademik-id"]').content;
+const ROUTE_OPTIMASI      = "{{ route('jadwal.optimasi') }}";
+const ROUTE_STATUS_BENTROK= "{{ route('jadwal.status-bentrok') }}";
 
 let ALL_RUANGAN = [];
 let activeTab        = 'belum';
@@ -761,103 +792,44 @@ let GEN_CONFIG = {
     randomize:     true,
     seed:          null,
 };
+let _hasilOptimasiJadwal = null;
 
 // ============================================================
-// MODAL GENERATE — OPEN / CLOSE / TOGGLE
+// MODAL OPTIMASI — OPEN / CLOSE
 // ============================================================
-function openGenerateModal() {
-    // Sinkronkan nilai slider dengan config saat ini
-    document.getElementById('cfg-sks-dosen').value  = GEN_CONFIG.maxSksDosen;
-    document.getElementById('val-sks-dosen').innerText = GEN_CONFIG.maxSksDosen;
-    document.getElementById('cfg-kelas-slot').value = GEN_CONFIG.maxKelasSlot;
-    document.getElementById('val-kelas-slot').innerText = GEN_CONFIG.maxKelasSlot;
-    document.getElementById('cfg-mk-prodi').value   = GEN_CONFIG.maxMkProdi;
-    document.getElementById('val-mk-prodi').innerText = GEN_CONFIG.maxMkProdi;
-
-    // Sync toggle randomize
-    const sw = document.getElementById('toggle-switch-el');
-    const tg = document.getElementById('randomize-toggle');
-    if (GEN_CONFIG.randomize) { sw.classList.add('on'); tg.classList.add('active'); }
-    else { sw.classList.remove('on'); tg.classList.remove('active'); }
-
-    updateSeedDisplay();
-    document.getElementById('modal-generate-overlay').classList.add('show');
+function bukaModalOptimasi() {
+    tampilStateModal('konfirmasi');
+    document.getElementById('modal-optimasi-overlay').classList.add('show');
 }
 
-function closeGenerateModal() {
-    document.getElementById('modal-generate-overlay').classList.remove('show');
+function tutupModalOptimasi() {
+    document.getElementById('modal-optimasi-overlay').classList.remove('show');
 }
 
-// Tutup jika klik overlay (bukan box)
-document.getElementById('modal-generate-overlay').addEventListener('click', function(e) {
-    if (e.target === this) closeGenerateModal();
+function tutupModalOptimasiDanRefresh() {
+    tutupModalOptimasi();
+    if (_hasilOptimasiJadwal && _hasilOptimasiJadwal.length) {
+        refreshWorkspaceDariOptimasi(_hasilOptimasiJadwal);
+    }
+}
+
+// Tutup saat klik overlay
+document.getElementById('modal-optimasi-overlay').addEventListener('click', function(e) {
+    if (e.target === this) tutupModalOptimasi();
 });
-
-// Tekan Escape
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeGenerateModal();
+    if (e.key === 'Escape') tutupModalOptimasi();
 });
 
-function toggleRandomize() {
-    GEN_CONFIG.randomize = !GEN_CONFIG.randomize;
-    const sw = document.getElementById('toggle-switch-el');
-    const tg = document.getElementById('randomize-toggle');
-    sw.classList.toggle('on', GEN_CONFIG.randomize);
-    tg.classList.toggle('active', GEN_CONFIG.randomize);
-    updateSeedDisplay();
+/** Ganti state tampilan dalam modal */
+function tampilStateModal(state) {
+    // state: 'konfirmasi' | 'loading' | 'hasil'
+    document.getElementById('modal-state-konfirmasi').style.display = state === 'konfirmasi' ? '' : 'none';
+    document.getElementById('modal-state-loading').style.display    = state === 'loading'    ? '' : 'none';
+    document.getElementById('modal-state-hasil').style.display      = state === 'hasil'      ? '' : 'none';
 }
 
-function updateSeedDisplay() {
-    const el = document.getElementById('seed-display');
-    if (!GEN_CONFIG.randomize) {
-        el.innerText = 'seed: tetap (deterministik)';
-    } else {
-        const preview = GEN_CONFIG.seed ?? '—';
-        el.innerText = `seed akan dibuat baru setiap generate`;
-    }
-}
 
-function runGenerateFromModal() {
-    // Baca nilai terbaru dari slider
-    GEN_CONFIG.maxSksDosen  = parseInt(document.getElementById('cfg-sks-dosen').value);
-    GEN_CONFIG.maxKelasSlot = parseInt(document.getElementById('cfg-kelas-slot').value);
-    GEN_CONFIG.maxMkProdi   = parseInt(document.getElementById('cfg-mk-prodi').value);
-
-    // Buat seed baru jika randomize aktif
-    if (GEN_CONFIG.randomize) {
-        GEN_CONFIG.seed = Math.floor(Math.random() * 1_000_000);
-    } else {
-        GEN_CONFIG.seed = 42; // seed tetap → hasil deterministik
-    }
-
-    closeGenerateModal();
-    setTimeout(generateJadwal, 220); // beri waktu modal menutup dulu
-}
-
-// ============================================================
-// SEEDED RANDOM (Mulberry32 PRNG)
-// Menghasilkan angka acak 0..1 yang bisa direproduksi dari seed
-// ============================================================
-function makePRNG(seed) {
-    let s = seed >>> 0;
-    return function() {
-        s += 0x6D2B79F5;
-        let t = s;
-        t = Math.imul(t ^ t >>> 15, t | 1);
-        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-}
-
-// Fisher-Yates shuffle dengan PRNG custom
-function shuffleArray(arr, rng) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-}
 
 // ============================================================
 // WARNA CARD
@@ -1542,327 +1514,141 @@ function enableMerge(card) {
 }
 
 // ============================================================
-// GENERATE JADWAL
-// Constraint yang aktif:
-//   [C1] Dosen maks SKS per hari          (dari modal)
-//   [C2] Ruangan tidak bentrok
-//   [C3] Maks kelas per slot              (dari modal)
-//   [C4] Kelas yang sama tidak bentrok di slot berbeda
-//   [C5] MK yang sama tidak overlap waktu
-//   [C6] Maks MK unik per prodi per hari  (dari modal)
-//   [C7] Kelas A/B pagi/siang, kelas S malam
-//   [C9] Kelas A/B yang sama (MK+prodi+semester+dosen) harus berurutan tanpa jeda, di hari yang sama
-//
-// Randomisasi:
-//   - Urutan kelas diacak dengan seeded PRNG
-//   - Urutan hari diacak per kelas
-//   - Urutan slot diacak per kelas
-//   - Pool ruangan diacak per kelas
+// JALANKAN OPTIMASI — panggil backend OptimizeJadwalService
 // ============================================================
-function generateJadwal() {
-    const semua = [...document.querySelectorAll('.kelas-item')];
-    const belum = semua.filter(el => el.dataset.status === 'belum');
+async function jalankanOptimasi() {
+    tampilStateModal('loading');
 
-    if (!belum.length) { showToast('Semua kelas sudah terjadwal!', 'green'); return; }
+    const pesanEls = ['Mengambil jadwal otomatis...', 'Mendeteksi bentrok...', 'Memperbaiki slot & ruangan...'];
+    let pi = 0;
+    const pesanEl  = document.getElementById('loading-pesan');
+    const interval = setInterval(() => {
+        pesanEl.textContent = pesanEls[pi % pesanEls.length];
+        pi++;
+    }, 900);
 
-    const sudahAda = document.querySelectorAll('.jadwal-card').length;
-    if (sudahAda > 0) {
-        if (!confirm(`Sudah ada ${sudahAda} jadwal di workspace. Generate ulang akan menghapus semua. Lanjutkan?`)) return;
-        document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
-        semua.forEach(el => setSidebarStatus(el.dataset.id, 'belum'));
-        updateCounter();
-    }
-
-    const btn = document.getElementById('btn-generate');
-    btn.disabled  = true;
-    btn.innerHTML = `<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg> Generating...`;
-
-    const MAX_SKS_DOSEN_PER_HARI    = GEN_CONFIG.maxSksDosen;
-    const MAX_KELAS_PER_SLOT        = GEN_CONFIG.maxKelasSlot;
-    const MAX_MK_PER_PRODI_PER_HARI = GEN_CONFIG.maxMkProdi;
-
-    const seed = GEN_CONFIG.seed ?? 42;
-    const rng  = makePRNG(seed);
-    console.info(`[Generate] Seed: ${seed} | Config: SKS=${MAX_SKS_DOSEN_PER_HARI}, Slot=${MAX_KELAS_PER_SLOT}, MK=${MAX_MK_PER_PRODI_PER_HARI}`);
-
-    const hariNama     = { 1:'senin', 2:'selasa', 3:'rabu', 4:'kamis', 5:'jumat' };
-    const hariListBase = [1, 2, 3, 4, 5];
-
-    // STATE C1: SKS dosen per hari
-    const sksDosenPerHari = {};
-    hariListBase.forEach(h => { sksDosenPerHari[h] = {}; });
-
-    // STATE C2: Ruangan terpakai per slot per hari
-    const ruanganTerpakai = {};
-    hariListBase.forEach(h => {
-        ruanganTerpakai[h] = {};
-        SLOT_VALID.forEach(s => { ruanganTerpakai[h][s] = new Set(); });
-    });
-
-    // STATE C3: Jumlah kelas per slot
-    const kelasPerSlot = {};
-    hariListBase.forEach(h => {
-        kelasPerSlot[h] = {};
-        SLOT_VALID.forEach(s => { kelasPerSlot[h][s] = 0; });
-    });
-
-    // STATE C4: Nama kelas per slot (cegah kelas yang sama di slot overlap)
-    const kelasNamaPerSlot = {};
-    hariListBase.forEach(h => {
-        kelasNamaPerSlot[h] = {};
-        SLOT_VALID.forEach(s => { kelasNamaPerSlot[h][s] = new Map(); });
-    });
-
-    // STATE C5 (DIPERBAIKI): Dosen per slot — gantikan mkPerSlot
-    // mkOverlap diganti dosenOverlap: dosen yang sama tidak boleh mengajar bersamaan.
-    // Kelas paralel (MK sama, dosen sama) diizinkan di slot BERBEDA.
-    const dosenPerSlot = {};
-    hariListBase.forEach(h => {
-        dosenPerSlot[h] = {};
-        SLOT_VALID.forEach(s => { dosenPerSlot[h][s] = new Set(); });
-    });
-
-    // STATE C6: MK unik per prodi per hari
-    const mkProdiPerHari = {};
-    hariListBase.forEach(h => { mkProdiPerHari[h] = {}; });
-
-    // STATE C9: Tracking saudara (MK+dosen+prodi+semester sama)
-    const mkDosenHari = {};
-
-    function buatKeyC9(namaMK, dosenId, prodi, semester) {
-        return `${namaMK}|${dosenId}|${prodi}|${semester}`;
-    }
-    function getSaudaraInfo(namaMK, dosenId, prodi, semester) {
-        return mkDosenHari[buatKeyC9(namaMK, dosenId, prodi, semester)] || null;
-    }
-    function catatMkDosen(namaMK, dosenId, prodi, semester, hariId, slotAkhir) {
-        const key = buatKeyC9(namaMK, dosenId, prodi, semester);
-        if (!mkDosenHari[key]) {
-            mkDosenHari[key] = { hariId, slotAkhir };
-        } else {
-            mkDosenHari[key].slotAkhir = Math.max(mkDosenHari[key].slotAkhir, slotAkhir);
-        }
-    }
-
-    // HELPERS
-    function dosenBisaMengajar(hariId, dosenId, sks) {
-        if (!dosenId) return true;
-        return (sksDosenPerHari[hariId][dosenId] || 0) + sks <= MAX_SKS_DOSEN_PER_HARI;
-    }
-
-    function cariRuanganBebas(hariId, slotsDibutuhkan, poolRuangan) {
-        for (const ruangan of poolRuangan) {
-            const rid   = String(ruangan.id);
-            const bebas = slotsDibutuhkan.every(s => {
-                const set = ruanganTerpakai[hariId][s];
-                return set && !set.has(rid);
-            });
-            if (bebas) return ruangan;
-        }
-        return null;
-    }
-
-    function slotMasihBisa(hariId, slotsDibutuhkan) {
-        return slotsDibutuhkan.every(s => (kelasPerSlot[hariId][s] || 0) < MAX_KELAS_PER_SLOT);
-    }
-
-    function kelasBentrok(hariId, slotsDibutuhkan, namaKelas, namaMK, namaDosenId) {
-        return slotsDibutuhkan.some(s => {
-            const map = kelasNamaPerSlot[hariId][s];
-            if (!map || !map.has(namaKelas)) return false;
-            const ex = map.get(namaKelas);
-            // Kelas yang sama di slot yang sama selalu bentrok
-            // kecuali jika itu kelas yang persis sama (MK dan dosen sama — tidak mungkin terjadi)
-            return true;
+    try {
+        const resp = await fetch(ROUTE_OPTIMASI, {
+            method: 'POST',
+            headers: {
+                'Content-Type' : 'application/json',
+                'X-CSRF-TOKEN' : CSRF_TOKEN,
+                'Accept'       : 'application/json',
+            },
+            body: JSON.stringify({ tahun_akademik_id: TAHUN_AKADEMIK }),
         });
+
+        clearInterval(interval);
+        const data = await resp.json();
+
+        if (!resp.ok || !data.success) {
+            tutupModalOptimasi();
+            showToast(data.message ?? 'Terjadi kesalahan saat optimasi.', 'red');
+            return;
+        }
+
+        // Simpan jadwal terbaru untuk refresh workspace
+        _hasilOptimasiJadwal = data.jadwal_terbaru ?? [];
+
+        tampilkanHasilOptimasi(data.hasil);
+
+    } catch (err) {
+        clearInterval(interval);
+        tutupModalOptimasi();
+        showToast('Koneksi gagal: ' + err.message, 'red');
+    }
+}
+/** Render state hasil di dalam modal */
+function tampilkanHasilOptimasi(hasil) {
+    const { total_jadwal, bentrok_awal, diperbaiki, gagal, detail_bentrok_sisa, pesan } = hasil;
+
+    document.getElementById('stat-total').textContent = total_jadwal;
+    document.getElementById('stat-awal').textContent  = bentrok_awal;
+    document.getElementById('stat-fix').textContent   = diperbaiki;
+    document.getElementById('stat-sisa').textContent  = gagal;
+
+    // Header warna sesuai kondisi
+    const header    = document.getElementById('hasil-header');
+    const judul     = document.getElementById('hasil-judul');
+    const subjudul  = document.getElementById('hasil-subjudul');
+    if (gagal === 0) {
+        header.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        judul.textContent       = '✅ Optimasi Berhasil';
+    } else {
+        header.style.background = 'linear-gradient(135deg, #d97706, #f59e0b)';
+        judul.textContent       = '⚠️ Optimasi Sebagian';
+    }
+    subjudul.textContent = pesan;
+
+    // Daftar sisa bentrok
+    const sisaSection  = document.getElementById('sisa-bentrok-section');
+    const beresSect    = document.getElementById('semua-beres-section');
+    const sisaList     = document.getElementById('sisa-bentrok-list');
+
+    if (gagal > 0 && detail_bentrok_sisa.length) {
+        sisaSection.style.display = '';
+        beresSect.style.display   = 'none';
+        sisaList.innerHTML = detail_bentrok_sisa.map(b => `
+            <div class="bentrok-sisa-item" onclick="highlightBentrokDariOptimasi(${b.jadwal_id})" style="cursor:pointer;">
+                <div class="kelas-nama">${b.kelas} — ${b.mata_kuliah}</div>
+                <div class="alasan">⚠ ${b.alasan}</div>
+                <div style="color:#9a3412;font-size:11px;margin-top:2px;">
+                    ${b.hari}, Slot ${b.slot_asal} · ${b.ruangan} · ${b.dosen}
+                    <br><span style="color:#6b7280;">Klik untuk sorot di workspace</span>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        sisaSection.style.display = 'none';
+        beresSect.style.display   = '';
     }
 
-    // PERBAIKAN BUG #3: Cek dosen overlap, bukan MK overlap
-    // Dosen yang sama tidak boleh mengajar DI WAKTU YANG SAMA
-    // tapi boleh mengajar kelas paralel di waktu berbeda
-    function dosenOverlap(hariId, slotsDibutuhkan, dosenId) {
-        if (!dosenId) return false;
-        return slotsDibutuhkan.some(s => {
-            const set = dosenPerSlot[hariId]?.[s];
-            return set && set.has(String(dosenId));
-        });
-    }
+    tampilStateModal('hasil');
+}
+// ============================================================
+// REFRESH WORKSPACE setelah optimasi (reload card dari data baru)
+// ============================================================
+function refreshWorkspaceDariOptimasi(jadwalTerbaru) {
+    // Hapus semua card lama dari workspace
+    document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
 
-    function prodiSudahMaksimal(hariId, prodi, namaMK) {
-        const set = mkProdiPerHari[hariId][prodi];
-        if (!set) return false;
-        if (set.has(namaMK)) return false;
-        return set.size >= MAX_MK_PER_PRODI_PER_HARI;
-    }
-
-    const JAM_BATAS_MALAM  = '16:30';
-    const SLOT_ISTIRAHAT   = 6;
-    function jamKeMenit(jamStr) {
-        const [h, m] = jamStr.split(':').map(Number);
-        return h * 60 + m;
-    }
-    const menitBatasMalam = jamKeMenit(JAM_BATAS_MALAM);
-
-    function melewatiIstirahat(slotId, sks) {
-        return Array.from({ length: sks }, (_, i) => slotId + i).includes(SLOT_ISTIRAHAT);
-    }
-    function jenisKelas(namaKelas) { return namaKelas.trim().slice(-1).toUpperCase(); }
-    function slotSesuaiJenisKelas(slotId, namaKelas) {
-        const info = slotElMap[slotId];
-        if (!info || !info.jamMulai || info.jamMulai === '-') return true;
-        const menitMulai = jamKeMenit(info.jamMulai);
-        const jenis      = jenisKelas(namaKelas);
-        if (jenis === 'S') return menitMulai >= menitBatasMalam;
-        return menitMulai < menitBatasMalam;
-    }
-
-    // ── PERBAIKAN BUG #2: Susun urutan kelas ─────────────────
-    // Kelas yang punya MK+dosen+prodi+semester sama dikelompokkan
-    // dan diurutkan A→B→C agar A selalu diproses lebih dulu.
-    function getSemesterDariSidebar(kelasId) {
-        const el = document.querySelector(`.kelas-item[data-id="${kelasId}"]`);
-        return el?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '';
-    }
-
-    const grupKelas = {};
-    semua.forEach(el => {
-        const sem = getSemesterDariSidebar(el.dataset.id);
-        const key = buatKeyC9(el.dataset.nama, el.dataset.dosenId || '', el.dataset.prodi || '', sem);
-        if (!grupKelas[key]) grupKelas[key] = [];
-        grupKelas[key].push(el);
+    // Reset status sidebar ke 'belum'
+    document.querySelectorAll('.kelas-item').forEach(el => {
+        setSidebarStatus(el.dataset.id, 'belum');
     });
 
-    // Dalam satu grup: urutkan ascending by nama kelas (A < B < C < S1 < S2)
-    Object.values(grupKelas).forEach(grup => {
-        grup.sort((a, b) => a.dataset.kelas.localeCompare(b.dataset.kelas));
+    // Load ulang dari data terbaru (format sama dengan existing-jadwal-data)
+    jadwalTerbaru.forEach(j => {
+        const slotIdInt = parseInt(j.slot_id);
+        const sksInt    = parseInt(j.sks);
+        const infoStart = slotElMap[slotIdInt];
+        const infoEnd   = slotElMap[slotIdInt + sksInt - 1];
+
+        if (!infoStart) return;
+
+        const sidebarEl = document.querySelector(`.kelas-item[data-id="${j.kelas_id}"]`);
+        const prodi     = sidebarEl?.dataset.prodi || '-';
+        const jenis     = sidebarEl?.dataset.jenis || 'Teori';
+
+        createCard({
+            sks:        sksInt,
+            nama:       j.nama,
+            kelas:      j.nama_kelas,
+            kelasId:    parseInt(j.kelas_id),
+            dosen:      j.dosen,
+            kodeMk:     j.kode_mk,
+            ruangan:    j.ruangan    || '',
+            ruanganId:  j.ruangan_id || '',
+            slotId:     slotIdInt,
+            day:        j.hari,
+            jamMulai:   infoStart.jamMulai,
+            jamSelesai: infoEnd?.jamSelesai || '-',
+            jadwalIds:  [j.jadwal_id],
+            prodi, jenis,
+        }, true);
+
+        setSidebarStatus(j.kelas_id, 'sudah');
     });
-
-    // Acak URUTAN ANTAR GRUP (bukan urutan dalam grup)
-    const grupKeys  = shuffleArray(Object.keys(grupKelas), rng);
-    const kelasUrut = [];
-    grupKeys.forEach(key => kelasUrut.push(...grupKelas[key]));
-
-    let berhasil = 0, gagal = 0;
-
-    function cariDanTempatkan(el, hariForced = null) {
-        const kelasId = el.dataset.id;
-        const sks     = parseInt(el.dataset.sks) || 2;
-        const nama    = el.dataset.nama    || '-';
-        const kelas   = el.dataset.kelas   || '-';
-        const dosenId = el.dataset.dosenId || '';
-        const dosen   = el.dataset.dosen   || '-';
-        const kodeMk  = el.dataset.kodeMk  || '-';
-        const prodi   = el.dataset.prodi   || '-';
-        const jenis   = el.dataset.jenis   || 'Teori';
-
-        const poolRuanganBase = JSON.parse(el.dataset.ruangans || '[]');
-        if (!poolRuanganBase.length) {
-            console.warn(`[C2] Tidak ada ruangan: ${kelas} – ${nama}`);
-            return false;
-        }
-
-        const semesterKelas = getSemesterDariSidebar(kelasId);
-        const saudaraInfo   = getSaudaraInfo(nama, dosenId, prodi, semesterKelas);
-
-        // PERBAIKAN BUG #2: Jika ada saudara, WAJIB hari yang sama
-        const hariList = hariForced
-            ? [hariForced]
-            : saudaraInfo
-                ? [saudaraInfo.hariId]
-                : shuffleArray([...hariListBase], rng);
-
-        // PERBAIKAN BUG #1: slotList dimulai dari tepat setelah saudara,
-        // lalu fallback ke slot lain di hari yang sama
-        const slotListBase = shuffleArray([...SLOT_VALID], rng);
-
-        for (const hariId of hariList) {
-            if (!dosenBisaMengajar(hariId, dosenId, sks)) continue;
-            if (prodiSudahMaksimal(hariId, prodi, nama)) continue;
-
-            // Slot prioritas: jika ada saudara, mulai dari slot idealnya
-            let slotList;
-            if (saudaraInfo && saudaraInfo.hariId === hariId) {
-                const slotIdeal = saudaraInfo.slotAkhir;
-                // Prioritas 1: slot tepat setelah saudara selesai
-                // Prioritas 2: slot lain yang tidak melewati istirahat
-                // Prioritas 3: slot yang melewati istirahat (last resort)
-                const sisaTanpaIstirahat = slotListBase.filter(s => s !== slotIdeal && !melewatiIstirahat(s, sks));
-                const sisaDenganIstirahat = slotListBase.filter(s => s !== slotIdeal && melewatiIstirahat(s, sks));
-                slotList = [slotIdeal, ...sisaTanpaIstirahat, ...sisaDenganIstirahat];
-            } else {
-                slotList = [
-                    ...slotListBase.filter(s => !melewatiIstirahat(s, sks)),
-                    ...slotListBase.filter(s => melewatiIstirahat(s, sks)),
-                ];
-            }
-
-            for (const slotId of slotList) {
-                const slotsDibutuhkan = Array.from({ length: sks }, (_, i) => slotId + i);
-                if (slotsDibutuhkan.some(s => !SLOT_VALID.includes(s))) continue;
-                if (!slotSesuaiJenisKelas(slotId, kelas)) continue;
-                if (kelasBentrok(hariId, slotsDibutuhkan, kelas, nama, dosenId)) continue;
-
-                // PERBAIKAN BUG #3: Pakai dosenOverlap, bukan mkOverlap
-                if (dosenOverlap(hariId, slotsDibutuhkan, dosenId)) continue;
-
-                if (!slotMasihBisa(hariId, slotsDibutuhkan)) continue;
-
-                const poolRuangan  = shuffleArray(poolRuanganBase, rng);
-                const ruangDipilih = cariRuanganBebas(hariId, slotsDibutuhkan, poolRuangan);
-                if (!ruangDipilih) continue;
-
-                const hariNm      = hariNama[hariId];
-                const infoMulai   = slotElMap[slotId];
-                const infoSelesai = slotElMap[slotId + sks - 1];
-                if (!infoMulai) continue;
-
-                // TEMPATKAN
-                createCard({
-                    sks, nama, kelas,
-                    kelasId: parseInt(kelasId),
-                    dosen, kodeMk, prodi, jenis,
-                    ruangan:    ruangDipilih.nama,
-                    ruanganId:  ruangDipilih.id,
-                    slotId,
-                    day:        hariNm,
-                    jamMulai:   infoMulai.jamMulai,
-                    jamSelesai: infoSelesai?.jamSelesai || '-',
-                    jadwalIds:  [],
-                }, true);
-
-                // Update semua state
-                if (dosenId) {
-                    sksDosenPerHari[hariId][dosenId] = (sksDosenPerHari[hariId][dosenId] || 0) + sks;
-                }
-                slotsDibutuhkan.forEach(s => {
-                    ruanganTerpakai[hariId][s].add(String(ruangDipilih.id));
-                    kelasPerSlot[hariId][s]    = (kelasPerSlot[hariId][s] || 0) + 1;
-                    kelasNamaPerSlot[hariId][s].set(kelas, { namaMK: nama, dosenId });
-                    // PERBAIKAN: update dosenPerSlot, bukan mkPerSlot
-                    if (dosenId) dosenPerSlot[hariId][s].add(String(dosenId));
-                });
-                if (!mkProdiPerHari[hariId][prodi]) mkProdiPerHari[hariId][prodi] = new Set();
-                mkProdiPerHari[hariId][prodi].add(nama);
-                catatMkDosen(nama, dosenId, prodi, semesterKelas, hariId, slotId + sks);
-
-                setSidebarStatus(kelasId, 'sudah');
-                return true; // berhasil
-            }
-        }
-        return false; // gagal
-    }
-
-    for (const el of kelasUrut) {
-        const ok = cariDanTempatkan(el);
-        if (ok) { berhasil++; }
-        else {
-            gagal++;
-            console.warn(`[Generate] Gagal: ${el.dataset.kelas} – ${el.dataset.nama} (${el.dataset.sks} SKS)`);
-        }
-    }
-
-    btn.disabled  = false;
-    btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Generate Jadwal`;
 
     updateCounter();
     applyFilter();
@@ -1870,15 +1656,46 @@ function generateJadwal() {
     renderTablePreview();
     updateBentrokButton();
 
-    const seedInfo = GEN_CONFIG.randomize ? ` (seed: ${seed})` : '';
-    showToast(
-        gagal === 0
-            ? `✓ ${berhasil} kelas berhasil dijadwalkan!${seedInfo}`
-            : `${berhasil} berhasil, ${gagal} gagal (cek console)${seedInfo}`,
-        gagal === 0 ? 'green' : 'red'
-    );
+    showToast('✓ Workspace diperbarui sesuai hasil optimasi.', 'green');
 }
+// ============================================================
+// SOROT CARD BENTROK DARI DAFTAR SISA DI MODAL
+// ============================================================
+function highlightBentrokDariOptimasi(jadwalId) {
+    // Cari card berdasarkan jadwal_id di dataset
+    const target = [...document.querySelectorAll('.jadwal-card')].find(c => {
+        const ids = JSON.parse(c.dataset.jadwalIds || '[]');
+        return ids.includes(jadwalId) || ids.includes(String(jadwalId));
+    });
 
+    if (!target) {
+        showToast('Card tidak ditemukan. Coba refresh workspace.', 'red');
+        return;
+    }
+
+    tutupModalOptimasi();
+
+    // Pindah ke hari card tersebut
+    const targetDay = target.dataset.day;
+    Alpine.$data(document.body).selectedDay = targetDay;
+    filterCardsByDay(targetDay);
+
+    // Bersihkan highlight lama
+    document.querySelectorAll('.jadwal-card').forEach(c => {
+        c.style.outline = '';
+        c.style.zIndex  = '10';
+    });
+
+    // Sorot
+    target.style.outline = '3px solid #ef4444';
+    target.style.zIndex  = '50';
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    setTimeout(() => {
+        target.style.outline = '';
+        target.style.zIndex  = '10';
+    }, 3000);
+}
 // ============================================================
 // DRAG & DROP DARI SIDEBAR KE SLOT
 // ============================================================

@@ -9,68 +9,79 @@ use App\Models\Prodi;
 use App\Models\Dosen;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use App\Helpers\ProdiFilter;
 
 class UserRegistrationController extends Controller
 {
-    /**
-     * Show the form for creating a new user.
-     */
     public function create()
     {
-        // Only fetch roles relevant for this feature: Kaprodi (2), Dekan (3), Dosen (4)
-        // Adjust IDs based on User model constants if needed, but fetching from DB is safer if dynamic.
-        // Based on User model constants: ADMIN=1, KAPRODI=2, DEKAN=3, DOSEN=4, MHS=5
-        $roles = Role::whereIn('id_role', [User::ROLE_KAPRODI, User::ROLE_DEKAN, User::ROLE_DOSEN])->get();
-        
-        $prodis = Prodi::all();
-        $dosens = Dosen::all(); // Might be a long list, consider optimized loading or search later
+        // ✅ Query berdasarkan nama_role, bukan id_role integer
+        $roles = Role::whereIn('nama_role', [
+                        User::ROLE_KAPRODI,
+                        User::ROLE_DEKAN,
+                        User::ROLE_DOSEN,
+                    ])
+                    ->orderBy('nama_role')
+                    ->get();
+
+        $prodis = Prodi::orderBy('nama_prodi')->get();
+        $dosens = Dosen::with('prodi')->orderBy('nama_dosen')->get();
 
         return view('settings.users.create', compact('roles', 'prodis', 'dosens'));
     }
 
-    /**
-     * Store a newly created user in storage.
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'username' => 'required|string|max:50|unique:user,username',
-            'password' => 'required|string|min:6',
-            'id_role' => 'required|exists:role,id_role',
-            // Conditional validation based on role
-            'id_prodi' => [
-                'nullable', 
-                Rule::requiredIf(function () use ($request) {
-                    return $request->id_role == User::ROLE_KAPRODI;
-                }),
-                'exists:program_studi,id_prodi'
-            ],
-            'id_dosen' => 'nullable|exists:dosen,id_dosen',
-        ]);
+        $kaprodRole = Role::where('nama_role', User::ROLE_KAPRODI)->value('id_role');
+        $dosenRole  = Role::where('nama_role', User::ROLE_DOSEN)->value('id_role');
 
-        // Find max ID manually since not auto-increment (based on User model observation)
-        $maxId = User::max('id_user') ?? 0;
-        $newId = $maxId + 1;
+        $request->validate(
+            // ✅ Rules
+            [
+                'username' => [
+                    'required',
+                    'string',
+                    'max:50',
+                    Rule::unique('user', 'username'),
+                ],
+                'password' => 'required|string|min:6',
+                'id_role'  => 'required|exists:role,id_role',
+                'id_prodi' => [
+                    'nullable',
+                    Rule::requiredIf($request->id_role == $kaprodRole),
+                    'exists:program_studi,id_prodi',
+                ],
+                'id_dosen' => 'nullable|exists:dosen,id_dosen',
+            ],
+            // ✅ Custom messages — parameter kedua validate()
+            [
+                'username.unique'   => 'Username "' . $request->username . '" sudah digunakan. Silakan pilih username lain.',
+                'username.required' => 'Username wajib diisi.',
+                'username.max'      => 'Username maksimal 50 karakter.',
+                'password.required' => 'Password wajib diisi.',
+                'password.min'      => 'Password minimal 6 karakter.',
+                'id_role.required'  => 'Role wajib dipilih.',
+                'id_prodi.required' => 'Program Studi wajib dipilih untuk role Kaprodi.',
+            ]
+        );
 
         $userData = [
-            'id_user' => $newId,
-            'username' => $request->username,
-            'password_hash' => Hash::make($request->password), // Using password_hash column
-            'id_role' => $request->id_role,
+            'username'      => $request->username,
+            'password_hash' => Hash::make($request->password),
+            'id_role'       => $request->id_role,
         ];
 
-        // Link to Prodi if Kaprodi
-        if ($request->id_role == User::ROLE_KAPRODI) {
+        if ($request->id_role == $kaprodRole) {
             $userData['id_prodi'] = $request->id_prodi;
         }
 
-        // Link to Dosen if Dosen or Kaprodi (optional logic, but commonly Kaprodi is also a Dosen)
         if ($request->filled('id_dosen')) {
             $userData['id_dosen'] = $request->id_dosen;
         }
 
         User::create($userData);
 
-        return redirect()->route('settings.users.create')->with('success', 'User berhasil dibuat.');
+        return redirect()->route('settings.users.create')
+                        ->with('success', 'User "' . $request->username . '" berhasil dibuat.');
     }
 }

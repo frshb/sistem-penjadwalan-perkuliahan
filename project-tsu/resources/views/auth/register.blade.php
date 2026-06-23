@@ -11,12 +11,12 @@
 
     <!-- Card Container -->
     <div class="w-full max-w-5xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
-        
+
         <!-- Left Side: Image (Campus) -->
         <div class="w-full md:w-1/2 relative bg-gray-900 hidden md:block">
             <img src="{{ asset('kampus-tsu.png') }}" alt="Campus Building" class="absolute inset-0 w-full h-full object-cover opacity-90">
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            
+
             <div class="absolute bottom-10 left-10 text-white p-4">
                <h2 class="text-3xl font-bold mb-2">Admin Portal</h2>
                <p class="text-gray-200">Create New Accounts</p>
@@ -28,8 +28,8 @@
 
             <div class="flex flex-col items-center mb-8">
                 <div class="flex items-center gap-4 mb-2">
-                    <img src="{{ asset('1151.jpg') }}" alt="TSU Logo" class="h-12 w-auto"> 
-                    
+                    <img src="{{ asset('1151.jpg') }}" alt="TSU Logo" class="h-12 w-auto">
+
                     <!-- Divider -->
                     <div class="hidden sm:block h-8 w-px bg-gray-300 mx-1"></div>
 
@@ -43,15 +43,31 @@
 
             <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">Create New User</h3>
 
+            @if ($errors->any())
+                <div class="p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100 mb-4">
+                    <ul class="list-disc pl-5 space-y-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if (session('success'))
+                <div class="p-3 bg-green-50 text-green-600 rounded-lg text-sm border border-green-100 mb-4">
+                    {{ session('success') }}
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('users.store') }}" class="w-full max-w-md mx-auto space-y-4">
                 @csrf
-                
+
                 @if (session('error'))
                     <div class="p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100">
                         {{ session('error') }}
                     </div>
                 @endif
-                
+
                  @if ($errors->any())
                     <div class="p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100">
                         <ul class="list-disc pl-5">
@@ -105,7 +121,7 @@
                              <option value="">-- Pilih Dosen --</option>
                             @foreach($dosens as $dosen)
                                 <option value="{{ $dosen->id_dosen }}">
-                                    {{ $dosen->nama_dosen }} 
+                                    {{ $dosen->nama_dosen }}
                                     @if($dosen->prodi)
                                         ({{ $dosen->prodi->nama_prodi }})
                                     @endif
@@ -154,7 +170,7 @@
                             dosenInput.classList.remove('hidden');
                         }
                     }
-                    
+
                     // Run initial check
                     document.addEventListener('DOMContentLoaded', toggleInputs);
                 </script>

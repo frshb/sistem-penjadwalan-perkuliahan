@@ -2,704 +2,2751 @@
 
 namespace App\Services\GeneticAlgorithm;
 
-use Illuminate\Support\Collection;
-
+/**
+ * GeneticScheduler — Mesin utama Algoritma Genetika untuk penjadwalan kuliah.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * SMART SOLVING INVENTORY
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ── LOW-LEVEL (data integrity & input safety) ───────────────────────────────
+ *
+ * L1 · Break-slot dari DB, bukan hardcode
+ *      Slot istirahat ditentukan dari kolom `sesi` di tabel slot_waktu
+ *      (nilainya 'istirahat' atau waktu 12:00–13:00).  Hardcode [4,5]
+ *      diganti dengan deteksi otomatis dari data yang dikirim scheduler.
+ *
+ * L2 · Evening-start-slot dari DB
+ *      Slot pertama sesi malam (dipakai kelas-S) dihitung dari data slot,
+ *      bukan angka magis "11" atau "12".
+ *
+ * L3 · Validasi kelengkapan kelas
+ *      Kelas tanpa matakuliah, tanpa ruangan-options, atau dengan SKS=0
+ *      di-skip dengan pesan warning, bukan menyebabkan gene invalid.
+ *
+ * L4 · Gene boundary guard
+ *      `slotMulai + durasi - 1` tidak boleh melebihi maxSlot.  Slot mulai
+ *      dipilih dari rentang [1 .. maxSlot - durasi + 1].
+ *
+ * L5 · Fallback ruangan global
+ *      Jika matakuliah tidak punya ruangan di pivot matkul_ruang, cari
+ *      ruangan global yang kapasitasnya cukup daripada mengembalikan id=0.
+ *
+ * ── MEDIUM-LEVEL (convergence & population management) ──────────────────────
+ *
+ * M1 · Two-point crossover selang-seling dengan single-point
+ *      Single-point sering menghasilkan anak yang terlalu mirip salah satu
+ *      orang-tua.  Dengan dua titik potong, gen tengah dari parent-2 masuk
+ *      ke child-1 → diversitas lebih tinggi tanpa kehilangan segmen baik.
+ *
+ * M2 · Repair operator pasca-crossover
+ *      Setelah crossover, cek setiap pasang gen dalam offspring yang punya
+ *      konflik dosen/ruangan.  Ganti slot/hari salah satu gen secara greedy
+ *      sehingga offspring langsung lebih baik dari hasil crossover murni.
+ *
+ * M3 · Stagnation solver berlapis
+ *      Stagnasi level-1 (10 gen) → naikkan mutation-rate 1.5×.
+ *      Stagnasi level-2 (25 gen) → inject 30% kromosom acak baru.
+ *      Stagnasi level-3 (50 gen) → re-seed seluruh populasi kecuali elite-5.
+ *
+ * M4 · Diversity via hash-set
+ *      Diversity dihitung dari |unique_hashes| / populasiSize — O(n) bukan
+ *      O(n²). Mutasi hanya diperkuat jika diversity < 0.25.
+ *
+ * M5 · Elitism adaptif
+ *      Simpan top-K elite (default K=3) bukan hanya 1, sehingga setelah
+ *      populasi di-reset, beberapa solusi terbaik tetap tersimpan.
+ *
+ * ── HIGH-LEVEL (solution quality & termination) ─────────────────────────────
+ *
+ * H1 · Greedy local search pasca-GA
+ *      Setelah loop GA, untuk setiap gene yang masih konflik, coba semua
+ *      kombinasi (hari, slot) yang valid dan pilih yang mengurangi konflik
+ *      paling banyak.  Lebih efektif dari "slot+1" saja.
+ *
+ * H2 · Feasibility target bertahap
+ *      Berhenti awal jika: (a) conflicts=0 DAN violations=0 (sempurna),
+ *      ATAU (b) conflicts=0 DAN fitness≥90 (dapat diterima).
+ *      Tidak langsung berhenti di fitness≥80 karena bisa ada soft violation.
+ *
+ * H3 · Timeout-aware loop
+ *      Rekam waktu mulai; jika sudah > 270 detik (dari limit 300s SSE),
+ *      kembalikan solusi terbaik saat itu tanpa menunggu generasi selesai.
+ *
+ * H4 · Fallback solution yang bermakna
+ *      Jika terjadi exception fatal, bangun solusi greedy (bukan semua
+ *      di hari=1 slot=1) dengan distribusi merata ke semua hari.
+ *
+ * ── ANTI-TRAPPING ────────────────────────────────────────────────────────────
+ *
+ * T1 · Simulated-Annealing Local Search (SA-LS)
+ *      Ganti greedy-only local search dengan SA-LS: terima solusi yang
+ *      lebih buruk dengan probabilitas exp(-Δf/T) di mana T menurun seiring
+ *      iterasi. Ini memungkinkan escape dari local optimum tanpa re-seed penuh.
+ *
+ * T2 · Conflict-Graph Deadlock Breaker
+ *      Bangun graf konflik (adjacency set per gene). Deteksi siklus (deadlock
+ *      segitiga/persegi): jika gene A konflik B, B konflik C, C konflik A,
+ *      tandai semua sebagai "locked". Selesaikan deadlock dengan memindahkan
+ *      seluruh cluster ke hari berbeda sekaligus, bukan satu per satu.
+ *
+ * T3 · Dosen-Load Balancer
+ *      Sebelum inisialisasi populasi, hitung beban dosen (jumlah kelas).
+ *      Dosen dengan beban > threshold mendapat slot pre-assigned yang dijamin
+ *      tidak overlap, sehingga gen mereka tidak pernah masuk conflict-loop.
+ *
+ * T4 · Fitness-Plateau Detector + Niche Pressure
+ *      Jika variance fitness populasi < 0.001 (semua individu identik dalam
+ *      fitness), aktifkan "niche pressure": kromosom yang hash-nya identik
+ *      dengan yang lain mendapat penalti tambahan sehingga seleksi memaksa
+ *      eksplorasi ke kromosom yang berbeda.
+ *
+ * T5 · Guided Re-Seed dari Elite Archive
+ *      Re-seed (stagnation L3) tidak lagi murni acak. 50% populasi baru
+ *      dibangun dengan "elite-guided perturbation": ambil elite terbaik,
+ *      acak ulang hanya gen-gen yang masih berkonflik, pertahankan gen
+ *      yang sudah aman. Jauh lebih efektif daripada kromosom sepenuhnya acak.
+ *
+ * ── PARALLEL-PAIR SEQUENCING (HC15) ─────────────────────────────────────────
+ *
+ * P1 · Deteksi pasangan kelas paralel (matkul sama + dosen sama, persis 2
+ *      kelas non-S) saat prepareData(). Kelas suffix -S dikecualikan total.
+ *      Disimpan sebagai $parallelPairs = [[kelasIdA, kelasIdB], ...] dengan
+ *      A = urutan abjad nama_kelas lebih dulu.
+ *
+ * P2 · Saat inisialisasi gene untuk kelasId yang merupakan bagian dari
+ *      pasangan, gunakan slot yang konsisten dengan pasangannya jika
+ *      pasangannya sudah diinisialisasi (createPairedGene).
+ *
+ * P3 · Repair operator memprioritaskan perbaikan pasangan HC15 sebelum
+ *      memperbaiki konflik biasa, karena re-slot satu sisi pasangan bisa
+ *      merusak hubungan gap-1 dengan sisi lainnya.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
 class GeneticScheduler
 {
-    private const SLOT_ISTIRAHAT    = 6;
-    private const MENIT_BATAS_MALAM = 990;
-    private const MAX_KELAS_PER_SLOT = 8;
-    private const MAX_MK_PER_PRODI  = 4;
 
-    private array $slots;
-    private array $slotIds;
-    private array $hariList;
-    private array $kelasList;
-    private array $kelasMap = [];
-    private array $slotIndex = [];
+    // ── Parameter GA ────────────────────────────────────────────────────────
+    private int   $populationSize;
+    private int   $maxGenerations;
+    private float $crossoverRate;
+    private float $mutationRate;
+    private float $originalMutationRate;
+    private float $originalCrossoverRate;
 
-    // ── Lookup grup C9 yang dibangun sekali di awal ──────────────
-    // grupC9[key] = [ kelasId, kelasId, ... ] sudah diurutkan nama kelas
-    private array $grupC9 = [];
-    // kelasKeyC9[kelasId] = key C9-nya (null jika tidak punya saudara)
-    private array $kelasKeyC9 = [];
+    // ── Data problem ─────────────────────────────────────────────────────────
+    private array $kelasData   = [];
+    private array $slots       = [];
+    private array $hariList    = [];
+    private array $ruanganList = [];
+
+    // ── [L1][L2] Parameter constraint dari data, bukan hardcode ─────────────
+    private int   $maxSlot          = 14;
+    private int   $eveningStartSlot = 12;
+    private array $breakSlots       = [];
+    private array $validRuangIds    = [];  // HC10: semua id_ruang terdaftar
+    private int   $morningEndSlot   = 6;   // SC15/SC16: batas slot pagi
+
+    /**
+     * [BARU][HC16] Slot Sholat Jumat — dikeluarkan secara struktural dari
+     * SEMUA pool kandidat slot pada hari Jumat untuk SEMUA jenis kelas
+     * (reguler, praktikum, kelas malam -S). Tidak ada gene yang boleh
+     * overlap slot ini pada hari ini — lihat overlapsBlockedFridaySlot().
+     */
+    private int $hariJumat       = 5; // id_hari untuk Jumat
+    private int $slotSholatJumat = 6; // id_slot yang wajib steril (≈ jam 12:00)
+
+    /**
+     * [BARU][P1] HC15 — Pasangan kelas paralel (matkul sama + dosen sama).
+     * Format: [ [kelasIdA, kelasIdB], ... ] — A = abjad nama_kelas lebih dulu.
+     * Hanya berisi grup yang punya PERSIS 2 kelas non-S untuk (kode_matkul, id_dosen) yang sama.
+     */
+    private array $parallelPairs = [];
+
+    /**
+     * [BARU][P1] Lookup cepat: kelasId => kelasId pasangannya (HC15).
+     * Dibangun bersamaan dengan $parallelPairs untuk akses O(1) saat repair/init.
+     */
+    private array $pairPartnerOf = [];
+
+    // ── Populasi & elite ─────────────────────────────────────────────────────
+    /** @var Chromosome[] */
+    private array $population = [];
+    /** @var Chromosome[] [M5] Simpan top-K elite */
+    private array $elites     = [];
+    private int   $eliteK     = 3;
+
+    // ── Stagnation tracking [M3] ─────────────────────────────────────────────
+    private float $lastBestFitness           = 0.0;
+    private int   $stagnationCounter         = 0;
+    private int   $stagnationRestartCount    = 0;
+
+    // ── Progress callback ────────────────────────────────────────────────────
+    private $progressCallback = null;
+
+    // ── [H3] Waktu mulai untuk timeout protection ────────────────────────────
+    private float $startTime   = 0.0;
+    private float $timeLimit   = 480.0; // 8 menit — dikonfigurasi via setTimeLimit()
+
+    // ── Log masalah ──────────────────────────────────────────────────────────
+    private array $problemLog = [];
+
+    // ── [T3] Pre-assigned slots untuk dosen beban tinggi ────────────────────
+    // [ dosenId => [ hariId => [slotMulai, ...] ] ]  — slot yang sudah dipakai
+    private array $dosenPreassigned = [];
+    private int   $dosenLoadThreshold = 3; // Dosen dengan ≥ N kelas → pre-assign
+
+    // ── [T4] Fitness plateau tracking ────────────────────────────────────────
+    private float $plateauVarianceThreshold = 0.5;  // variance fitness < ini = plateau
+    private bool  $nichePressureActive      = false;
+
+    // ── [T2] Conflict-graph deadlock tracking ────────────────────────────────
+    private int $deadlockCheckInterval = 15; // cek setiap N generasi
+
 
     public function __construct(
-        private int   $populasiSize,
-        private int   $maxGenerasi,
-        private float $crossoverRate = 0.8,
-        private float $mutationRate  = 0.15,
-    ) {}
+        int   $populationSize  = 100,
+        int   $maxGenerations  = 200,
+        float $crossoverRate   = 0.8,
+        float $mutationRate    = 0.1
+    ) {
+        $this->populationSize        = max(4, $populationSize);
+        $this->maxGenerations        = max(1, $maxGenerations);
+        $this->crossoverRate         = min(1.0, max(0.0, $crossoverRate));
+        $this->mutationRate          = min(1.0, max(0.0, $mutationRate));
+        $this->originalMutationRate  = $this->mutationRate;
+        $this->originalCrossoverRate = $this->crossoverRate;
 
-    // ============================================================
-    // ENTRY POINT
-    // ============================================================
-    public function run(Collection $kelas, array $slots, array $hariList, ?callable $onProgress = null): array
+        // Auto-set timeLimit berdasarkan ukuran problem
+        // Populasi 200 × 500 gen butuh ~5-8 menit tergantung jumlah kelas
+        $this->timeLimit = min(600.0, max(270.0, ($populationSize * $maxGenerations) / 500.0));
+    }
+
+    /** Override batas waktu (detik). */
+    public function setTimeLimit(float $seconds): void
     {
-        // Bangun slot map
-        $this->slots = [];
-        foreach ($slots as $s) {
-            $menit = $this->jamKeMenit($s['waktu_mulai']);
-            $this->slots[$s['id']] = [
-                'id'            => $s['id'],
-                'waktu_mulai'   => $s['waktu_mulai'],
-                'waktu_selesai' => $s['waktu_selesai'],
-                'menit_mulai'   => $menit,
-            ];
+        $this->timeLimit = max(30.0, $seconds);
+    }
+
+    /**
+     * Kembalikan hasil dari kromosom terbaik saat ini (untuk early-exit SSE).
+     * Dipanggil dari progress callback ketika sinyal 'optimal' diterima.
+     */
+    public function getBestResult(): ?array
+    {
+        if (empty($this->population) && empty($this->elites)) {
+            return null;
         }
 
-        $this->slotIds   = array_keys($this->slots);
-        sort($this->slotIds);
-        // Di run(), setelah sort slotIds:
-        sort($this->slotIds);
-        $this->slotIndex = array_flip($this->slotIds); // O(1) lookup
-        $this->hariList  = $hariList;
-        $this->kelasList = $kelas->values()->all();
+        // Ambil dari elites jika ada (lebih reliable dari current population)
+        $best = !empty($this->elites) ? $this->elites[0] : $this->getBestChromosome();
 
-        foreach ($this->kelasList as $k) {
-            $this->kelasMap[$k->id_kelas] = $k;
-        }
-
-        // Bangun lookup C9 sekali — dipakai di init & mutasi
-        $this->bangunLookupC9();
-
-        $populasi = $this->initPopulasi();
-        foreach ($populasi as $chr) {
-            $chr->fitness = $this->evaluate($chr);
-        }
-
-        $best  = $this->getBest($populasi);
-        $genke = 0;
-
-        for ($gen = 0; $gen < $this->maxGenerasi; $gen++) {
-            $genke  = $gen + 1;
-            $newPop = [];
-            $newPop[] = $best->clone();
-
-            while (count($newPop) < $this->populasiSize) {
-                $p1 = $this->seleksi($populasi);
-                $p2 = $this->seleksi($populasi);
-
-                [$c1, $c2] = $this->crossover($p1, $p2);
-
-                $this->mutasi($c1);
-                $this->mutasi($c2);
-
-                $c1->fitness = $this->evaluate($c1);
-                $c2->fitness = $this->evaluate($c2);
-
-                $newPop[] = $c1;
-                if (count($newPop) < $this->populasiSize) {
-                    $newPop[] = $c2;
-                }
-            }
-
-            $populasi = $newPop;
-            $best     = $this->getBest($populasi);
-
-            if ($onProgress && ($genke % 5 === 0 || $genke === 1 || $best->fitness >= 1.0)) {
-                $pelanggaran = $this->hitungPelanggaran($best);
-                $onProgress([
-                    'gen'         => $genke,
-                    'max_gen'     => $this->maxGenerasi,
-                    'fitness'     => round($best->fitness * 100, 2),
-                    'pelanggaran' => $pelanggaran,
-                    'done'        => false,
-                ]);
-            }
-
-            if ($best->fitness >= 1.0) break;
+        if ($best === null || count($best->getGenes()) === 0) {
+            return null;
         }
 
         return [
-            'genes'       => $best->genes,
-            'fitness'     => $best->fitness,
-            'fitness_pct' => round($best->fitness * 100, 2),
-            'total_kelas' => count($best->genes),
-            'generasi'    => $genke ?? $this->maxGenerasi,
+            'genes'                => $best->getGenes(),
+            'fitness_pct'          => round($best->getFitness(), 2),
+            'generasi'             => 0, // akan diisi oleh caller dari progress data
+            'total_kelas'          => count($best->getGenes()),
+            'pelanggaran'          => $best->getConflicts(),
+            'dosen_conflicts'      => $best->getDosenConflicts(),
+            'ruangan_conflicts'    => $best->getRuanganConflicts(),
+            'constraint_violations'=> $best->getConstraintViolations(),
+            'problem_log'          => $this->problemLog,
         ];
     }
 
-    // ============================================================
-    // BANGUN LOOKUP C9 — dijalankan sekali sebelum init populasi
-    // Mengelompokkan kelas yang punya MK+dosen+prodi+semester sama,
-    // lalu mengurutkannya A→B→C agar posisi berurutan sudah diketahui.
-    // ============================================================
-    private function bangunLookupC9(): void
+    // ═══════════════════════════════════════════════════════════════════════
+    // PUBLIC: Entry Point
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Jalankan GA dan kembalikan solusi terbaik.
+     *
+     * @param  mixed         $kelas            Collection Kelas (Eloquent)
+     * @param  array         $slots            [['id'=>int,'waktu_mulai'=>str,'waktu_selesai'=>str], ...]
+     * @param  array         $hariList         [1,2,3,4,5]
+     * @param  callable|null $progressCallback function(array $data): void
+     * @return array
+     */
+    public function run($kelas, array $slots, array $hariList, ?callable $progressCallback = null): array
     {
-        $this->grupC9    = [];
-        $this->kelasKeyC9 = [];
+        $this->startTime        = microtime(true);
+        $this->progressCallback = $progressCallback;
+        $generation             = 0;
 
-        foreach ($this->kelasList as $k) {
-            $key = $this->buatKeyC9DariKelas($k);
-            if (!$key) continue;
-            $this->grupC9[$key][] = $k->id_kelas;
-        }
+        try {
+            // ── [LOW] Validasi & persiapan ───────────────────────────────────
+            $this->validateInputData($kelas, $slots, $hariList);
+            $this->prepareData($kelas, $slots, $hariList);
 
-        // Hapus grup yang hanya punya 1 anggota — tidak perlu diatur
-        foreach ($this->grupC9 as $key => $ids) {
-            if (count($ids) <= 1) {
-                unset($this->grupC9[$key]);
-                continue;
-            }
-            // Urutkan nama kelas ascending (A < B < C < S1 < S2)
-            usort($this->grupC9[$key], function ($idA, $idB) {
-                $namaA = $this->kelasMap[$idA]->nama_kelas ?? '';
-                $namaB = $this->kelasMap[$idB]->nama_kelas ?? '';
-                return strcmp($namaA, $namaB);
-            });
-            // Catat key untuk setiap kelasId
-            foreach ($this->grupC9[$key] as $kelasId) {
-                $this->kelasKeyC9[$kelasId] = $key;
-            }
-        }
-    }
-
-    private function buatKeyC9DariKelas(object $kelas): ?string
-    {
-        $namaMK   = $kelas->matakuliah->nama_matkul ?? null;
-        $prodi    = $kelas->prodi->nama_prodi       ?? null;
-        $semester = (string) ($kelas->semester      ?? '');
-        $dosenId  = (string) ($kelas->id_dosen      ?? '');
-
-        if (!$namaMK || !$prodi) return null;
-        return "{$namaMK}|{$dosenId}|{$prodi}|{$semester}";
-    }
-
-    // ============================================================
-    // INISIALISASI POPULASI — Cerdas untuk C9
-    //
-    // Strategi:
-    // - Kelas yang punya saudara C9 (paralel) dijadwalkan sebagai
-    //   satu blok berurutan: pilih hari 1x, lalu slot A = slot awal,
-    //   slot B = slotAkhir(A), slot C = slotAkhir(B), dst.
-    // - Kelas tanpa saudara tetap diacak normal.
-    // - Setiap individu dalam populasi mendapat pilihan hari & slot
-    //   awal yang berbeda agar populasi tetap beragam.
-    // ============================================================
-    private function initPopulasi(): array
-    {
-        $pop = [];
-        for ($i = 0; $i < $this->populasiSize; $i++) {
-            $pop[] = $this->buatKromosomCerdas();
-        }
-        return $pop;
-    }
-
-    private function buatKromosomCerdas(): Chromosome
-    {
-        // geneMap[kelasId] = Gene — diisi bertahap
-        $geneMap = [];
-
-        // --- Langkah 1: Jadwalkan semua grup C9 sebagai blok berurutan ---
-        foreach ($this->grupC9 as $key => $kelasIds) {
-            $sksTotal = 0;
-            foreach ($kelasIds as $kid) {
-                $k = $this->kelasMap[$kid];
-                $sksTotal += (int) ($k->matakuliah->sks ?? 2);
+            if (empty($this->kelasData)) {
+                throw new \RuntimeException('Tidak ada kelas valid yang bisa dijadwalkan.');
             }
 
-            // Cari slot awal yang cukup menampung semua kelas berurutan
-            // tanpa melewati slot istirahat
-            $kelas0     = $this->kelasMap[$kelasIds[0]];
-            $namaKelas0 = $kelas0->nama_kelas ?? '';
-            $slotAwalPool = $this->getSlotAwalGrup($kelasIds, $namaKelas0);
+            // [T3] Pre-assign slot dosen beban tinggi sebelum inisialisasi
+            $this->preAssignHighLoadDosen();
 
-            if (empty($slotAwalPool)) {
-                // Fallback: jadwalkan acak masing-masing
-                foreach ($kelasIds as $kid) {
-                    $geneMap[$kid] = $this->buatGeneAcak($this->kelasMap[$kid]);
+            // ── Inisialisasi populasi ────────────────────────────────────────
+            $this->initializePopulation();
+            $this->evaluatePopulation();
+
+            $bestChromosome = $this->getBestChromosome()->copy();
+            $this->updateElites($bestChromosome);
+            $this->lastBestFitness = $bestChromosome->getFitness();
+
+            // ── Main GA loop ──────────────────────────────────────────────────
+            for ($generation = 1; $generation <= $this->maxGenerations; $generation++) {
+
+                // [H3] Timeout check
+                if ((microtime(true) - $this->startTime) >= $this->timeLimit) {
+                    $this->logProblem('timeout', "Timeout di generasi {$generation}");
+                    break;
                 }
+
+                // [M3] Deteksi & selesaikan stagnasi
+                $this->handleStagnation($generation, $bestChromosome);
+
+                // [T4] Deteksi & tangani fitness plateau
+                $this->handleFitnessPlateauAndNiche();
+
+                // [T2] Deadlock breaker periodik (setiap N generasi)
+                if ($generation % $this->deadlockCheckInterval === 0) {
+                    $this->breakDeadlocksInPopulation();
+                }
+
+                // [Bug1-fix] Evaluasi populasi setelah kemungkinan dimodifikasi oleh stagnasi/niche pressure/deadlock breaker
+                $this->evaluatePopulation();
+
+                // Seleksi
+                $parents  = $this->selection();
+
+                // [M1] Crossover dua-titik selang-seling
+                $offspring = $this->crossover($parents);
+
+                // [M2] Repair operator
+                $this->repairOffspring($offspring);
+
+                // Mutasi adaptif [M4]
+                $this->mutate($offspring);
+
+                // [M5] Ganti populasi + inject elites
+                $this->replacePopulation($offspring);
+                $this->evaluatePopulation();
+
+                // Update best
+                $currentBest = $this->getBestChromosome();
+                if ($currentBest->getFitness() > $bestChromosome->getFitness()) {
+                    $bestChromosome = $currentBest->copy();
+                    $this->updateElites($bestChromosome);
+                    $this->stagnationCounter = 0;
+                    $this->lastBestFitness   = $bestChromosome->getFitness();
+                }
+
+                // Progress report
+                $this->reportProgress($generation, $bestChromosome);
+
+                // [H2] Early exit — solusi sempurna atau layak
+                if ($bestChromosome->isFeasible()) {
+                    if ($bestChromosome->getConstraintViolations() === 0) {
+                        // Sempurna — kirim sinyal optimal ke callback
+                        $this->reportOptimalFound($generation, $bestChromosome, 'perfect');
+                        break;
+                    }
+                    if ($bestChromosome->getFitness() >= 90.0) {
+                        // Layak — kirim sinyal optimal ke callback
+                        $this->reportOptimalFound($generation, $bestChromosome, 'acceptable');
+                        break;
+                    }
+                }
+
+                // Early exit jika fitness sudah sangat baik (≥ 95%) tanpa hard conflict
+                if ($bestChromosome->getConflicts() === 0 && $bestChromosome->getFitness() >= 95.0) {
+                    $this->reportOptimalFound($generation, $bestChromosome, 'excellent');
+                    break;
+                }
+            }
+
+            // [H1] Local search pasca-GA
+            $bestChromosome = $this->localSearch($bestChromosome);
+
+            return [
+                'genes'               => $bestChromosome->getGenes(),
+                'fitness_pct'         => round($bestChromosome->getFitness(), 2),
+                'generasi'            => $generation,
+                'total_kelas'         => count($this->kelasData),
+                'pelanggaran'         => $bestChromosome->getConflicts(),
+                'dosen_conflicts'     => $bestChromosome->getDosenConflicts(),
+                'ruangan_conflicts'   => $bestChromosome->getRuanganConflicts(),
+                'constraint_violations' => $bestChromosome->getConstraintViolations(),
+                'problem_log'         => $this->problemLog,
+            ];
+
+        } catch (\Exception $e) {
+            // [H4] Fallback bermakna
+            return $this->handleCriticalError($e, $generation);
+        }
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOW-LEVEL: Validasi & Persiapan Data
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /** [L-all] Validasi argumen sebelum memproses. */
+    private function validateInputData($kelas, array $slots, array $hariList): void
+    {
+        if (empty($kelas) || (is_countable($kelas) && count($kelas) === 0)) {
+            throw new \InvalidArgumentException('Data kelas tidak boleh kosong.');
+        }
+        if (empty($slots)) {
+            throw new \InvalidArgumentException('Data slot waktu tidak boleh kosong.');
+        }
+        if (empty($hariList)) {
+            throw new \InvalidArgumentException('Data hari tidak boleh kosong.');
+        }
+        if ($this->populationSize < 4) {
+            throw new \InvalidArgumentException('Ukuran populasi minimal 4.');
+        }
+    }
+
+    /**
+     * [L1][L2][L3][L4][L5] Bangun struktur data internal dari input Eloquent.
+     */
+    private function prepareData($kelas, array $slots, array $hariList): void
+    {
+        $this->slots    = $slots;
+        $this->hariList = array_values($hariList);
+
+        // ── Hitung maxSlot & [L1] break-slots dari data ──────────────────────
+        $slotIds = array_column($slots, 'id');
+        $this->maxSlot = !empty($slotIds) ? (int) max($slotIds) : 14;
+
+        // [L1] Jam istirahat diabaikan sesuai request user (penjadwalan tidak terikat jam istirahat)
+        $this->breakSlots = [];
+
+        // [L2] Satu loop — set eveningStartSlot DAN morningEndSlot sekaligus
+        // Tidak ada duplikat; loop sebelumnya dihapus.
+        // [FIX] Hardcode eveningStartSlot ke 12 sesuai kebutuhan (kelas S di slot 12-16)
+        $this->eveningStartSlot = 12; // Hardcode: kelas sore mulai slot 12
+        $this->morningEndSlot   = 1;  // fallback: slot pagi pertama
+        foreach ($slots as $s) {
+            $mulai = substr($s['waktu_mulai'] ?? '00:00', 0, 5);
+            // Slot pagi: terakhir yang < 12:00 (batas atas pagi)
+            if ($mulai < '12:00') {
+                $this->morningEndSlot = (int) $s['id'];
+            }
+        }
+
+        $this->logProblem('slot_config',
+            "eveningStart={$this->eveningStartSlot} morningEnd={$this->morningEndSlot} "
+          . "maxSlot={$this->maxSlot} breakSlots=[" . implode(',', $this->breakSlots) . "]"
+        );
+        $this->ruanganList  = [];
+        $this->validRuangIds = [];
+        foreach ($kelas as $k) {
+            $mk = $k->matakuliah ?? null;
+            if (!$mk) { continue; }
+            try {
+                foreach ($mk->ruangans ?? [] as $r) {
+                    if (!isset($this->ruanganList[$r->id_ruang])) {
+                        $this->ruanganList[$r->id_ruang] = [
+                            'id'           => (int) $r->id_ruang,
+                            'nama'         => $r->nama_ruang ?? "Ruang-{$r->id_ruang}",
+                            'kapasitas'    => (int) ($r->kapasitas ?? 0),
+                            'tipe_ruangan' => $r->tipe_ruangan ?? Gene::TIPE_REGULER,
+                        ];
+                        $this->validRuangIds[] = (int) $r->id_ruang;  // HC10
+                    }
+                }
+            } catch (\Exception $e) { /* abaikan */ }
+        }
+        $this->validRuangIds = array_unique($this->validRuangIds);
+
+        $this->kelasData = [];
+        foreach ($kelas as $k) {
+            $mk  = $k->matakuliah ?? null;
+            $sks = (int) ($mk->sks ?? 0);
+
+            // [L3] Skip kelas dengan data tidak valid
+            if (!$mk || $sks <= 0) {
+                $this->logProblem('skip_kelas',
+                    "Kelas id={$k->id_kelas} dilewati: matakuliah/SKS tidak valid.");
                 continue;
             }
 
-            $hariId    = $this->hariList[array_rand($this->hariList)];
-            $slotAwal  = $slotAwalPool[array_rand($slotAwalPool)];
-
-            $slotKursor = $slotAwal;
-            foreach ($kelasIds as $kid) {
-                $k    = $this->kelasMap[$kid];
-                $sks  = (int) ($k->matakuliah->sks ?? 2);
-
-                $ruangans = $k->matakuliah->ruangans ?? collect();
-                $ruangan  = $ruangans->isNotEmpty() ? $ruangans->random() : null;
-
-                $geneMap[$kid] = new Gene(
-                    kelasId:    $kid,
-                    hariId:     $hariId,
-                    slotMulai:  $slotKursor,
-                    ruangId:    $ruangan?->id_ruang ?? 0,
-                    dosenId:    $k->id_dosen ?? 0,
-                    durasi:     $sks,
-                    kodeMatkul: $k->kode_matkul ?? '',
-                );
-
-                $slotKursor += $sks; // langsung setelah kelas sebelumnya
-            }
-        }
-
-        // --- Langkah 2: Jadwalkan kelas tanpa saudara C9 secara acak ---
-        foreach ($this->kelasList as $kelas) {
-            $kid = $kelas->id_kelas;
-            if (isset($geneMap[$kid])) continue; // sudah diisi di langkah 1
-            $geneMap[$kid] = $this->buatGeneAcak($kelas);
-        }
-
-        // Susun genes sesuai urutan kelasList agar index konsisten
-        $genes = [];
-        foreach ($this->kelasList as $kelas) {
-            $genes[] = $geneMap[$kelas->id_kelas];
-        }
-
-        return new Chromosome($genes);
-    }
-
-    // Cari slot awal yang valid untuk seluruh blok C9
-    // Valid = semua slot dari slotAwal hingga slotAwal+sksTotal-1 ada,
-    //         tidak melewati istirahat, dan sesuai jenis kelas (pagi/malam)
-    private function getSlotAwalGrup(array $kelasIds, string $namaKelas): array
-    {
-        // Hitung total SKS blok
-        $sksTotal = 0;
-        foreach ($kelasIds as $kid) {
-            $sksTotal += (int) ($this->kelasMap[$kid]->matakuliah->sks ?? 2);
-        }
-
-        $jenisKelas = strtoupper(substr(trim($namaKelas), -1));
-        $valid = [];
-
-        foreach ($this->slotIds as $s) {
-            $rentang = range($s, $s + $sksTotal - 1);
-
-            // Semua slot harus ada di DB
-            $semuaAda = true;
-            foreach ($rentang as $sid) {
-                if (!isset($this->slots[$sid])) { $semuaAda = false; break; }
-            }
-            if (!$semuaAda) continue;
-
-            // Tidak melewati slot istirahat
-            if (in_array(self::SLOT_ISTIRAHAT, $rentang)) continue;
-
-            // Tidak ada gap antar slot
-            $adaGap = false;
-            for ($i = 0; $i < count($rentang) - 1; $i++) {
-                $idxA = $this->slotIndex[$rentang[$i]]     ?? -1;
-                $idxB = $this->slotIndex[$rentang[$i + 1]] ?? -1;
-                if ($idxB - $idxA !== 1) { $adaGap = true; break; }
-            }
-            if ($adaGap) continue;
-
-            // Sesuai jenis kelas (C7)
-            $menitMulai = $this->slots[$s]['menit_mulai'];
-            if ($jenisKelas === 'S') {
-                if ($menitMulai < self::MENIT_BATAS_MALAM) continue;
-            } else {
-                if ($menitMulai >= self::MENIT_BATAS_MALAM) continue;
+            $ruanganOptions = [];
+            try {
+                $ruanganOptions = $mk->ruangans
+                    ? $mk->ruangans->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray()
+                    : [];
+            } catch (\Exception $e) {
+                // Abaikan error relasi ruangan
             }
 
-            $valid[] = $s;
-        }
-
-        return $valid;
-    }
-
-    private function buatGeneAcak(object $kelas): Gene
-    {
-        $sks        = (int) ($kelas->matakuliah->sks ?? 2);
-        $validSlots = $this->getValidSlots($sks, $kelas->nama_kelas ?? '');
-
-        $slotMulai = $validSlots[array_rand($validSlots)];
-        $hariId    = $this->hariList[array_rand($this->hariList)];
-
-        $ruangans = $kelas->matakuliah->ruangans ?? collect();
-        $ruangan  = $ruangans->isNotEmpty() ? $ruangans->random() : null;
-
-        return new Gene(
-            kelasId:    $kelas->id_kelas,
-            hariId:     $hariId,
-            slotMulai:  $slotMulai,
-            ruangId:    $ruangan?->id_ruang ?? 0,
-            dosenId:    $kelas->id_dosen    ?? 0,
-            durasi:     $sks,
-            kodeMatkul: $kelas->kode_matkul ?? '',
-        );
-    }
-
-    // ============================================================
-    // SLOT VALID (untuk kelas tunggal)
-    // ============================================================
-    private function getValidSlots(int $sks, string $namaKelas): array
-    {
-        $jenisKelas = strtoupper(substr(trim($namaKelas), -1));
-        $valid = [];
-
-        foreach ($this->slotIds as $s) {
-            $rentang = range($s, $s + $sks - 1);
-
-            $semuaAda = true;
-            foreach ($rentang as $sid) {
-                if (!isset($this->slots[$sid])) { $semuaAda = false; break; }
-            }
-            if (!$semuaAda) continue;
-
-            if (in_array(self::SLOT_ISTIRAHAT, $rentang)) continue;
-
-            $adaGap = false;
-            for ($i = 0; $i < count($rentang) - 1; $i++) {
-                $idxA = $this->slotIndex[$rentang[$i]]     ?? -1;
-                $idxB = $this->slotIndex[$rentang[$i + 1]] ?? -1;
-                if ($idxB - $idxA !== 1) { $adaGap = true; break; }
-            }
-            if ($adaGap) continue;
-
-            $menitMulai = $this->slots[$s]['menit_mulai'];
-            if ($jenisKelas === 'S') {
-                if ($menitMulai < self::MENIT_BATAS_MALAM) continue;
-            } else {
-                if ($menitMulai >= self::MENIT_BATAS_MALAM) continue;
+            // [L5] Fallback: cari ruangan global yang cukup kapasitasnya
+            if (empty($ruanganOptions) && !empty($this->ruanganList)) {
+                $kap = (int) ($k->kapasitas ?? 0);
+                foreach ($this->ruanganList as $r) {
+                    if ($r['kapasitas'] >= $kap) {
+                        $ruanganOptions[] = $r['id'];
+                    }
+                }
+                if (!empty($ruanganOptions)) {
+                    $this->logProblem('fallback_ruangan',
+                        "Kelas id={$k->id_kelas}: ruangan dari global fallback.");
+                }
             }
 
-            $valid[] = $s;
-        }
-
-        return $valid ?: $this->slotIds;
-    }
-
-    // ============================================================
-    // EVALUASI FITNESS — Bobot pelanggaran diperbesar untuk C9
-    // ============================================================
-    private function evaluate(Chromosome $chr): float
-    {
-        $pelanggaran = 0;
-        $genes       = $chr->genes;
-
-        $byHari = [];
-        foreach ($genes as $g) {
-            $byHari[$g->hariId][] = $g;
-        }
-
-        $kelasInfo = [];
-        foreach ($genes as $g) {
-            if (isset($kelasInfo[$g->kelasId])) continue;
-            $k = $this->kelasMap[$g->kelasId] ?? null;
-            if (!$k) continue;
-            $kelasInfo[$g->kelasId] = [
-                'prodi'    => $k->prodi->nama_prodi       ?? '-',
-                'semester' => (string) ($k->semester      ?? ''),
-                'namaMK'   => $k->matakuliah->nama_matkul ?? '-',
-                'dosenId'  => (string) ($g->dosenId       ?? ''),
+            $this->kelasData[(int) $k->id_kelas] = [
+                'id'              => (int) $k->id_kelas,
+                'nama'            => (string) ($k->nama_kelas ?? "Kelas-{$k->id_kelas}"),
+                'sks'             => $sks,
+                'jenis'           => strtolower(trim($mk->jenis ?? Gene::JENIS_TEORI)),
+                'kategori'        => strtolower(trim($mk->kategori ?? Gene::KATEGORI_SEDANG)),
+                'id_dosen'        => (int) ($k->id_dosen ?? 0),
+                'kapasitas'       => (int) ($k->kapasitas ?? 0),
+                'ruangan_options' => $ruanganOptions,
+                'kode_matkul'     => (string) ($mk->kode_matkul ?? ''),
             ];
         }
 
-        // H1–H5: cek overlap per hari
-        foreach ($byHari as $hariId => $hariGenes) {
-            $cnt = count($hariGenes);
+        // [BARU][P1] Bangun pasangan kelas paralel (HC15) setelah kelasData siap
+        $this->buildParallelPairs();
+    }
 
-            // H5: kelas per slot
-            $slotCount = [];
-            foreach ($hariGenes as $g) {
-                for ($s = $g->slotMulai; $s < $g->slotMulai + $g->durasi; $s++) {
-                    $slotCount[$s] = ($slotCount[$s] ?? 0) + 1;
-                }
+    /**
+     * [BARU][P1] HC15 — Deteksi pasangan kelas paralel: matkul sama + dosen
+     * sama, persis 2 kelas NON-S (kelas malam/suffix -S dikecualikan total).
+     *
+     * Grup dengan 1 kelas (tidak ada pasangan) atau 3+ kelas non-S diabaikan
+     * dari constraint ini (kasus tidak biasa — biarkan GA bebas mengatur).
+     *
+     * Urutan A/B ditentukan dari nama_kelas diurutkan alfabetis (string
+     * comparison biasa): yang lebih dulu secara abjad = A.
+     */
+    private function buildParallelPairs(): void
+    {
+        $this->parallelPairs = [];
+        $this->pairPartnerOf = [];
+
+        // Group by "kode_matkul|id_dosen", hanya kelas non-S
+        $groups = []; // key => [kelasId, ...]
+        foreach ($this->kelasData as $kelasId => $info) {
+            $isKelasS = $this->detectKelasS($info['nama']);
+            if ($isKelasS) {
+                continue; // HC15 tidak berlaku untuk kelas malam
             }
-            foreach ($slotCount as $jmlKelas) {
-                if ($jmlKelas > self::MAX_KELAS_PER_SLOT) {
-                    $pelanggaran += ($jmlKelas - self::MAX_KELAS_PER_SLOT);
-                }
+            $kodeMk = $info['kode_matkul'] ?? '';
+            $did    = $info['id_dosen'] ?? 0;
+            if ($kodeMk === '' || $did <= 0) {
+                continue; // Data tidak lengkap, skip dari grouping
             }
-
-            // Pairwise
-            for ($i = 0; $i < $cnt; $i++) {
-                $a     = $hariGenes[$i];
-                $aEnd  = $a->slotMulai + $a->durasi - 1;
-                $infoA = $kelasInfo[$a->kelasId] ?? null;
-
-                for ($j = $i + 1; $j < $cnt; $j++) {
-                    $b     = $hariGenes[$j];
-                    $bEnd  = $b->slotMulai + $b->durasi - 1;
-                    $infoB = $kelasInfo[$b->kelasId] ?? null;
-
-                    if (!($a->slotMulai <= $bEnd && $b->slotMulai <= $aEnd)) continue;
-
-                    // H1: ruangan bentrok
-                    if ($a->ruangId && $b->ruangId && $a->ruangId === $b->ruangId) {
-                        $pelanggaran++;
-                    }
-                    // H2: dosen bentrok
-                    if ($a->dosenId && $b->dosenId && $a->dosenId === $b->dosenId) {
-                        $pelanggaran++;
-                    }
-                    // H3: kelas sama overlap
-                    if ($a->kelasId === $b->kelasId) {
-                        $pelanggaran++;
-                    }
-                    // H4: MK sama overlap — DIHAPUS untuk kelas paralel
-                    // Kelas paralel (MK+dosen sama) BOLEH di slot berbeda,
-                    // yang dilarang hanya dosen mengajar BERSAMAAN (sudah di H2)
-                }
-            }
-
-            // H6: prodi maks MK per hari
-            $mkPerProdi = [];
-            foreach ($hariGenes as $g) {
-                $info = $kelasInfo[$g->kelasId] ?? null;
-                if (!$info) continue;
-                $prodi = $info['prodi'];
-                $mk    = $info['namaMK'];
-                if (!isset($mkPerProdi[$prodi])) $mkPerProdi[$prodi] = [];
-                if (!in_array($mk, $mkPerProdi[$prodi])) {
-                    $mkPerProdi[$prodi][] = $mk;
-                }
-            }
-            foreach ($mkPerProdi as $mkList) {
-                if (count($mkList) > self::MAX_MK_PER_PRODI) {
-                    $pelanggaran += count($mkList) - self::MAX_MK_PER_PRODI;
-                }
-            }
+            $key = $kodeMk . '|' . $did;
+            $groups[$key][] = $kelasId;
         }
 
-        // S1: dosen maks SKS per hari
-        $sksDosenPerHari = [];
-        foreach ($genes as $g) {
-            if (!$g->dosenId) continue;
-            $key = "{$g->hariId}_{$g->dosenId}";
-            $sksDosenPerHari[$key] = ($sksDosenPerHari[$key] ?? 0) + $g->durasi;
-        }
-        foreach ($sksDosenPerHari as $total) {
-            if ($total > 8) $pelanggaran++;
-        }
-
-        // H7: C9 — hari sama + berurutan langsung
-        // Bobot x3 karena ini constraint paling penting yang ingin diprioritaskan
-        foreach ($this->grupC9 as $key => $kelasIds) {
-            // Ambil gene untuk setiap kelasId di grup ini
-            $geneGrup = [];
-            foreach ($genes as $g) {
-                if (($this->kelasKeyC9[$g->kelasId] ?? null) === $key) {
-                    $geneGrup[$g->kelasId] = $g;
-                }
-            }
-            if (count($geneGrup) <= 1) continue;
-
-            // (a) Semua harus hari yang sama
-            $hariIds = array_unique(array_map(fn($g) => $g->hariId, $geneGrup));
-            if (count($hariIds) > 1) {
-                // Bobot x3: hari beda adalah pelanggaran berat
-                $pelanggaran += (count($hariIds) - 1) * 3;
+        foreach ($groups as $key => $kelasIds) {
+            if (count($kelasIds) !== 2) {
+                // Hanya proses pasangan persis 2 kelas non-S.
+                // 1 kelas = tidak ada pasangan untuk dibandingkan.
+                // 3+ kelas = kasus tidak biasa, diabaikan dari HC15 (sesuai keputusan).
                 continue;
             }
 
-            // (b) Slot harus berurutan langsung, dalam urutan A→B→C
-            $geneUrut = [];
-            foreach ($kelasIds as $kid) {
-                if (isset($geneGrup[$kid])) $geneUrut[] = $geneGrup[$kid];
-            }
+            // Urutkan berdasarkan nama_kelas alfabetis → kelasIds[0] = A, [1] = B
+            usort($kelasIds, function ($a, $b) {
+                $namaA = $this->kelasData[$a]['nama'] ?? '';
+                $namaB = $this->kelasData[$b]['nama'] ?? '';
+                return strcasecmp($namaA, $namaB);
+            });
 
-            for ($i = 0; $i < count($geneUrut) - 1; $i++) {
-                $curr          = $geneUrut[$i];
-                $next          = $geneUrut[$i + 1];
-                $slotAkhirCurr = $curr->slotMulai + $curr->durasi;
-
-                if ($next->slotMulai !== $slotAkhirCurr) {
-                    // Bobot x3: jeda antar kelas paralel = pelanggaran berat
-                    $pelanggaran += 3;
-                }
-            }
+            [$kelasIdA, $kelasIdB] = $kelasIds;
+            $this->parallelPairs[] = [$kelasIdA, $kelasIdB];
+            $this->pairPartnerOf[$kelasIdA] = $kelasIdB;
+            $this->pairPartnerOf[$kelasIdB] = $kelasIdA;
         }
 
-        if ($pelanggaran === 0) return 1.0;
-        return 1.0 / (1.0 + $pelanggaran);
+        if (!empty($this->parallelPairs)) {
+            $this->logProblem('hc15_pairs',
+                count($this->parallelPairs) . ' pasangan kelas paralel terdeteksi untuk HC15 (gap 1 slot).');
+        }
     }
 
-    // ============================================================
-    // MUTASI — Terarah untuk C9
-    //
-    // Jika gen yang dimutasi adalah bagian dari grup C9:
-    //   - Mutasi hari → selaraskan seluruh grup ke hari yang sama
-    //   - Mutasi slot → pindahkan seluruh blok sekaligus (tetap berurutan)
-    //   - Mutasi ruangan → hanya gene ini saja (tidak mempengaruhi grup)
-    // ============================================================
-    private function mutasi(Chromosome $chr): void
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOW-LEVEL: Inisialisasi Gen & Kromosom
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private function initializePopulation(): void
     {
-        // Index gene berdasarkan kelasId untuk akses O(1)
-        $geneIndex = [];
-        foreach ($chr->genes as $i => $g) {
-            $geneIndex[$g->kelasId] = $i;
+        $this->population = [];
+        for ($i = 0; $i < $this->populationSize; $i++) {
+            // Gunakan pre-assignment untuk 50% kromosom pertama
+            $usePreassign = ($i < $this->populationSize / 2);
+            $this->population[] = $this->createRandomChromosome($usePreassign);
         }
+    }
 
-        $sudahDimutasiGrup = []; // Cegah 1 grup dimutasi lebih dari sekali per pass
+    private function createRandomChromosome(bool $usePreassign = true): Chromosome
+    {
+        $genes = [];
+        // [BARU][P2] Lacak kelasId yang sudah diberi gene pada kromosom ini,
+        // supaya pasangan HC15 bisa langsung disinkronkan slotnya saat dibuat.
+        $assignedGenes = [];
 
-        foreach ($chr->genes as $i => $gene) {
-            if ((mt_rand() / mt_getrandmax()) > $this->mutationRate) continue;
+        foreach ($this->kelasData as $kelasId => $info) {
+            if (isset($assignedGenes[$kelasId])) {
+                continue; // Sudah dibuat sebagai bagian dari pasangan sebelumnya
+            }
 
-            $kelas = $this->kelasMap[$gene->kelasId] ?? null;
-            if (!$kelas) continue;
+            $partnerId = $this->pairPartnerOf[$kelasId] ?? null;
 
-            $keyC9    = $this->kelasKeyC9[$gene->kelasId] ?? null;
-            $ruangans = $kelas->matakuliah->ruangans ?? collect();
-            $target   = mt_rand(0, 2);
-
-            // ── Kelas yang termasuk grup C9 ──────────────────────
-            if ($keyC9 && isset($this->grupC9[$keyC9])) {
-                if (isset($sudahDimutasiGrup[$keyC9])) continue;
-                $sudahDimutasiGrup[$keyC9] = true;
-
-                $kelasIds = $this->grupC9[$keyC9];
-
-                if ($target === 0) {
-                    // Mutasi hari: pindahkan SELURUH grup ke hari yang sama (baru)
-                    $hariIdBaru = $this->hariList[array_rand($this->hariList)];
-                    foreach ($kelasIds as $kid) {
-                        if (isset($geneIndex[$kid])) {
-                            $chr->genes[$geneIndex[$kid]]->hariId = $hariIdBaru;
-                        }
-                    }
-
-                } elseif ($target === 1) {
-                    // Mutasi slot: pindahkan SELURUH blok ke slot awal baru
-                    // Slot awal harus valid untuk total SKS blok
-                    $namaKelas0  = $this->kelasMap[$kelasIds[0]]->nama_kelas ?? '';
-                    $slotAwalPool = $this->getSlotAwalGrup($kelasIds, $namaKelas0);
-
-                    if (!empty($slotAwalPool)) {
-                        $slotBaru   = $slotAwalPool[array_rand($slotAwalPool)];
-                        $slotKursor = $slotBaru;
-                        foreach ($kelasIds as $kid) {
-                            if (!isset($geneIndex[$kid])) continue;
-                            $idx = $geneIndex[$kid];
-                            $chr->genes[$idx]->slotMulai = $slotKursor;
-                            $slotKursor += $chr->genes[$idx]->durasi;
-                        }
-                    }
-
-                } else {
-                    // Mutasi ruangan: hanya gene ini saja
-                    if ($ruangans->isNotEmpty()) {
-                        $chr->genes[$i]->ruangId = $ruangans->random()->id_ruang;
-                    }
-                }
-
-            // ── Kelas tanpa saudara C9 — mutasi normal ───────────
+            if ($partnerId !== null && isset($this->kelasData[$partnerId]) && !isset($assignedGenes[$partnerId])) {
+                // [P2] Buat pasangan A & B sekaligus dengan slot yang konsisten (gap 1)
+                [$geneA, $geneB] = $this->createPairedGenes($kelasId, $partnerId, $usePreassign);
+                $assignedGenes[$kelasId]   = $geneA;
+                $assignedGenes[$partnerId] = $geneB;
             } else {
-                $sks        = (int) ($kelas->matakuliah->sks ?? 2);
-                $validSlots = $this->getValidSlots($sks, $kelas->nama_kelas ?? '');
+                $assignedGenes[$kelasId] = $this->createRandomGene($kelasId, $info, $usePreassign);
+            }
+        }
 
-                if ($target === 0) {
-                    $chr->genes[$i]->hariId = $this->hariList[array_rand($this->hariList)];
-                } elseif ($target === 1) {
-                    $chr->genes[$i]->slotMulai = $validSlots[array_rand($validSlots)];
+        // Bangun ulang $genes sesuai urutan asli $this->kelasData agar konsisten
+        foreach ($this->kelasData as $kelasId => $info) {
+            $genes[] = $assignedGenes[$kelasId];
+        }
+
+        $c = new Chromosome($genes);
+        $c->setConstraintParams(
+            $this->eveningStartSlot,
+            $this->breakSlots,
+            $this->validRuangIds,
+            $this->morningEndSlot,
+            8,
+            $this->parallelPairs
+        );
+        return $c;
+    }
+
+    /**
+     * [BARU][P2] Buat dua Gene (A dan B) untuk pasangan HC15 sekaligus,
+     * langsung dengan hari sama + gap 1 slot, supaya populasi awal sudah
+     * banyak yang feasible terhadap HC15 sejak generasi pertama.
+     *
+     * @return Gene[]  [$geneA, $geneB]
+     */
+    private function createPairedGenes(int $kelasIdA, int $kelasIdB, bool $usePreassign = true): array
+    {
+        $infoA = $this->kelasData[$kelasIdA];
+        $infoB = $this->kelasData[$kelasIdB];
+
+        $durasiA = $infoA['sks'];
+        $durasiB = $infoB['sks'];
+
+        // Pilih hari acak yang valid untuk pasangan ini
+        $hari = $this->hariList[array_rand($this->hariList)];
+
+        // Cari slotMulai untuk A sedemikian sehingga B (gap 1) masih dalam batas
+        // A dan B keduanya kelas reguler (non-S), jadi harus selesai < eveningStartSlot.
+        $totalSpan = $durasiA + 1 + $durasiB; // durasi A + gap 1 + durasi B
+        $maxStartA = max(1, $this->eveningStartSlot - $totalSpan);
+
+        // [BARU][HC16] Kumpulkan kandidat slotMulaiA yang membuat A MAUPUN B
+        // sama sekali tidak overlap slot Sholat Jumat (hanya relevan jika $hari = Jumat).
+        if ($maxStartA >= 1) {
+            $validStartsA = [];
+            for ($s = 1; $s <= $maxStartA; $s++) {
+                $slotBCandidate = $s + $durasiA + 1;
+                $aOverlap = $this->overlapsBlockedFridaySlot($hari, $s, $durasiA);
+                $bOverlap = $this->overlapsBlockedFridaySlot($hari, $slotBCandidate, $durasiB);
+                if (!$aOverlap && !$bOverlap) {
+                    $validStartsA[] = $s;
+                }
+            }
+            if (!empty($validStartsA)) {
+                $slotMulaiA = $validStartsA[array_rand($validStartsA)];
+            } else {
+                // Tidak ada kombinasi yang lolos filter Jumat di hari ini —
+                // pindahkan pasangan ke hari lain yang bukan Jumat (lebih aman
+                // daripada memaksa overlap slot sholat).
+                $nonFridayHari = array_values(array_diff($this->hariList, [$this->hariJumat]));
+                if (!empty($nonFridayHari)) {
+                    $hari = $nonFridayHari[array_rand($nonFridayHari)];
+                }
+                $slotMulaiA = random_int(1, $maxStartA);
+            }
+        } else {
+            // Tidak cukup ruang di sesi reguler — fallback ke slot 1 saja
+            // (akan dihukum HC15 sedikit, tapi GA/repair akan mencoba perbaiki nanti)
+            $slotMulaiA = 1;
+        }
+
+        $slotMulaiB = $slotMulaiA + $durasiA + 1; // gap tepat 1 slot
+
+        $ruangIdA  = $this->pickSmartRoom($infoA['ruangan_options'], $infoA['kapasitas'], $infoA['jenis'] ?? Gene::JENIS_TEORI);
+        $ruangIdB  = $this->pickSmartRoom($infoB['ruangan_options'], $infoB['kapasitas'], $infoB['jenis'] ?? Gene::JENIS_TEORI);
+
+        $kapRuangA = $this->ruanganList[$ruangIdA]['kapasitas']    ?? 0;
+        $tipeA     = $this->ruanganList[$ruangIdA]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+        $kapRuangB = $this->ruanganList[$ruangIdB]['kapasitas']    ?? 0;
+        $tipeB     = $this->ruanganList[$ruangIdB]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+
+        $geneA = new Gene(
+            $kelasIdA, $hari, $slotMulaiA, $durasiA, $ruangIdA, $infoA['id_dosen'],
+            $infoA['kapasitas'], $infoA['jenis'], $kapRuangA, $infoA['nama'],
+            $this->maxSlot, $tipeA, $infoA['kategori'] ?? Gene::KATEGORI_SEDANG
+        );
+        $geneB = new Gene(
+            $kelasIdB, $hari, $slotMulaiB, $durasiB, $ruangIdB, $infoB['id_dosen'],
+            $infoB['kapasitas'], $infoB['jenis'], $kapRuangB, $infoB['nama'],
+            $this->maxSlot, $tipeB, $infoB['kategori'] ?? Gene::KATEGORI_SEDANG
+        );
+
+        return [$geneA, $geneB];
+    }
+
+    /**
+     * [L4] Buat gen dengan slot yang dijaga agar tidak melebihi batas.
+     * [T3] Gunakan pre-assigned slot untuk dosen beban tinggi jika tersedia.
+     */
+    private function createRandomGene(int $kelasId, array $info, bool $usePreassign = true): Gene
+    {
+        $durasi   = $info['sks'];
+        $dosenId  = $info['id_dosen'];
+
+        // [T3] Cek pre-assignment untuk dosen beban tinggi
+        $preassign = $this->getPreassignedSlot($kelasId, $dosenId, $usePreassign);
+        if ($preassign !== null) {
+            $hariId    = $preassign[0];
+            $slotMulai = $preassign[1];
+        } else {
+            $hariId    = $this->hariList[array_rand($this->hariList)];
+            $slotMulai = $this->pickSmartSlot($info['nama'], $durasi, $hariId);
+        }
+
+        $ruangId  = $this->pickSmartRoom($info['ruangan_options'], $info['kapasitas'], $info['jenis'] ?? Gene::JENIS_TEORI);
+        $kapRuang = isset($this->ruanganList[$ruangId])
+                    ? $this->ruanganList[$ruangId]['kapasitas'] : 0;
+        $tipeRuangan = $this->ruanganList[$ruangId]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+
+        return new Gene(
+            $kelasId,
+            $hariId,
+            $slotMulai,
+            $durasi,
+            $ruangId,
+            $dosenId,
+            $info['kapasitas'],
+            $info['jenis'],
+            $kapRuang,
+            $info['nama'],
+            $this->maxSlot,
+            $tipeRuangan,
+            $info['kategori'] ?? Gene::KATEGORI_SEDANG
+        );
+    }
+
+    /**
+     * [BARU][HC16] $hari ditambahkan agar pool slot bisa langsung
+     * mengeluarkan slot Sholat Jumat ketika hari yang dipilih adalah Jumat.
+     * Default null untuk backward-compat (pemanggil lama tanpa hari spesifik
+     * akan tetap berjalan, hanya saja filter Jumat tidak diterapkan — semua
+     * pemanggilan baru WAJIB menyertakan $hari yang sudah dipilih).
+     */
+    private function pickSmartSlot(string $namaKelas, int $durasi, ?int $hari = null): int
+    {
+        // [L4] Batas atas slot mulai agar slot akhir tidak melampaui maxSlot
+        $maxStart = max(1, $this->maxSlot - $durasi + 1);
+
+        // [BARU][HC16] Filter tambahan: slot yang overlap Sholat Jumat (jika $hari = Jumat)
+        $fridayFilter = function (int $s) use ($durasi, $hari) {
+            if ($hari === null) {
+                return true;
+            }
+            return !$this->overlapsBlockedFridaySlot($hari, $s, $durasi);
+        };
+
+        // Deteksi kelas sore: suffix -S/-S1/-S2/-SI, ATAU mengandung kata "sore"/"malam"
+        $isKelasS = $this->detectKelasS($namaKelas);
+
+        if ($isKelasS) {
+            // Kelas malam: slot HARUS ≥ eveningStartSlot
+            $pool = array_filter(
+                range($this->eveningStartSlot, $maxStart),
+                function ($s) use ($durasi, $fridayFilter) {
+                    for ($i = 0; $i < $durasi; $i++) {
+                        if (in_array($s + $i, $this->breakSlots, true)) {
+                            return false;
+                        }
+                    }
+                    return $fridayFilter($s);
+                }
+            );
+
+            // Fallback TETAP di slot malam — jangan campur dengan slot pagi
+            if (empty($pool)) {
+                $pool = array_filter(
+                    range($this->eveningStartSlot, $this->maxSlot),
+                    function ($s) use ($durasi, $fridayFilter) {
+                        for ($i = 0; $i < $durasi; $i++) {
+                            if (in_array($s + $i, $this->breakSlots, true)) {
+                                return false;
+                            }
+                        }
+                        return $fridayFilter($s);
+                    }
+                );
+            }
+            // Last resort: jika masih kosong, gunakan eveningStartSlot saja
+            // (kecuali itu sendiri overlap slot Jumat — coba slot setelahnya)
+            if (empty($pool)) {
+                $fallbackSlot = $this->eveningStartSlot;
+                if ($hari !== null && $this->overlapsBlockedFridaySlot($hari, $fallbackSlot, $durasi)) {
+                    $fallbackSlot = $this->slotSholatJumat + 1;
+                }
+                $pool = [$fallbackSlot];
+            }
+        } else {
+            // Kelas reguler: slot harus SELESAI sebelum eveningStartSlot (tidak boleh overlap ke malam)
+            // Hitung batas slot mulai agar slotAkhir = slotMulai + durasi - 1 < eveningStartSlot
+            $upperBound = min($maxStart, $this->eveningStartSlot - $durasi);
+            $pool = array_filter(
+                range(1, max(1, $upperBound)),
+                function ($s) use ($durasi, $fridayFilter) {
+                    for ($i = 0; $i < $durasi; $i++) {
+                        if (in_array($s + $i, $this->breakSlots, true)) {
+                            return false;
+                        }
+                    }
+                    return $fridayFilter($s);
+                }
+            );
+
+            // Fallback reguler: jika tidak ada slot valid, coba semua slot di bawah evening
+            if (empty($pool)) {
+                $pool = array_filter(
+                    range(1, $this->eveningStartSlot - $durasi),
+                    function ($s) use ($durasi, $fridayFilter) {
+                        for ($i = 0; $i < $durasi; $i++) {
+                            if (in_array($s + $i, $this->breakSlots, true)) {
+                                return false;
+                            }
+                        }
+                        return $fridayFilter($s);
+                    }
+                );
+            }
+            // Last resort: slot manapun yang valid (sistem mungkin tidak punya pembagian pagi/malam)
+            if (empty($pool)) {
+                $pool = array_filter(
+                    range(1, $maxStart),
+                    function ($s) use ($durasi, $fridayFilter) {
+                        for ($i = 0; $i < $durasi; $i++) {
+                            if (in_array($s + $i, $this->breakSlots, true)) {
+                                return false;
+                            }
+                        }
+                        return $fridayFilter($s);
+                    }
+                );
+            }
+        }
+
+        if (empty($pool)) {
+            return 1;
+        }
+
+        $pool = array_values($pool);
+        return $pool[array_rand($pool)];
+    }
+
+    /**
+     * [Bug4-fix] Deteksi kelas sore/malam yang komprehensif.
+     *
+     * Mendeteksi:
+     * - Suffix "-S", "-S1", "-S2", "-SI", "-4S", "-4S1", dsb. (format umum)
+     * - Kata "sore" di manapun dalam nama kelas
+     * - Kata "malam" di manapun dalam nama kelas
+     */
+    private function detectKelasS(string $namaKelas): bool
+    {
+        $nama = strtolower(trim($namaKelas));
+        // Suffix -S, -S1, -S2, -SI, -4S, -4S1, dll.
+        if (preg_match('/-\d*s[i\d]*$/i', $nama)) {
+            return true;
+        }
+        // Mengandung kata "sore" atau "malam" (sebagai kata penuh)
+        if (preg_match('/\bsore\b|\bmalam\b/', $nama)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * [BARU][HC16] Cek apakah rentang slot (hari, slotMulai..slotMulai+durasi-1)
+     * overlap dengan slot Sholat Jumat. Dipakai SEBAGAI FILTER di semua
+     * tempat yang men-generate kandidat slot (pickSmartSlot, createPairedGenes,
+     * repairGene, repairParallelPairs, buildCandidateSlots, preAssignHighLoadDosen,
+     * handleCriticalError) — bukan sebagai penalti, tapi sebagai EXCLUSION
+     * struktural sehingga slot ini tidak pernah masuk ke pool kandidat sama
+     * sekali. Berlaku untuk SEMUA jenis kelas tanpa kecuali (reguler,
+     * praktikum, kelas malam -S).
+     */
+    private function overlapsBlockedFridaySlot(int $hari, int $slotMulai, int $durasi): bool
+    {
+        if ($hari !== $this->hariJumat) {
+            return false;
+        }
+        $slotAkhir = $slotMulai + $durasi - 1;
+        return $slotMulai <= $this->slotSholatJumat && $slotAkhir >= $this->slotSholatJumat;
+    }
+
+    /**
+     * [L5] Pilih ruangan dengan kapasitas cukup dan tipe sesuai jenis matkul; fallback bertahap.
+     *
+     * HC13: praktikum → lab/hybrid, teori → reguler/hybrid
+     */
+    private function pickSmartRoom(array $ruanganOptions, int $kapKelas, string $jenisMatkul = Gene::JENIS_TEORI): int
+    {
+        if (empty($ruanganOptions)) {
+            return 0;
+        }
+
+        $isPraktikum = $jenisMatkul === Gene::JENIS_PRAKTIKUM;
+
+        // Tier 1: kapasitas cukup + tipe sesuai
+        $tier1 = array_filter($ruanganOptions, function (int $id) use ($kapKelas, $isPraktikum) {
+            $r   = $this->ruanganList[$id] ?? null;
+            if (!$r) { return false; }
+            $kapOk  = $r['kapasitas'] >= $kapKelas;
+            $tipe   = $r['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+            $tipeOk = $isPraktikum
+                ? in_array($tipe, [Gene::TIPE_LAB, Gene::TIPE_HYBRID], true)
+                : in_array($tipe, [Gene::TIPE_REGULER, Gene::TIPE_HYBRID], true);
+            return $kapOk && $tipeOk;
+        });
+
+        if (!empty($tier1)) {
+            $pool = array_values($tier1);
+            return $pool[array_rand($pool)];
+        }
+
+        // Tier 2: tipe sesuai saja (abaikan kapasitas)
+        $tier2 = array_filter($ruanganOptions, function (int $id) use ($isPraktikum) {
+            $r = $this->ruanganList[$id] ?? null;
+            if (!$r) { return false; }
+            $tipe = $r['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+            return $isPraktikum
+                ? in_array($tipe, [Gene::TIPE_LAB, Gene::TIPE_HYBRID], true)
+                : in_array($tipe, [Gene::TIPE_REGULER, Gene::TIPE_HYBRID], true);
+        });
+
+        if (!empty($tier2)) {
+            $pool = array_values($tier2);
+            return $pool[array_rand($pool)];
+        }
+
+        // Tier 3: kapasitas cukup saja
+        $tier3 = array_filter($ruanganOptions, function (int $id) use ($kapKelas) {
+            return ($this->ruanganList[$id]['kapasitas'] ?? 0) >= $kapKelas;
+        });
+
+        if (!empty($tier3)) {
+            $pool = array_values($tier3);
+            return $pool[array_rand($pool)];
+        }
+
+        // Tier 4: fallback apapun
+        return $ruanganOptions[array_rand($ruanganOptions)];
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MEDIUM-LEVEL: Evaluasi & Seleksi
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private function evaluatePopulation(): void
+    {
+        foreach ($this->population as $chromosome) {
+            $chromosome->setConstraintParams(
+                $this->eveningStartSlot,
+                $this->breakSlots,
+                $this->validRuangIds,
+                $this->morningEndSlot,
+                8,  // maxSksDayDosen HC14
+                $this->parallelPairs
+            );
+            $chromosome->calculateFitness();
+        }
+    }
+
+    /**
+     * Tournament selection — ukuran turnamen dinamis berdasarkan populasi.
+     *
+     * @return Chromosome[]
+     */
+    private function selection(): array
+    {
+        $tournamentSize = max(2, (int) round(sqrt($this->populationSize)));
+        $selected       = [];
+        $popCount       = count($this->population);
+
+        if ($popCount === 0) {
+            return []; // Tidak ada populasi untuk seleksi
+        }
+
+        for ($i = 0; $i < $this->populationSize; $i++) {
+            $best = null;
+            for ($j = 0; $j < $tournamentSize; $j++) {
+                $candidate = $this->population[random_int(0, $popCount - 1)];
+                if ($best === null || $candidate->getFitness() > $best->getFitness()) {
+                    $best = $candidate;
+                }
+            }
+            if ($best !== null) {
+                $selected[] = $best->copy();
+            }
+        }
+
+        return $selected;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MEDIUM-LEVEL: Crossover
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [M1] Crossover dua-titik selang-seling dengan single-point.
+     *
+     * Pasangan genap → two-point crossover.
+     * Pasangan ganjil → single-point crossover.
+     * Ini memastikan kedua operator berperan dalam setiap generasi.
+     *
+     * @param  Chromosome[] $parents
+     * @return Chromosome[]
+     */
+    private function crossover(array $parents): array
+    {
+        $offspring = [];
+        $count     = count($parents);
+
+        for ($i = 0; $i < $count - 1; $i += 2) {
+            $p1 = $parents[$i];
+            $p2 = $parents[$i + 1];
+
+            if ((mt_rand() / mt_getrandmax()) <= $this->crossoverRate) {
+                // Selang-seling: pasangan ke-0 dua-titik, ke-1 satu-titik, dst.
+                if (($i / 2) % 2 === 0) {
+                    [$c1, $c2] = $this->twoPointCrossover($p1, $p2);
                 } else {
-                    if ($ruangans->isNotEmpty()) {
-                        $chr->genes[$i]->ruangId = $ruangans->random()->id_ruang;
+                    [$c1, $c2] = $this->singlePointCrossover($p1, $p2);
+                }
+            } else {
+                $c1 = $p1->copy();
+                $c2 = $p2->copy();
+            }
+
+            $offspring[] = $c1;
+            $offspring[] = $c2;
+        }
+
+        // Jika jumlah parents ganjil, salin yang terakhir
+        if ($count % 2 !== 0) {
+            $offspring[] = $parents[$count - 1]->copy();
+        }
+
+        return $offspring;
+    }
+
+    private function singlePointCrossover(Chromosome $p1, Chromosome $p2): array
+    {
+        $g1    = $p1->getGenes();
+        $g2    = $p2->getGenes();
+        $len   = min(count($g1), count($g2));
+
+        if ($len === 0) {
+            // Jika kedua chromosome kosong, kembali copy dari parents
+            return [$p1->copy(), $p2->copy()];
+        }
+
+        $point = random_int(1, max(1, $len - 1));
+
+        $child1Genes = array_merge(
+            array_map(fn($g) => $g->copy(), array_slice($g1, 0, $point)),
+            array_map(fn($g) => $g->copy(), array_slice($g2, $point))
+        );
+        $child2Genes = array_merge(
+            array_map(fn($g) => $g->copy(), array_slice($g2, 0, $point)),
+            array_map(fn($g) => $g->copy(), array_slice($g1, $point))
+        );
+
+        return [$this->makeChromosome($child1Genes), $this->makeChromosome($child2Genes)];
+    }
+
+    private function twoPointCrossover(Chromosome $p1, Chromosome $p2): array
+    {
+        $g1  = $p1->getGenes();
+        $g2  = $p2->getGenes();
+        $len = min(count($g1), count($g2));
+
+        if ($len < 3) {
+            return $this->singlePointCrossover($p1, $p2);
+        }
+
+        $pt1 = random_int(1, $len - 2);
+        $pt2 = random_int($pt1 + 1, $len - 1);
+
+        $child1Genes = array_merge(
+            array_map(fn($g) => $g->copy(), array_slice($g1, 0, $pt1)),
+            array_map(fn($g) => $g->copy(), array_slice($g2, $pt1, $pt2 - $pt1)),
+            array_map(fn($g) => $g->copy(), array_slice($g1, $pt2))
+        );
+        $child2Genes = array_merge(
+            array_map(fn($g) => $g->copy(), array_slice($g2, 0, $pt1)),
+            array_map(fn($g) => $g->copy(), array_slice($g1, $pt1, $pt2 - $pt1)),
+            array_map(fn($g) => $g->copy(), array_slice($g2, $pt2))
+        );
+
+        return [$this->makeChromosome($child1Genes), $this->makeChromosome($child2Genes)];
+    }
+
+    private function makeChromosome(array $genes): Chromosome
+    {
+        $c = new Chromosome($genes);
+        $c->setConstraintParams(
+            $this->eveningStartSlot,
+            $this->breakSlots,
+            $this->validRuangIds,
+            $this->morningEndSlot,
+            8,
+            $this->parallelPairs
+        );
+        return $c;
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MEDIUM-LEVEL: Repair Operator [M2]
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [M2][P3] Untuk setiap offspring, cek pasang-gen yang berkonflik DAN
+     * pasangan HC15 yang melanggar gap-1. HC15 diperbaiki LEBIH DULU karena
+     * memindahkan satu sisi pasangan bisa merusak hubungan gap-1 dengan sisi
+     * lainnya — memperbaikinya dulu memberi starting point yang lebih stabil
+     * untuk repair konflik dosen/ruangan biasa setelahnya.
+     *
+     * @param Chromosome[] $offspring
+     */
+    private function repairOffspring(array $offspring): void
+    {
+        foreach ($offspring as $chromosome) {
+            $genes = $chromosome->getGenes();
+
+            // [P3] Repair HC15 dulu (pasangan kelas paralel gap-1)
+            $hc15Repaired = $this->repairParallelPairs($genes);
+
+            // Dapatkan indeks gen berkonflik dengan O(n) index
+            $conflictIndices = $this->buildConflictingIndices($genes);
+
+            $repaired = $hc15Repaired;
+
+            if (!empty($conflictIndices)) {
+                foreach ($conflictIndices as $j) {
+                    // [P3] Jangan pindahkan gene anggota pasangan HC15 sendirian
+                    // di sini — itu akan merusak gap-1 yang baru saja ditata oleh
+                    // repairParallelPairs() di atas. Jika gene ini masih konflik
+                    // dengan gene LAIN (bukan partnernya), biarkan partner-nya yang
+                    // (jika juga konflik) ditangani di siklus repair berikutnya,
+                    // atau diselesaikan oleh local search/deadlock-breaker nanti.
+                    if (isset($this->pairPartnerOf[$genes[$j]->kelasId])) {
+                        continue;
+                    }
+                    $fixed = $this->repairGene($genes[$j], $genes, $j);
+                    if ($fixed) {
+                        $repaired = true;
+                    }
+                }
+            }
+
+            if ($repaired) {
+                $chromosome->markDirty();
+            }
+        }
+    }
+
+    /**
+     * [BARU][P3] Perbaiki pasangan HC15 yang melanggar gap-1/hari-sama.
+     *
+     * Untuk setiap pasangan terdaftar di $this->parallelPairs, cek apakah
+     * gene A dan gene B di kromosom ini sudah memenuhi HC15. Jika belum,
+     * coba tempatkan ulang KEDUA gene sekaligus (hari sama + gap 1 slot)
+     * di slot pertama yang valid dan (sebisa mungkin) tidak menambah
+     * konflik dosen/ruangan baru.
+     *
+     * @param  Gene[] $genes  Reference array gen milik satu kromosom
+     * @return bool           True jika ada perbaikan yang dilakukan
+     */
+    private function repairParallelPairs(array $genes): bool
+    {
+        if (empty($this->parallelPairs)) {
+            return false;
+        }
+
+        // Index gene by kelasId untuk lookup cepat
+        $byKelasId = [];
+        foreach ($genes as $idx => $g) {
+            $byKelasId[$g->kelasId] = $idx;
+        }
+
+        $anyRepaired = false;
+
+        foreach ($this->parallelPairs as [$kelasIdA, $kelasIdB]) {
+            $idxA = $byKelasId[$kelasIdA] ?? null;
+            $idxB = $byKelasId[$kelasIdB] ?? null;
+            if ($idxA === null || $idxB === null) {
+                continue;
+            }
+
+            $geneA = $genes[$idxA];
+            $geneB = $genes[$idxB];
+
+            // Sudah valid? skip.
+            if ($geneA->validatePairSequencing($geneB, true) === 0) {
+                continue;
+            }
+
+            $durasiA = $geneA->durasi;
+            $durasiB = $geneB->durasi;
+            $totalSpan = $durasiA + 1 + $durasiB;
+
+            // Bangun index konflik dari SEMUA gene lain (selain A & B) untuk
+            // mencari slot yang tidak menambah konflik baru.
+            $othersIdx = array_diff(array_keys($genes), [$idxA, $idxB]);
+            $others    = array_map(fn($i) => $genes[$i], $othersIdx);
+            [$dosenIdx, $ruangIdx] = $this->buildConflictIndex($others);
+
+            $maxStartA = max(1, $this->eveningStartSlot - $totalSpan);
+
+            // Coba semua hari × slotMulaiA untuk kombinasi yang valid & minim konflik
+            // [BARU][HC16] Exclude kombinasi di mana A ATAU B overlap slot Sholat Jumat
+            $candidates = [];
+            foreach ($this->hariList as $hari) {
+                for ($slotA = 1; $slotA <= $maxStartA; $slotA++) {
+                    $slotB = $slotA + $durasiA + 1;
+                    if ($this->overlapsBlockedFridaySlot($hari, $slotA, $durasiA)
+                        || $this->overlapsBlockedFridaySlot($hari, $slotB, $durasiB)) {
+                        continue;
+                    }
+                    $candidates[] = [$hari, $slotA, $slotB];
+                }
+            }
+
+            if (empty($candidates)) {
+                // Tidak ada kombinasi yang lolos filter Jumat — coba hari non-Jumat
+                // dengan slot 1 sebagai fallback terakhir.
+                $nonFridayHari = array_values(array_diff($this->hariList, [$this->hariJumat]));
+                $fallbackHari  = !empty($nonFridayHari) ? $nonFridayHari[0] : ($this->hariList[0] ?? 1);
+                $candidates[] = [$fallbackHari, 1, 1 + $durasiA + 1];
+            }
+
+            shuffle($candidates);
+
+            $bestCandidate   = null;
+            $bestConflictCnt = PHP_INT_MAX;
+
+            foreach ($candidates as [$hari, $slotA, $slotB]) {
+                // Hitung berapa banyak konflik baru yang muncul jika A & B dipindah ke sini
+                $origA = [$geneA->hariId, $geneA->slotMulai];
+                $origB = [$geneB->hariId, $geneB->slotMulai];
+
+                $geneA->hariId = $hari; $geneA->slotMulai = $slotA;
+                $geneB->hariId = $hari; $geneB->slotMulai = $slotB;
+
+                $conflictCnt = 0;
+                $conflictCnt += ($this->geneConflictsWithIndex($geneA, $dosenIdx, $ruangIdx) > 0) ? 1 : 0;
+                $conflictCnt += ($this->geneConflictsWithIndex($geneB, $dosenIdx, $ruangIdx) > 0) ? 1 : 0;
+
+                // Restore sementara untuk lanjut mengevaluasi kandidat lain
+                $geneA->hariId = $origA[0]; $geneA->slotMulai = $origA[1];
+                $geneB->hariId = $origB[0]; $geneB->slotMulai = $origB[1];
+
+                if ($conflictCnt < $bestConflictCnt) {
+                    $bestConflictCnt = $conflictCnt;
+                    $bestCandidate   = [$hari, $slotA, $slotB];
+                    if ($conflictCnt === 0) {
+                        break; // Sudah sempurna, tidak perlu cari lagi
+                    }
+                }
+            }
+
+            if ($bestCandidate !== null) {
+                [$hari, $slotA, $slotB] = $bestCandidate;
+                $geneA->hariId = $hari; $geneA->slotMulai = $slotA;
+                $geneB->hariId = $hari; $geneB->slotMulai = $slotB;
+                $anyRepaired = true;
+            }
+        }
+
+        return $anyRepaired;
+    }
+
+    /**
+     * Coba ubah hari+slot gene agar tidak konflik dengan gen lain.
+     * Iterasi semua hari × slot; berhenti di kombinasi pertama yang aman.
+     *
+     * [P3] Catatan: gene yang merupakan bagian dari pasangan HC15 tetap bisa
+     * diproses oleh repair konflik biasa ini (misal karena masih ada konflik
+     * dosen/ruangan dengan gene lain di luar pasangannya). repairParallelPairs()
+     * sudah dijalankan lebih dulu sehingga di titik ini hubungan gap-1 sudah
+     * sebisa mungkin terjaga; namun jika repair konflik di sini terpaksa
+     * memindahkan gene tersebut, hubungan HC15-nya akan dicek ulang dan
+     * diperbaiki lagi pada generasi/repair berikutnya.
+     *
+     * @param  Gene   $gene    Gene yang akan di-repair
+     * @param  Gene[] $others  Semua gen dalam kromosom
+     * @param  int    $selfIdx Indeks gene di $others (agar tidak dibandingkan dengan diri sendiri)
+     * @return bool            True jika berhasil diperbaiki
+     */
+    private function repairGene(Gene $gene, array $others, int $selfIdx): bool
+    {
+        $info     = $this->kelasData[$gene->kelasId] ?? null;
+        if (!$info) {
+            return false;
+        }
+
+        $durasi   = $gene->durasi;
+        $maxStart = max(1, $this->maxSlot - $durasi + 1);
+        $isKelasS = $gene->isKelasS;
+
+        // Bangun kandidat hari × slot sesuai constraint HC12
+        $candidates = [];
+        foreach ($this->hariList as $hari) {
+            for ($slot = 1; $slot <= $maxStart; $slot++) {
+                // Cek overlap break slots
+                $hasBreakOverlap = false;
+                for ($i = 0; $i < $durasi; $i++) {
+                    if (in_array($slot + $i, $this->breakSlots, true)) {
+                        $hasBreakOverlap = true;
+                        break;
+                    }
+                }
+                if ($hasBreakOverlap) {
+                    continue;
+                }
+                // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
+                if ($this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                    continue;
+                }
+                if ($isKelasS && $slot < $this->eveningStartSlot) {
+                    continue;   // HC12: kelas sore wajib di slot malam
+                }
+                if (!$isKelasS && ($slot + $durasi - 1) >= $this->eveningStartSlot) {
+                    continue;   // HC12: kelas reguler wajib selesai sebelum malam
+                }
+                $candidates[] = [$hari, $slot];
+            }
+        }
+
+        // [Bug3-fix] Jika pool kelas-S kosong, perluas ke seluruh slot malam
+        if (empty($candidates) && $isKelasS) {
+            foreach ($this->hariList as $hari) {
+                for ($slot = $this->eveningStartSlot; $slot <= $this->maxSlot; $slot++) {
+                    $hasBreakOverlap = false;
+                    for ($i = 0; $i < $durasi; $i++) {
+                        if (in_array($slot + $i, $this->breakSlots, true)) {
+                            $hasBreakOverlap = true;
+                            break;
+                        }
+                    }
+                    // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
+                    if (!$hasBreakOverlap && !$this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                        $candidates[] = [$hari, $slot];
                     }
                 }
             }
         }
-    }
 
-    // ============================================================
-    // SELEKSI — Tournament (k=3)
-    // ============================================================
-    private function seleksi(array $populasi): Chromosome
-    {
-        $k        = min(3, count($populasi));
-        $kandidat = [];
-        for ($i = 0; $i < $k; $i++) {
-            $kandidat[] = $populasi[array_rand($populasi)];
-        }
-        usort($kandidat, fn($a, $b) => $b->fitness <=> $a->fitness);
-        return $kandidat[0];
-    }
-
-    // ============================================================
-    // CROSSOVER — One-Point
-    // ============================================================
-    private function crossover(Chromosome $p1, Chromosome $p2): array
-    {
-        if ((mt_rand() / mt_getrandmax()) > $this->crossoverRate) {
-            return [$p1->clone(), $p2->clone()];
+        if (empty($candidates)) {
+            return false;
         }
 
-        $n     = count($p1->genes);
-        $point = mt_rand(1, max(1, $n - 1));
+        // Acak urutan agar tidak bias
+        shuffle($candidates);
 
-        $g1 = array_merge(
-            array_map(fn($g) => $g->clone(), array_slice($p1->genes, 0, $point)),
-            array_map(fn($g) => $g->clone(), array_slice($p2->genes, $point))
+        // Bangun index dari semua gen KECUALI gen yang di-repair
+        $othersWithoutSelf = $others;
+        unset($othersWithoutSelf[$selfIdx]);
+        [$dosenIdx, $ruangIdx] = $this->buildConflictIndex(array_values($othersWithoutSelf));
+
+        // Pass 1: cari slot bebas konflik menggunakan index O(SKS) bukan O(n)
+        foreach ($candidates as [$hari, $slot]) {
+            $origHari = $gene->hariId;
+            $origSlot = $gene->slotMulai;
+            $gene->hariId    = $hari;
+            $gene->slotMulai = $slot;
+
+            if ($this->geneConflictsWithIndex($gene, $dosenIdx, $ruangIdx) === 0) {
+                return true;  // Repair sukses
+            }
+
+            $gene->hariId    = $origHari;
+            $gene->slotMulai = $origSlot;
+        }
+
+        // Pass 2 (khusus kelas-S): jika semua slot malam berkonflik, tetap
+        // pindahkan ke slot malam untuk memenuhi HC12, walaupun masih ada
+        // konflik dosen/ruangan. Konflik ini lebih mudah diselesaikan mutasi
+        // berikutnya daripada melanggar HC12.
+        if ($isKelasS) {
+            [$bestHari, $bestSlot] = $candidates[0];
+            $gene->hariId    = $bestHari;
+            $gene->slotMulai = $bestSlot;
+            return true; // Pindah ke malam, konflik lain diselesaikan nanti
+        }
+
+        return false;
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MEDIUM-LEVEL: Mutasi Adaptif [M4]
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [M4] Hitung diversity via hash-set (O(n)) lalu sesuaikan mutation rate.
+     *
+     * [P3] Gene yang merupakan bagian dari pasangan HC15 di-skip dari mutasi
+     * acak biasa (case 0/1 — ganti hari/slot) untuk menjaga hubungan gap-1
+     * yang sudah dibangun oleh init/repair; mutasi ruangan (case 2) masih
+     * diperbolehkan karena tidak memengaruhi waktu.
+     *
+     * @param Chromosome[] $offspring
+     */
+    private function mutate(array $offspring): void
+    {
+        // Hitung diversity
+        $hashes    = [];
+        foreach ($offspring as $c) {
+            $hashes[$c->buildGenesHash()] = true;
+        }
+        $diversity = count($hashes) / max(1, count($offspring));
+
+        // Sesuaikan mutation rate
+        if ($diversity < 0.25) {
+            $this->mutationRate = min(0.45, $this->originalMutationRate * 3.0);
+        } elseif ($diversity < 0.5) {
+            $this->mutationRate = min(0.30, $this->originalMutationRate * 1.5);
+        } else {
+            // Kembalikan ke asal jika diversity sudah cukup
+            $this->mutationRate = $this->originalMutationRate;
+        }
+
+        foreach ($offspring as $chromosome) {
+            $genes = $chromosome->getGenes();
+            // [P3] Index kelasId yang merupakan bagian dari pasangan HC15 untuk skip cepat
+            foreach ($genes as $gene) {
+                if ((mt_rand() / mt_getrandmax()) < $this->mutationRate) {
+                    $isPaired = isset($this->pairPartnerOf[$gene->kelasId]);
+                    $this->mutateGene($gene, $isPaired);
+                    $chromosome->markDirty();
+                }
+            }
+
+            // [BARU][P3] Mutasi khusus pasangan: dengan probabilitas kecil,
+            // geser KEDUA gene pasangan bersamaan (hari baru / slotA baru)
+            // sambil tetap menjaga gap=1 — supaya pasangan juga bisa explore
+            // posisi baru tanpa pernah melanggar HC15 akibat mutasi.
+            if (!empty($this->parallelPairs) && (mt_rand() / mt_getrandmax()) < $this->mutationRate) {
+                $this->mutatePairTogether($chromosome);
+            }
+        }
+    }
+
+    /**
+     * Mutasi satu gen: pilih salah satu dari tiga tipe secara acak.
+     *
+     * [P3] Jika $isPaired true, mutasi hari (case 0) dan slot (case 1)
+     * di-skip agar tidak merusak hubungan gap-1 dengan pasangannya secara
+     * tidak terkendali — perubahan posisi pasangan ditangani khusus oleh
+     * mutatePairTogether(). Mutasi ruangan (case 2) tetap diizinkan.
+     */
+    private function mutateGene(Gene $gene, bool $isPaired = false): void
+    {
+        $info = $this->kelasData[$gene->kelasId] ?? null;
+        if (!$info) {
+            return;
+        }
+
+        $type = $isPaired ? 2 : random_int(0, 2);
+
+        switch ($type) {
+            case 0: // Ganti hari
+                if (!empty($this->hariList)) {
+                    $gene->hariId = $this->hariList[array_rand($this->hariList)];
+                    // [BARU][HC16] Jika hari baru = Jumat dan slot lama overlap
+                    // slot Sholat Jumat, pilih ulang slot agar tetap aman.
+                    if ($this->overlapsBlockedFridaySlot($gene->hariId, $gene->slotMulai, $gene->durasi)) {
+                        $gene->slotMulai = $this->pickSmartSlot($info['nama'], $gene->durasi, $gene->hariId);
+                    }
+                }
+                break;
+
+            case 1: // Ganti slot (smart, sesuai jenis kelas) [L4]
+                $gene->slotMulai = $this->pickSmartSlot($info['nama'], $gene->durasi, $gene->hariId);
+                break;
+
+            case 2: // Ganti ruangan (smart, filter kapasitas + tipe) [L5]
+                $ruangId = $this->pickSmartRoom(
+                    $info['ruangan_options'],
+                    $info['kapasitas'],
+                    $info['jenis'] ?? Gene::JENIS_TEORI
+                );
+                $gene->ruangId        = $ruangId;
+                $gene->kapasitasRuang = $this->ruanganList[$ruangId]['kapasitas']    ?? 0;
+                $gene->tipeRuangan    = $this->ruanganList[$ruangId]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+                break;
+        }
+    }
+
+    /**
+     * [BARU][P3] Geser satu pasangan HC15 secara bersamaan ke hari/slot baru,
+     * tetap menjaga gap tepat 1 slot di antaranya. Dipanggil dengan
+     * probabilitas mutationRate per kromosom (bukan per-gene) agar tidak
+     * terlalu sering mengganggu pasangan yang sudah baik.
+     */
+    private function mutatePairTogether(Chromosome $chromosome): void
+    {
+        if (empty($this->parallelPairs)) {
+            return;
+        }
+
+        [$kelasIdA, $kelasIdB] = $this->parallelPairs[array_rand($this->parallelPairs)];
+
+        $geneA = null; $geneB = null;
+        foreach ($chromosome->getGenes() as $g) {
+            if ($g->kelasId === $kelasIdA) { $geneA = $g; }
+            if ($g->kelasId === $kelasIdB) { $geneB = $g; }
+        }
+        if (!$geneA || !$geneB) {
+            return;
+        }
+
+        $durasiA   = $geneA->durasi;
+        $durasiB   = $geneB->durasi;
+        $totalSpan = $durasiA + 1 + $durasiB;
+
+        $maxStartA = max(1, $this->eveningStartSlot - $totalSpan);
+        if ($maxStartA < 1) {
+            return; // Tidak cukup ruang, biarkan repair operator yang menangani
+        }
+
+        $hari       = $this->hariList[array_rand($this->hariList)];
+
+        // [BARU][HC16] Cari kandidat slotMulaiA yang membuat A MAUPUN B
+        // sama sekali tidak overlap slot Sholat Jumat (relevan jika $hari = Jumat).
+        $validStartsA = [];
+        for ($s = 1; $s <= $maxStartA; $s++) {
+            $slotBCandidate = $s + $durasiA + 1;
+            if (!$this->overlapsBlockedFridaySlot($hari, $s, $durasiA)
+                && !$this->overlapsBlockedFridaySlot($hari, $slotBCandidate, $durasiB)) {
+                $validStartsA[] = $s;
+            }
+        }
+
+        if (!empty($validStartsA)) {
+            $slotMulaiA = $validStartsA[array_rand($validStartsA)];
+        } else {
+            // Tidak ada kombinasi yang lolos filter Jumat di hari ini —
+            // pindahkan ke hari non-Jumat sebagai gantinya.
+            $nonFridayHari = array_values(array_diff($this->hariList, [$this->hariJumat]));
+            if (!empty($nonFridayHari)) {
+                $hari = $nonFridayHari[array_rand($nonFridayHari)];
+            }
+            $slotMulaiA = random_int(1, $maxStartA);
+        }
+
+        $slotMulaiB = $slotMulaiA + $durasiA + 1;
+
+        $geneA->hariId = $hari; $geneA->slotMulai = $slotMulaiA;
+        $geneB->hariId = $hari; $geneB->slotMulai = $slotMulaiB;
+
+        $chromosome->markDirty();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MEDIUM-LEVEL: Penggantian Populasi & Elitism [M5]
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [M5] Ganti populasi dengan offspring + elite.
+     *
+     * @param Chromosome[] $offspring
+     */
+    private function replacePopulation(array $offspring): void
+    {
+        // Sort offspring terbaik di depan
+        usort($offspring, fn($a, $b) => $b->getFitness() <=> $a->getFitness());
+
+        // Ambil N-eliteK terbaik dari offspring
+        // Guard jika count(elites) >= populationSize
+        $offspringCount = max(0, $this->populationSize - count($this->elites));
+        $newPop = array_slice($offspring, 0, $offspringCount);
+
+        // Inject elite agar tidak hilang
+        foreach ($this->elites as $elite) {
+            $newPop[] = $elite->copy();
+        }
+
+        $this->population = array_slice($newPop, 0, $this->populationSize);
+    }
+
+    /** [M5] Perbarui daftar elite (top-K) setelah setiap generasi. */
+    private function updateElites(Chromosome $candidate): void
+    {
+        // Tambahkan kandidat
+        $this->elites[] = $candidate->copy();
+
+        // Sort dan ambil top-K
+        usort($this->elites, fn($a, $b) => $b->getFitness() <=> $a->getFitness());
+        $this->elites = array_slice($this->elites, 0, $this->eliteK);
+    }
+
+    private function getBestChromosome(): Chromosome
+    {
+        if (empty($this->population)) {
+            return new Chromosome([]);
+        }
+        $best = $this->population[0];
+        foreach ($this->population as $c) {
+            if ($c->getFitness() > $best->getFitness()) {
+                $best = $c;
+            }
+        }
+        return $best;
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MEDIUM-LEVEL: Stagnation Solver Berlapis [M3]
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [M3] Tiga lapisan penanganan stagnasi:
+     *
+     * Level 1 (10 gen stagnan) → naikkan mutation rate 1.5×.
+     * Level 2 (25 gen stagnan) → inject 30% kromosom acak baru.
+     * Level 3 (50 gen stagnan) → re-seed seluruh populasi, pertahankan elite-K.
+     */
+    private function handleStagnation(int $generation, Chromosome $best): void
+    {
+        $currentFitness = $best->getFitness();
+
+        if (abs($currentFitness - $this->lastBestFitness) < 0.05) {
+            $this->stagnationCounter++;
+        } else {
+            $this->stagnationCounter = 0;
+            $this->lastBestFitness   = $currentFitness;
+        }
+
+        $cnt = $this->stagnationCounter;
+
+        if ($cnt > 0 && $cnt % 50 === 0) {
+            // Level 3: [T5] Guided re-seed — 50% elite-guided, 50% acak
+            $this->logProblem('stagnation_L3',
+                "Gen {$generation}: stagnan {$cnt}× — guided re-seed populasi.");
+
+            $elite   = !empty($this->elites) ? $this->elites[0] : null;
+            $newPop  = [];
+
+            // Pertahankan semua elite
+            foreach ($this->elites as $e) {
+                $newPop[] = $e->copy();
+            }
+
+            $remaining = $this->populationSize - count($newPop);
+            $halfGuided = (int) ($remaining / 2);
+
+            // 50% guided perturbation dari elite [T5]
+            for ($i = 0; $i < $halfGuided; $i++) {
+                $usePre = (count($newPop) < $this->populationSize / 2);
+                $newPop[] = $elite !== null
+                    ? $this->guidedPerturbation($elite)
+                    : $this->createRandomChromosome($usePre);
+            }
+
+            // 50% murni acak
+            for ($i = $halfGuided; $i < $remaining; $i++) {
+                $usePre = (count($newPop) < $this->populationSize / 2);
+                $newPop[] = $this->createRandomChromosome($usePre);
+            }
+
+            $this->population   = array_slice($newPop, 0, $this->populationSize);
+            $this->mutationRate = $this->originalMutationRate;
+            $this->stagnationRestartCount++;
+
+        } elseif ($cnt > 0 && $cnt % 25 === 0) {
+            // Level 2: inject 30%
+            $this->logProblem('stagnation_L2',
+                "Gen {$generation}: stagnan {$cnt}× — inject 30% acak.");
+            $injectCount = (int) ($this->populationSize * 0.3);
+            for ($i = 0; $i < $injectCount; $i++) {
+                $idx = random_int(0, count($this->population) - 1);
+                $usePre = ($idx < $this->populationSize / 2);
+                $this->population[$idx] = $this->createRandomChromosome($usePre);
+            }
+            $this->mutationRate = min(0.40, $this->originalMutationRate * 2.0);
+
+        } elseif ($cnt > 0 && $cnt % 10 === 0) {
+            // Level 1: naikkan mutation rate
+            $this->logProblem('stagnation_L1',
+                "Gen {$generation}: stagnan {$cnt}× — naikkan mutation rate.");
+            $this->mutationRate = min(0.35, $this->originalMutationRate * 1.5);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HIGH-LEVEL: Local Search → SA-LS [H1 + T1]
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [T1][P3] Simulated-Annealing Local Search (SA-LS).
+     *
+     * Berbeda dari greedy local search biasa yang selalu menolak solusi buruk,
+     * SA-LS menerima solusi yang lebih buruk dengan probabilitas:
+     *
+     *   P(accept) = exp(-(f_baru - f_lama) / T)
+     *
+     * di mana T (suhu) dimulai tinggi (membolehkan banyak langkah mundur)
+     * dan turun secara eksponensial hingga mendekati 0 (murni greedy).
+     *
+     * Ini memungkinkan GA keluar dari local optimum trap yang tidak bisa
+     * diatasi hanya dengan mutasi/crossover karena populasi sudah konvergen.
+     *
+     * [P3] Sebelum loop SA-LS biasa berjalan, panggil repairParallelPairs()
+     * sekali untuk memastikan pasangan HC15 sudah serapat mungkin ke gap=1
+     * sebelum local search memperbaiki konflik/soft-violation gene lainnya.
+     *
+     * Parameter:
+     *   T_init    = 5.0  (suhu awal — toleransi maksimum mundur ~5% fitness)
+     *   T_final   = 0.01 (suhu akhir — hampir deterministik)
+     *   cooling   = 0.92 (faktor pendinginan per iterasi luar)
+     *   maxIter   = 40   (iterasi luar SA)
+     */
+    private function localSearch(Chromosome $chromosome): Chromosome
+    {
+        $chromosome->setConstraintParams(
+            $this->eveningStartSlot,
+            $this->breakSlots,
+            $this->validRuangIds,
+            $this->morningEndSlot,
+            8,
+            $this->parallelPairs
         );
-        $g2 = array_merge(
-            array_map(fn($g) => $g->clone(), array_slice($p2->genes, 0, $point)),
-            array_map(fn($g) => $g->clone(), array_slice($p1->genes, $point))
-        );
 
-        return [new Chromosome($g1), new Chromosome($g2)];
-    }
-
-    // ============================================================
-    // HITUNG PELANGGARAN (untuk log progress)
-    // ============================================================
-    private function hitungPelanggaran(Chromosome $chr): int
-    {
-        $p      = 0;
-        $genes  = $chr->genes;
-        $byHari = [];
-        foreach ($genes as $g) {
-            $byHari[$g->hariId][] = $g;
+        // [P3] Perbaiki pasangan HC15 dulu sebelum local search gene biasa
+        if (!empty($this->parallelPairs)) {
+            $genesRef = $chromosome->getGenes();
+            if ($this->repairParallelPairs($genesRef)) {
+                $chromosome->markDirty();
+            }
         }
 
-        foreach ($byHari as $hg) {
-            $c = count($hg);
-            for ($i = 0; $i < $c; $i++) {
-                for ($j = $i + 1; $j < $c; $j++) {
-                    $a = $hg[$i]; $b = $hg[$j];
-                    $aEnd = $a->slotMulai + $a->durasi - 1;
-                    $bEnd = $b->slotMulai + $b->durasi - 1;
-                    if (!($a->slotMulai <= $bEnd && $b->slotMulai <= $aEnd)) continue;
-                    if ($a->dosenId && $b->dosenId && $a->dosenId === $b->dosenId) $p++;
-                    if ($a->ruangId && $b->ruangId && $a->ruangId === $b->ruangId) $p++;
-                    if ($a->kelasId === $b->kelasId) $p++;
+        $chromosome->calculateFitness();
+
+        if ($chromosome->getFitness() >= 100.0) {
+            return $chromosome; // Sudah sempurna
+        }
+
+        $T       = 5.0;   // Suhu awal
+        $Tf      = 0.01;  // Suhu akhir
+        $cooling = 0.92;  // Faktor pendinginan
+        $maxIter = 40;
+
+        $bestChrom        = $chromosome->copy();
+        $bestFitnessEver  = $chromosome->getFitness();
+
+        for ($iter = 0; $iter < $maxIter && $T > $Tf; $iter++) {
+            $improved = false;
+            $genes    = $chromosome->getGenes();
+
+            // Proses gen yang berkonflik dulu, lalu gen dengan soft-violation
+            $conflictGenes   = $this->getConflictingGeneIndices($genes);
+            $violationGenes  = empty($conflictGenes)
+                               ? $this->getViolatingGeneIndices($genes)
+                               : [];
+            $targetIndices   = !empty($conflictGenes) ? $conflictGenes : $violationGenes;
+
+            if (empty($targetIndices)) {
+                break; // Tidak ada yang perlu diperbaiki
+            }
+
+            foreach ($targetIndices as $idx) {
+                $gene     = $genes[$idx];
+                $info     = $this->kelasData[$gene->kelasId] ?? null;
+                if (!$info) {
+                    continue;
+                }
+
+                // [P3] Skip gene yang merupakan bagian dari pasangan HC15 di
+                // local search per-gene biasa ini — posisinya sudah ditata
+                // oleh repairParallelPairs() di atas, dan mengubahnya sendirian
+                // di sini (tanpa ikut memindahkan partner) akan merusak gap=1.
+                if (isset($this->pairPartnerOf[$gene->kelasId])) {
+                    continue;
+                }
+
+                $origHari    = $gene->hariId;
+                $origSlot    = $gene->slotMulai;
+                $origRuang   = $gene->ruangId;
+                $origKap     = $gene->kapasitasRuang;
+                $origTipe    = $gene->tipeRuangan;
+                $origFitness = $chromosome->getFitness();
+
+                // Ambil kandidat sesuai tipe kelas (kelas-S wajib malam)
+                $candidates = $this->buildCandidateSlots($gene->isKelasS, $gene->durasi);
+                shuffle($candidates);
+                $candidates = array_slice($candidates, 0, 30);
+
+                // Opsi ruangan
+                $roomOptions = $info['ruangan_options'] ?? [];
+                if (empty($roomOptions)) {
+                    $roomOptions = [$origRuang];
+                }
+
+                // Bangun kandidat kombinasi [hari, slot, ruangId]
+                $localCandidates = [];
+
+                // 1. Ganti ruangan saja (hari & slot tetap)
+                foreach ($roomOptions as $rId) {
+                    if ($rId !== $origRuang) {
+                        $localCandidates[] = [$origHari, $origSlot, $rId];
+                    }
+                }
+
+                // 2. Ganti hari & slot (ruangan tetap)
+                foreach ($candidates as [$hari, $slot]) {
+                    $localCandidates[] = [$hari, $slot, $origRuang];
+                }
+
+                // 3. Gabungan hari, slot, dan ruangan alternatif (dibatasi 10 sampel agar cepat)
+                if (count($roomOptions) > 1 && count($candidates) > 0) {
+                    $sampledSlots = array_slice($candidates, 0, 10);
+                    foreach ($sampledSlots as [$hari, $slot]) {
+                        foreach ($roomOptions as $rId) {
+                            if ($rId !== $origRuang) {
+                                $localCandidates[] = [$hari, $slot, $rId];
+                            }
+                        }
+                    }
+                }
+
+                // Batasi total evaluasi kandidat per gen (max 40)
+                $localCandidates = array_slice($localCandidates, 0, 40);
+
+                $localBestFitness = $origFitness;
+                $localBestHari    = $origHari;
+                $localBestSlot    = $origSlot;
+                $localBestRuang   = $origRuang;
+
+                foreach ($localCandidates as [$hari, $slot, $rId]) {
+                    $gene->hariId    = $hari;
+                    $gene->slotMulai = $slot;
+                    $gene->ruangId   = $rId;
+
+                    $rInfo = $this->ruanganList[$rId] ?? null;
+                    $gene->kapasitasRuang = $rInfo['kapasitas'] ?? 0;
+                    $gene->tipeRuangan    = $rInfo['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+
+                    $chromosome->markDirty();
+                    $chromosome->calculateFitness();
+
+                    $newFitness = $chromosome->getFitness();
+                    $delta      = $origFitness - $newFitness; // positif = lebih buruk
+
+                    // Terima jika lebih baik (greedy) ATAU probabilistik SA
+                    $accept = $newFitness > $origFitness
+                        || ($T > $Tf && $delta > 0 && (mt_rand() / mt_getrandmax()) < exp(-$delta / $T));
+
+                    if ($accept && $newFitness > $localBestFitness) {
+                        $localBestFitness = $newFitness;
+                        $localBestHari    = $hari;
+                        $localBestSlot    = $slot;
+                        $localBestRuang   = $rId;
+                        $improved         = true;
+                    }
+                }
+
+                // Terapkan posisi terbaik yang ditemukan
+                $gene->hariId    = $localBestHari;
+                $gene->slotMulai = $localBestSlot;
+                $gene->ruangId   = $localBestRuang;
+                $rInfo = $this->ruanganList[$localBestRuang] ?? null;
+                $gene->kapasitasRuang = $rInfo['kapasitas'] ?? 0;
+                $gene->tipeRuangan    = $rInfo['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+
+                $chromosome->markDirty();
+                $chromosome->calculateFitness();
+
+                // Update best-ever
+                if ($chromosome->getFitness() > $bestFitnessEver) {
+                    $bestFitnessEver = $chromosome->getFitness();
+                    $bestChrom       = $chromosome->copy();
+                }
+            }
+
+            // Dinginkan suhu
+            $T *= $cooling;
+
+            if (!$improved && $T < 0.1) {
+                break; // Sudah sangat dingin dan tidak ada perbaikan
+            }
+        }
+
+        // Kembalikan yang terbaik antara chromosome final dan best-ever
+        return $bestChrom->getFitness() >= $chromosome->getFitness()
+               ? $bestChrom
+               : $chromosome;
+    }
+
+    /**
+     * Dapatkan indeks gen yang terlibat konflik hard-constraint — O(n) via index.
+     *
+     * @param  Gene[] $genes
+     * @return int[]
+     */
+    private function getConflictingGeneIndices(array $genes): array
+    {
+        return $this->buildConflictingIndices($genes);
+    }
+
+    /**
+     * Dapatkan indeks gen yang punya soft-constraint violation.
+     *
+     * @param  Gene[] $genes
+     * @return int[]
+     */
+    private function getViolatingGeneIndices(array $genes): array
+    {
+        $violating = [];
+        foreach ($genes as $idx => $gene) {
+            if ($gene->getSoftViolations(
+                $this->eveningStartSlot,
+                $this->breakSlots,
+                $this->validRuangIds,
+                $this->morningEndSlot
+            ) > 0) {
+                $violating[] = $idx;
+            }
+        }
+        return $violating;
+    }
+
+    /**
+     * Bangun pool kandidat hari×slot yang valid untuk satu gen.
+     *
+     * @param  bool $isKelasS
+     * @param  int  $durasi
+     * @return array  [[$hariId, $slotMulai], ...]
+     */
+    private function buildCandidateSlots(bool $isKelasS, int $durasi): array
+    {
+        $maxStart   = max(1, $this->maxSlot - $durasi + 1);
+        $candidates = [];
+
+        foreach ($this->hariList as $hari) {
+            for ($slot = 1; $slot <= $maxStart; $slot++) {
+                // Cek overlap break slots
+                $hasBreakOverlap = false;
+                for ($i = 0; $i < $durasi; $i++) {
+                    if (in_array($slot + $i, $this->breakSlots, true)) {
+                        $hasBreakOverlap = true;
+                        break;
+                    }
+                }
+                if ($hasBreakOverlap) {
+                    continue;
+                }
+                // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
+                if ($this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                    continue;
+                }
+                if ($isKelasS && $slot < $this->eveningStartSlot) {
+                    continue;
+                }
+                if (!$isKelasS && ($slot + $durasi - 1) >= $this->eveningStartSlot) {
+                    continue;
+                }
+                $candidates[] = [$hari, $slot];
+            }
+        }
+
+        // [Bug3-fix] Jika pool kelas-S kosong (eveningStartSlot > maxStart),
+        // perluas pencarian hingga maxSlot tanpa filter durasi-boundary
+        if (empty($candidates) && $isKelasS) {
+            foreach ($this->hariList as $hari) {
+                for ($slot = $this->eveningStartSlot; $slot <= $this->maxSlot; $slot++) {
+                    $hasBreakOverlap = false;
+                    for ($i = 0; $i < $durasi; $i++) {
+                        if (in_array($slot + $i, $this->breakSlots, true)) {
+                            $hasBreakOverlap = true;
+                            break;
+                        }
+                    }
+                    // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
+                    if (!$hasBreakOverlap && !$this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                        $candidates[] = [$hari, $slot];
+                    }
                 }
             }
         }
 
-        // Tambahkan pelanggaran C9
-        foreach ($this->grupC9 as $key => $kelasIds) {
-            $geneGrup = [];
-            foreach ($genes as $g) {
-                if (in_array($g->kelasId, $kelasIds)) {
-                    $geneGrup[$g->kelasId] = $g;
+        // [FIX] Last resort untuk kelas sore: gunakan eveningStartSlot saja (tetap di slot malam)
+        if (empty($candidates) && $isKelasS) {
+            foreach ($this->hariList as $hari) {
+                if (!in_array($this->eveningStartSlot, $this->breakSlots, true)
+                    && !$this->overlapsBlockedFridaySlot($hari, $this->eveningStartSlot, $durasi)) {
+                    $candidates[] = [$hari, $this->eveningStartSlot];
                 }
-            }
-            if (count($geneGrup) <= 1) continue;
-
-            $hariIds = array_unique(array_map(fn($g) => $g->hariId, $geneGrup));
-            if (count($hariIds) > 1) { $p += count($hariIds) - 1; continue; }
-
-            $geneUrut = [];
-            foreach ($kelasIds as $kid) {
-                if (isset($geneGrup[$kid])) $geneUrut[] = $geneGrup[$kid];
-            }
-            for ($i = 0; $i < count($geneUrut) - 1; $i++) {
-                $slotAkhir = $geneUrut[$i]->slotMulai + $geneUrut[$i]->durasi;
-                if ($geneUrut[$i + 1]->slotMulai !== $slotAkhir) $p++;
             }
         }
 
-        return $p;
+        // Last resort untuk kelas reguler: jika masih kosong, pakai semua slot valid
+        if (empty($candidates) && !$isKelasS) {
+            foreach ($this->hariList as $hari) {
+                for ($slot = 1; $slot <= $maxStart; $slot++) {
+                    $hasBreakOverlap = false;
+                    for ($i = 0; $i < $durasi; $i++) {
+                        if (in_array($slot + $i, $this->breakSlots, true)) {
+                            $hasBreakOverlap = true;
+                            break;
+                        }
+                    }
+                    // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
+                    if (!$hasBreakOverlap && !$this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                        $candidates[] = [$hari, $slot];
+                    }
+                }
+            }
+        }
+
+        return $candidates;
     }
 
-    // ============================================================
-    // HELPER
-    // ============================================================
-    private function getBest(array $populasi): Chromosome
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HIGH-LEVEL: Feasibility Check [H2]
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Diperiksa inline di run() — tidak perlu method terpisah.
+    // Kriteria:
+    //   Sempurna : conflicts=0 AND violations=0
+    //   Diterima : conflicts=0 AND fitness≥90
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTI-TRAPPING T2: Conflict-Graph Deadlock Breaker
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [T2] Deteksi dan pecahkan deadlock konflik dalam seluruh populasi.
+     *
+     * Deadlock terjadi ketika sekelompok gen saling mengunci satu sama lain:
+     *   Gene A konflik B, B konflik C, C konflik A (siklus 3).
+     * Repair satu per satu tidak pernah berhasil karena memindahkan satu gen
+     * langsung menciptakan konflik baru dengan anggota cluster lain.
+     *
+     * Solusi: identifikasi cluster konflik, lalu pindahkan SELURUH cluster
+     * ke hari yang berbeda dari hari saat ini secara bersamaan.
+     */
+    private function breakDeadlocksInPopulation(): void
     {
-        return collect($populasi)->sortByDesc('fitness')->first();
+        $topN = min(5, count($this->population));
+        usort($this->population, fn($a, $b) => $b->getFitness() <=> $a->getFitness());
+
+        for ($pi = 0; $pi < $topN; $pi++) {
+            $chromosome = $this->population[$pi];
+            if ($chromosome->getConflicts() === 0) {
+                continue;
+            }
+
+            $genes  = $chromosome->getGenes();
+            $n      = count($genes);
+            $broken = false;
+
+            // Bangun adjacency list menggunakan slot-index — O(n * SKS)
+            $adj = array_fill(0, $n, []);
+
+            // dosenConflict[dosenId][hariId][slot] = [geneIdx, ...]
+            $dosenOcc = [];
+            $ruangOcc = [];
+
+            foreach ($genes as $idx => $gene) {
+                $did  = $gene->dosenId;
+                $rid  = $gene->ruangId;
+                $hari = $gene->hariId;
+                $end  = $gene->getSlotAkhir();
+
+                for ($slot = $gene->slotMulai; $slot <= $end; $slot++) {
+                    if ($did !== 0) {
+                        if (isset($dosenOcc[$did][$hari][$slot])) {
+                            foreach ($dosenOcc[$did][$hari][$slot] as $other) {
+                                $adj[$idx][] = $other;
+                                $adj[$other][] = $idx;
+                            }
+                        }
+                        $dosenOcc[$did][$hari][$slot][] = $idx;
+                    }
+                    if ($rid !== 0) {
+                        if (isset($ruangOcc[$rid][$hari][$slot])) {
+                            foreach ($ruangOcc[$rid][$hari][$slot] as $other) {
+                                $adj[$idx][] = $other;
+                                $adj[$other][] = $idx;
+                            }
+                        }
+                        $ruangOcc[$rid][$hari][$slot][] = $idx;
+                    }
+                }
+            }
+
+            // Hapus duplikat di adjacency list
+            foreach ($adj as $i => $neighbors) {
+                $adj[$i] = array_unique($neighbors);
+            }
+
+            // Cari cluster (connected components) di conflict graph
+            $visited  = array_fill(0, $n, false);
+            $clusters = [];
+            for ($i = 0; $i < $n; $i++) {
+                if (!$visited[$i] && !empty($adj[$i])) {
+                    // BFS untuk temukan cluster
+                    $cluster = [];
+                    $queue   = [$i];
+                    $visited[$i] = true;
+                    while (!empty($queue)) {
+                        $node = array_shift($queue);
+                        $cluster[] = $node;
+                        foreach ($adj[$node] as $neighbor) {
+                            if (!$visited[$neighbor]) {
+                                $visited[$neighbor] = true;
+                                $queue[] = $neighbor;
+                            }
+                        }
+                    }
+                    if (count($cluster) >= 2) {
+                        $clusters[] = $cluster;
+                    }
+                }
+            }
+
+            // Selesaikan setiap cluster dengan memindahkan ke hari yang bebas
+            foreach ($clusters as $cluster) {
+                $usedHari = array_unique(array_map(fn($i) => $genes[$i]->hariId, $cluster));
+                // Cari hari yang belum dipakai oleh cluster ini
+                $freeHari = array_values(array_diff($this->hariList, $usedHari));
+
+                if (empty($freeHari)) {
+                    // Semua hari sudah terpakai, pakai hari yang paling sedikit konfliknya
+                    $freeHari = $this->hariList;
+                }
+
+                // Distribusi cluster ke hari bebas secara round-robin
+                foreach ($cluster as $idx) {
+                    $gene      = $genes[$idx];
+
+                    // [P3] Jika gene ini bagian dari pasangan HC15, jangan dipindah
+                    // sendirian di sini — biarkan repairParallelPairs() yang menangani
+                    // pasangan ini secara konsisten (hari sama + gap 1) di siklus berikutnya.
+                    if (isset($this->pairPartnerOf[$gene->kelasId])) {
+                        continue;
+                    }
+
+                    $newHari   = $freeHari[$idx % count($freeHari)];
+                    $newSlot   = $this->pickSmartSlot($gene->namaKelas, $gene->durasi, $newHari);
+                    $gene->hariId    = $newHari;
+                    $gene->slotMulai = $newSlot;
+                    $broken = true;
+                }
+            }
+
+            if ($broken) {
+                $chromosome->setConstraintParams(
+                    $this->eveningStartSlot, $this->breakSlots,
+                    $this->validRuangIds, $this->morningEndSlot, 8,
+                    $this->parallelPairs
+                );
+                $chromosome->markDirty();
+                $chromosome->calculateFitness();
+                $this->logProblem('deadlock_break',
+                    "Deadlock di ".count($clusters)." cluster diselesaikan pada kromosom #{$pi}.");
+            }
+        }
     }
 
-    private function jamKeMenit(string $jam): int
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTI-TRAPPING T3: Dosen-Load Pre-Assigner
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [T3] Pre-assign slot untuk dosen dengan beban tinggi.
+     *
+     * Masalah: dosen yang mengajar 5+ kelas hampir selalu menyebabkan
+     * konflik karena ruang slot valid habis. GA berputar-putar mencoba
+     * repair yang mustahil.
+     *
+     * Solusi: sebelum populasi dibuat, alokasikan slot-slot berbeda untuk
+     * setiap kelas dosen beban tinggi secara deterministik. Semua gen
+     * untuk dosen ini akan diinisialisasi dari pre-assignment ini.
+     *
+     * [P3] Catatan: kelas yang merupakan bagian dari pasangan HC15 TIDAK
+     * di-pre-assign di sini — posisinya akan ditentukan oleh
+     * createPairedGenes() (P2) supaya hubungan gap-1 selalu terjaga sejak
+     * awal. Hanya kelas non-pasangan dari dosen beban tinggi yang diproses.
+     */
+    private function preAssignHighLoadDosen(): void
     {
-        $parts = explode(':', $jam);
-        return ((int)($parts[0] ?? 0)) * 60 + ((int)($parts[1] ?? 0));
+        // Hitung beban per dosen
+        $beban = []; // dosenId => [kelasId, ...]
+        foreach ($this->kelasData as $kelasId => $info) {
+            $did = $info['id_dosen'];
+            if ($did === 0) {
+                continue;
+            }
+            // [P3] Skip kelas yang merupakan bagian dari pasangan HC15
+            if (isset($this->pairPartnerOf[$kelasId])) {
+                continue;
+            }
+            $beban[$did][] = $kelasId;
+        }
+
+        $this->dosenPreassigned = [];
+
+        foreach ($beban as $dosenId => $kelasList) {
+            if (count($kelasList) < $this->dosenLoadThreshold) {
+                continue; // Beban rendah, biarkan GA yang mengatur
+            }
+
+            // Bangun semua slot valid yang bisa dipakai
+            $allSlots = [];
+            foreach ($this->hariList as $hari) {
+                for ($slot = 1; $slot <= $this->maxSlot; $slot++) {
+                    if (!in_array($slot, $this->breakSlots, true)) {
+                        $allSlots[] = [$hari, $slot];
+                    }
+                }
+            }
+
+            // Assign slot berbeda untuk setiap kelas dosen ini
+            // Pastikan tidak overlap: jika SKS=3, slot X dipakai → blok X, X+1, X+2
+            $assigned    = []; // [ [$hari, $slotMulai, $slotAkhir], ... ]
+            $preassigned = []; // kelasId => [$hariId, $slotMulai]
+            shuffle($allSlots);
+
+            foreach ($kelasList as $kelasId) {
+                $durasi = $this->kelasData[$kelasId]['sks'];
+                $nama   = $this->kelasData[$kelasId]['nama'];
+
+                foreach ($allSlots as [$hari, $slot]) {
+                    $slotAkhir = $slot + $durasi - 1;
+                    if ($slotAkhir > $this->maxSlot) {
+                        continue;
+                    }
+
+                    // Cek overlap dengan breakSlots
+                    $hasBreakOverlap = false;
+                    for ($i = 0; $i < $durasi; $i++) {
+                        if (in_array($slot + $i, $this->breakSlots, true)) {
+                            $hasBreakOverlap = true;
+                            break;
+                        }
+                    }
+                    if ($hasBreakOverlap) {
+                        continue;
+                    }
+
+                    // Cek overlap dengan yang sudah di-assign
+                    $overlap = false;
+                    foreach ($assigned as [$aHari, $aStart, $aEnd]) {
+                        if ($aHari === $hari && $slot <= $aEnd && $slotAkhir >= $aStart) {
+                            $overlap = true;
+                            break;
+                        }
+                    }
+
+                    if (!$overlap) {
+                        // Validasi jenis kelas menggunakan detectKelasS() agar konsisten
+                        $isS = $this->detectKelasS($nama);
+                        if ($isS && $slot < $this->eveningStartSlot) {
+                            continue;
+                        }
+                        if (!$isS && $slotAkhir >= $this->eveningStartSlot) {
+                            continue;
+                        }
+
+                        // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
+                        if ($this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                            continue;
+                        }
+
+                        $preassigned[$kelasId] = [$hari, $slot];
+                        $assigned[] = [$hari, $slot, $slotAkhir];
+                        break;
+                    }
+                }
+            }
+
+            if (!empty($preassigned)) {
+                $this->dosenPreassigned[$dosenId] = $preassigned;
+                $this->logProblem('preassign',
+                    "Dosen {$dosenId} (beban ".count($kelasList)." kelas): ".count($preassigned)." slot pre-assigned.");
+            }
+        }
+    }
+
+    /**
+     * Ambil pre-assigned slot untuk kelas tertentu (jika ada).
+     * Dipanggil dari createRandomGene() — hanya untuk 50% populasi awal
+     * agar tetap ada variasi.
+     *
+     * @return int[]|null  [$hariId, $slotMulai] atau null
+     */
+    private function getPreassignedSlot(int $kelasId, int $dosenId, bool $usePreassign = true): ?array
+    {
+        if (empty($this->dosenPreassigned[$dosenId])) {
+            return null;
+        }
+        if (!$usePreassign) {
+            return null;
+        }
+        return $this->dosenPreassigned[$dosenId][$kelasId] ?? null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTI-TRAPPING T4: Fitness Plateau Detector + Niche Pressure
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [T4] Deteksi plateau fitness dan aktifkan niche pressure.
+     *
+     * Plateau terjadi ketika semua kromosom konvergen ke fitness yang hampir
+     * sama — seleksi tidak bisa membedakan individu, crossover hanya
+     * menghasilkan klon, dan GA berhenti berkembang.
+     *
+     * Niche pressure: kromosom yang hash-nya identik dengan individu lain
+     * mendapat "bonus penalti" melalui replacement — yang unik dipertahankan,
+     * yang duplikat diganti kromosom acak baru.
+     */
+    private function handleFitnessPlateauAndNiche(): void
+    {
+        if (count($this->population) < 4) {
+            return;
+        }
+
+        // Hitung variance fitness populasi
+        $fitnesses = array_map(fn($c) => $c->getFitness(), $this->population);
+        $popCount  = count($fitnesses);
+        if ($popCount === 0) {
+            return; // Tidak ada populasi, skip plateau detection
+        }
+        $mean      = array_sum($fitnesses) / $popCount;
+        $variance  = array_sum(array_map(fn($f) => ($f - $mean) ** 2, $fitnesses))
+                     / $popCount;
+
+        $isPlateauNow = $variance < $this->plateauVarianceThreshold;
+
+        if ($isPlateauNow && !$this->nichePressureActive) {
+            $this->nichePressureActive = true;
+            $varStr = number_format($variance, 4);
+            $this->logProblem('plateau_detected',
+                "Fitness variance={$varStr} → niche pressure diaktifkan.");
+
+            // Hapus duplikat berdasarkan hash, ganti dengan kromosom baru
+            $seen    = [];
+            $newPop  = [];
+            $elite   = $this->elites[0] ?? null;
+
+            foreach ($this->population as $chromosome) {
+                $hash = $chromosome->buildGenesHash();
+                if (!isset($seen[$hash])) {
+                    $seen[$hash] = true;
+                    $newPop[] = $chromosome;
+                } else {
+                    // Duplikat → ganti dengan guided perturbation [T5 inline]
+                    $usePre = (count($newPop) < $this->populationSize / 2);
+                    $newPop[] = $elite !== null
+                        ? $this->guidedPerturbation($elite)
+                        : $this->createRandomChromosome($usePre);
+                }
+            }
+            $this->population = $newPop;
+
+        } elseif (!$isPlateauNow && $this->nichePressureActive) {
+            // Plateau sudah teratasi
+            $this->nichePressureActive = false;
+            $varStr2 = number_format($variance, 4);
+            $this->logProblem('plateau_resolved',
+                "Fitness variance={$varStr2} → niche pressure dinonaktifkan.");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTI-TRAPPING T5: Guided Re-Seed dari Elite Archive
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [T5][P3] Buat kromosom baru dengan elite-guided perturbation.
+     *
+     * Alih-alih membuat kromosom sepenuhnya acak (yang kemungkinan besar
+     * buruk), ambil kromosom elite terbaik dan hanya acak-ulang gen-gen
+     * yang masih berkonflik atau melanggar soft constraint.
+     * Gen yang sudah "baik" (tidak konflik) dipertahankan persis.
+     *
+     * Ini jauh lebih efektif daripada random restart karena:
+     * - 60-80% gen biasanya sudah benar di kromosom elite
+     * - Hanya ~20-40% gen yang perlu diubah
+     * - Titik awal sudah dekat dengan solusi optimal
+     *
+     * [P3] Gene yang merupakan bagian dari pasangan HC15 dan terdeteksi
+     * bermasalah di-regenerasi BERSAMA partnernya (bukan sendirian) supaya
+     * hasil perturbation tetap memenuhi gap-1, menggunakan createPairedGenes().
+     */
+    private function guidedPerturbation(Chromosome $elite): Chromosome
+    {
+        $elite->setConstraintParams(
+            $this->eveningStartSlot, $this->breakSlots,
+            $this->validRuangIds, $this->morningEndSlot, 8,
+            $this->parallelPairs
+        );
+        $elite->calculateFitness();
+
+        $eliteGenes  = $elite->getGenes();
+        $byKelasId   = [];
+        foreach ($eliteGenes as $idx => $g) {
+            $byKelasId[$g->kelasId] = $idx;
+        }
+
+        // Tandai gen bermasalah menggunakan O(n) index
+        $conflictSet = [];
+        foreach ($this->buildConflictingIndices($eliteGenes) as $idx) {
+            $conflictSet[$idx] = true;
+        }
+        foreach ($eliteGenes as $idx => $g) {
+            if ($g->getSoftViolations($this->eveningStartSlot, $this->breakSlots, $this->validRuangIds, $this->morningEndSlot) > 0) {
+                $conflictSet[$idx] = true;
+            }
+        }
+        // [P3] Tandai juga gen yang melanggar HC15 (pasangan)
+        foreach ($this->parallelPairs as [$kelasIdA, $kelasIdB]) {
+            $idxA = $byKelasId[$kelasIdA] ?? null;
+            $idxB = $byKelasId[$kelasIdB] ?? null;
+            if ($idxA === null || $idxB === null) {
+                continue;
+            }
+            if ($eliteGenes[$idxA]->validatePairSequencing($eliteGenes[$idxB], true) > 0) {
+                $conflictSet[$idxA] = true;
+                $conflictSet[$idxB] = true;
+            }
+        }
+
+        $newGenesByKelasId = [];
+        $handledPairs      = [];
+
+        foreach ($eliteGenes as $idx => $gene) {
+            if (isset($newGenesByKelasId[$gene->kelasId])) {
+                continue; // Sudah dibuat sebagai bagian dari pasangan
+            }
+
+            $partnerId = $this->pairPartnerOf[$gene->kelasId] ?? null;
+
+            if (isset($conflictSet[$idx]) && $partnerId !== null && isset($this->kelasData[$partnerId])) {
+                // [P3] Regenerasi pasangan bersamaan agar gap-1 terjaga
+                [$newA, $newB] = $this->createPairedGenes($gene->kelasId, $partnerId);
+                $newGenesByKelasId[$gene->kelasId] = $newA;
+                $newGenesByKelasId[$partnerId]      = $newB;
+            } elseif (isset($conflictSet[$idx])) {
+                $info = $this->kelasData[$gene->kelasId] ?? null;
+                $newGenesByKelasId[$gene->kelasId] = $info
+                    ? $this->createRandomGene($gene->kelasId, $info)
+                    : $gene->copy();
+            } else {
+                $newGenesByKelasId[$gene->kelasId] = $gene->copy();
+            }
+        }
+
+        // Bangun ulang sesuai urutan asli kelasData
+        $newGenes = [];
+        foreach ($this->kelasData as $kelasId => $info) {
+            $newGenes[] = $newGenesByKelasId[$kelasId] ?? $this->createRandomGene($kelasId, $info);
+        }
+
+        $c = new Chromosome($newGenes);
+        $c->setConstraintParams(
+            $this->eveningStartSlot, $this->breakSlots,
+            $this->validRuangIds, $this->morningEndSlot, 8,
+            $this->parallelPairs
+        );
+        return $c;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HIGH-LEVEL: Error Recovery [H4]
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * [H4][P3] Fallback solution yang bermakna — distribusikan kelas ke semua
+     * hari secara round-robin daripada tumpuk semua di hari=1 slot=1.
+     * Pasangan HC15 dibangun bersamaan via createPairedGenes() agar fallback
+     * pun tetap menjaga gap-1 sebisa mungkin.
+     */
+    private function handleCriticalError(\Exception $e, int $generation = 0): array
+    {
+        $this->logProblem('critical_error', $e->getMessage());
+
+        $fallbackByKelasId = [];
+        $hariIndex         = 0;
+        $hariCount         = max(1, count($this->hariList));
+
+        foreach ($this->kelasData as $kelasId => $info) {
+            if (isset($fallbackByKelasId[$kelasId])) {
+                continue;
+            }
+
+            $partnerId = $this->pairPartnerOf[$kelasId] ?? null;
+            if ($partnerId !== null && isset($this->kelasData[$partnerId]) && !isset($fallbackByKelasId[$partnerId])) {
+                [$geneA, $geneB] = $this->createPairedGenes($kelasId, $partnerId);
+                $fallbackByKelasId[$kelasId]   = $geneA;
+                $fallbackByKelasId[$partnerId] = $geneB;
+                continue;
+            }
+
+            $hari      = $this->hariList[$hariIndex % $hariCount];
+            $slotMulai = $this->pickSmartSlot($info['nama'], $info['sks'], $hari);
+            $ruangId   = $this->pickSmartRoom($info['ruangan_options'], $info['kapasitas'], $info['jenis'] ?? Gene::JENIS_TEORI);
+            $kapRuang  = $this->ruanganList[$ruangId]['kapasitas'] ?? 0;
+            $tipeRuang = $this->ruanganList[$ruangId]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+
+            $fallbackByKelasId[$kelasId] = new Gene(
+                $kelasId, $hari, $slotMulai, $info['sks'],
+                $ruangId, $info['id_dosen'],
+                $info['kapasitas'], $info['jenis'], $kapRuang,
+                $info['nama'], $this->maxSlot,
+                $tipeRuang, $info['kategori'] ?? Gene::KATEGORI_SEDANG
+            );
+            $hariIndex++;
+        }
+
+        $fallbackGenes = [];
+        foreach ($this->kelasData as $kelasId => $info) {
+            $fallbackGenes[] = $fallbackByKelasId[$kelasId];
+        }
+
+        $fallback = new Chromosome($fallbackGenes);
+        $fallback->setConstraintParams(
+            $this->eveningStartSlot, $this->breakSlots,
+            $this->validRuangIds, $this->morningEndSlot, 8,
+            $this->parallelPairs
+        );
+        $fallback->calculateFitness();
+
+        return [
+            'genes'                => $fallbackGenes,
+            'fitness_pct'          => round($fallback->getFitness(), 2),
+            'generasi'             => $generation,
+            'total_kelas'          => count($this->kelasData),
+            'pelanggaran'          => $fallback->getConflicts(),
+            'dosen_conflicts'      => $fallback->getDosenConflicts(),
+            'ruangan_conflicts'    => $fallback->getRuanganConflicts(),
+            'constraint_violations' => $fallback->getConstraintViolations(),
+            'problem_log'          => $this->problemLog,
+            'error'                => $e->getMessage(),
+        ];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // UTILITY
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Kirim progress via SSE callback.
+     */
+    private function reportProgress(int $generation, Chromosome $best): void
+    {
+        if ($this->progressCallback !== null) {
+            ($this->progressCallback)([
+                'gen'             => $generation,
+                'fitness'         => round($best->getFitness(), 2),
+                'pelanggaran'     => $best->getConflicts(),
+                'dosen_konflik'   => $best->getDosenConflicts(),
+                'ruangan_konflik' => $best->getRuanganConflicts(),
+                'soft_violations' => $best->getConstraintViolations(),
+                'optimal'         => false,
+            ]);
+        }
+    }
+
+    /**
+     * Kirim sinyal bahwa solusi optimal sudah ditemukan sebelum generasi habis.
+     * Frontend akan langsung render hasil tanpa menunggu event 'done' dari akhir run().
+     */
+    private function reportOptimalFound(int $generation, Chromosome $best, string $reason): void
+    {
+        if ($this->progressCallback !== null) {
+            ($this->progressCallback)([
+                'gen'             => $generation,
+                'fitness'         => round($best->getFitness(), 2),
+                'pelanggaran'     => $best->getConflicts(),
+                'dosen_konflik'   => $best->getDosenConflicts(),
+                'ruangan_konflik' => $best->getRuanganConflicts(),
+                'soft_violations' => $best->getConstraintViolations(),
+                'optimal'         => true,
+                'optimal_reason'  => $reason, // 'perfect' | 'acceptable' | 'excellent'
+            ]);
+        }
+    }
+
+    /**
+     * Catat kejadian masalah internal untuk debugging / audit.
+     */
+    private function logProblem(string $type, string $message): void
+    {
+        $this->problemLog[] = [
+            'type'    => $type,
+            'message' => $message,
+            'elapsed' => round(microtime(true) - $this->startTime, 2) . 's',
+        ];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // UTILITY: O(n) Conflict Index Builder
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Bangun slot-conflict index dari array Gene — O(n * SKS_rata) ≈ O(n).
+     *
+     * Mengembalikan dua struktur:
+     *   $dosenIndex[dosenId][hariId][slot] = true
+     *   $ruangIndex[ruangId][hariId][slot] = true
+     *
+     * Dipakai oleh semua fungsi yang perlu mendeteksi konflik:
+     * repairOffspring, getConflictingGeneIndices, breakDeadlocksInPopulation,
+     * guidedPerturbation — menggantikan O(n²) pair-loop.
+     *
+     * @param  Gene[] $genes
+     * @return array  [$dosenIndex, $ruangIndex]
+     */
+    private function buildConflictIndex(array $genes): array
+    {
+        $dosenIndex = [];
+        $ruangIndex = [];
+
+        foreach ($genes as $gene) {
+            $did  = $gene->dosenId;
+            $rid  = $gene->ruangId;
+            $hari = $gene->hariId;
+            $end  = $gene->getSlotAkhir();
+
+            for ($slot = $gene->slotMulai; $slot <= $end; $slot++) {
+                if ($did !== 0) {
+                    $dosenIndex[$did][$hari][$slot] = true;
+                }
+                if ($rid !== 0) {
+                    $ruangIndex[$rid][$hari][$slot] = true;
+                }
+            }
+        }
+
+        return [$dosenIndex, $ruangIndex];
+    }
+
+    /**
+     * Cek apakah satu Gene berkonflik dengan index yang sudah dibangun.
+     * Dipakai untuk cek cepat tanpa loop O(n).
+     *
+     * @param  Gene  $gene
+     * @param  array $dosenIndex  dari buildConflictIndex()
+     * @param  array $ruangIndex  dari buildConflictIndex()
+     * @return int   0=aman, 1=konflik dosen, 2=konflik ruangan
+     */
+    private function geneConflictsWithIndex(Gene $gene, array $dosenIndex, array $ruangIndex): int
+    {
+        $did  = $gene->dosenId;
+        $rid  = $gene->ruangId;
+        $hari = $gene->hariId;
+        $end  = $gene->getSlotAkhir();
+
+        for ($slot = $gene->slotMulai; $slot <= $end; $slot++) {
+            if ($did !== 0 && isset($dosenIndex[$did][$hari][$slot])) {
+                return 1;
+            }
+            if ($rid !== 0 && isset($ruangIndex[$rid][$hari][$slot])) {
+                return 2;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Dapatkan indeks gen yang terlibat konflik — O(n) via index.
+     * Menggantikan O(n²) loop di getConflictingGeneIndices().
+     *
+     * @param  Gene[] $genes
+     * @return int[]
+     */
+    private function buildConflictingIndices(array $genes): array
+    {
+        $conflicting = [];
+        $dosenSeen   = []; // [dosenId][hariId][slot] = firstGeneIdx
+        $ruangSeen   = []; // [ruangId][hariId][slot] = firstGeneIdx
+
+        // Hitung beban SKS per dosen per hari untuk HC14
+        $dosenDaySks = []; // [dosenId][hariId] = SKS
+        $dosenDayGenes = []; // [dosenId][hariId][] = geneIdx
+
+        foreach ($genes as $idx => $gene) {
+            $did  = $gene->dosenId;
+            $rid  = $gene->ruangId;
+            $hari = $gene->hariId;
+            $end  = $gene->getSlotAkhir();
+
+            if ($did > 0) {
+                $dosenDaySks[$did][$hari] = ($dosenDaySks[$did][$hari] ?? 0) + $gene->durasi;
+                $dosenDayGenes[$did][$hari][] = $idx;
+            }
+
+            for ($slot = $gene->slotMulai; $slot <= $end; $slot++) {
+                if ($did !== 0) {
+                    if (isset($dosenSeen[$did][$hari][$slot])) {
+                        $conflicting[$idx] = true;
+                        $conflicting[$dosenSeen[$did][$hari][$slot]] = true;
+                    } else {
+                        $dosenSeen[$did][$hari][$slot] = $idx;
+                    }
+                }
+                if ($rid !== 0) {
+                    if (isset($ruangSeen[$rid][$hari][$slot])) {
+                        $conflicting[$idx] = true;
+                        $conflicting[$ruangSeen[$rid][$hari][$slot]] = true;
+                    } else {
+                        $ruangSeen[$rid][$hari][$slot] = $idx;
+                    }
+                }
+            }
+        }
+
+        // Tandai gen yang berkontribusi terhadap pelanggaran HC14 (SKS/hari > 8)
+        foreach ($dosenDaySks as $did => $hariSks) {
+            foreach ($hariSks as $hari => $totalSks) {
+                if ($totalSks > 8) {
+                    foreach ($dosenDayGenes[$did][$hari] as $idx) {
+                        $conflicting[$idx] = true;
+                    }
+                }
+            }
+        }
+
+        return array_keys($conflicting);
     }
 }

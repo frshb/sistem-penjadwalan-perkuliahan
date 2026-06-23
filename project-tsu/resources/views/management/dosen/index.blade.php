@@ -19,28 +19,6 @@
     showExportMenu: false,
     isLoading: true,
 
-    semestersList: [
-        { val: 1, label: 'Semester 1', type: 'ganjil' },
-        { val: 2, label: 'Semester 2', type: 'genap' },
-        { val: 3, label: 'Semester 3', type: 'ganjil' },
-        { val: 4, label: 'Semester 4', type: 'genap' },
-        { val: 5, label: 'Semester 5', type: 'ganjil' },
-        { val: 6, label: 'Semester 6', type: 'genap' },
-        { val: 7, label: 'Semester 7', type: 'ganjil' },
-        { val: 8, label: 'Semester 8', type: 'genap' }
-    ],
-
-    // =========================
-    // ADD DOSEN
-    // =========================
-
-    addProdi: '',
-    addFilterProdi: '',
-    addKurikulum: '',
-    addSemester: '',
-    addJenisSemester: '',
-    addSelectedMatkuls: [],
-
     // =========================
     // EDIT DOSEN
     // =========================
@@ -49,12 +27,6 @@
     editNuptk: '',
     editNidn: '',
     editProdi: '',
-
-    editFilterProdi: '',
-    editKurikulum: '',
-    editSemester: '',
-    editJenisSemester: '',
-    editSelectedMatkuls: [],
 
     editUrl: '',
 
@@ -66,17 +38,12 @@
         nidn,
         nuptk,
         nama,
-        prodi,
-        matkuls = []
+        prodi
     ) {
         this.editNama = nama;
         this.editNuptk = nuptk;
         this.editNidn = nidn;
         this.editProdi = prodi;
-
-        this.editSelectedMatkuls = Array.isArray(matkuls)
-        ? matkuls.map(m => String(m).trim())
-        : [];
 
         this.editUrl = '/management/dosen/' + nuptk;
 
@@ -172,14 +139,14 @@
                                 Export
                                 <svg class="w-3.5 h-3.5 ml-1.5 transition-transform duration-200" :class="showExportMenu ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </button>
-                            <div x-show="showExportMenu" 
+                            <div x-show="showExportMenu"
                                  x-transition:enter="transition ease-out duration-100"
                                  x-transition:enter-start="transform opacity-0 scale-95"
                                  x-transition:enter-end="transform opacity-100 scale-100"
                                  x-transition:leave="transition ease-in duration-75"
                                  x-transition:leave-start="transform opacity-100 scale-100"
                                  x-transition:leave-end="transform opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 p-1" 
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 p-1"
                                  style="display: none;">
                                 <a href="{{ route('dosen.export.excel') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-md hover:bg-teal-50 hover:text-teal-800 transition-colors">
                                     <svg class="w-4 h-4 mr-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -287,8 +254,7 @@
                                                         '{{ $dosen->nidn }}',
                                                         '{{ $dosen->nuptk }}',
                                                         '{{ $dosen->nama_dosen }}',
-                                                        '{{ $dosen->id_prodi }}',
-                                                        {{ json_encode($dosen->mataKuliahs->pluck('kode_matkul')->toArray()) }}
+                                                        '{{ $dosen->id_prodi }}'
                                                     )"
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -343,7 +309,7 @@
                         bg-white rounded-xl text-left overflow-hidden
                         shadow-xl transform transition-all
                         sm:my-8 sm:align-middle
-                        w-auto min-w-[650px] max-w-[800px]"
+                        w-full max-w-lg"
                 >
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="flex justify-between items-center pb-3 border-b border-gray-200">
@@ -405,7 +371,6 @@
 
                                 <select
                                     name="id_prodi"
-                                    x-model="addProdi"
                                     class="w-2/3 border border-gray-300 rounded-lg px-4 py-2"
                                     required
                                 >
@@ -417,198 +382,6 @@
                                         </option>
                                     @endforeach
                                 </select>
-                            </div>
-
-                            <label class="block text-lg font-medium text-gray-700 mb-2">
-                                Mata Kuliah Yang Diampu :
-                            </label>
-
-
-                            {{-- MATKUL --}}
-                            <div>
-
-                                <div class="border rounded-lg max-h-64 overflow-y-auto">
-                                    {{-- FILTER MATKUL --}}
-                                    <div class="sticky top-0 bg-white z-10 px-4 pt-4 pb-3 border-b border-gray-200 mb-4">
-                                        <div class="flex flex-wrap gap-4 items-end">
-                                            {{-- KURIKULUM --}}
-                                            <div class="w-40">
-                                                <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                    Kurikulum
-                                                </label>
-
-                                                <select
-                                                    x-model="addKurikulum"
-                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                                >
-                                                    <option value="">Semua</option>
-
-                                                    @foreach($kurikulums as $kurikulum)
-                                                        <option value="{{ $kurikulum->id_kurikulum }}">
-                                                            {{ $kurikulum->nama_kurikulum }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-
-                                            {{-- TIPE SEMESTER --}}
-                                            <div class="w-36">
-                                                <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                    Tipe Semester
-                                                </label>
-                                                <select
-                                                    x-model="addJenisSemester"
-                                                    @change="addSemester = ''"
-                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                                >
-                                                    <option value="">Semua</option>
-                                                    <option value="ganjil">Semester Ganjil</option>
-                                                    <option value="genap">Semester Genap</option>
-                                                </select>
-                                            </div>
-
-                                            {{-- SEMESTER --}}
-                                            <div class="w-36">
-                                                <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                    Semester
-                                                </label>
-
-                                                <select
-                                                    x-model="addSemester"
-                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                                >
-                                                    <option value="">Semua</option>
-                                                    <template x-for="sem in semestersList.filter(s => !addJenisSemester || s.type === addJenisSemester)" :key="sem.val">
-                                                        <option :value="sem.val" x-text="sem.label"></option>
-                                                    </template>
-                                                </select>
-                                            </div>
-
-                                            {{-- PRODI --}}
-                                            <div class="w-48">
-                                                <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                    Prodi
-                                                </label>
-
-                                                <select
-                                                    x-model="addFilterProdi"
-                                                    class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                                >
-                                                    <option value="">Semua Prodi</option>
-
-                                                    @foreach($prodis as $prodi)
-                                                        <option value="{{ $prodi->id_prodi }}">
-                                                            {{ $prodi->nama_prodi }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {{-- CHECKBOX MATKUL --}}
-                                    <div class="px-4 pb-4 space-y-2">
-
-                                        <template
-                                            x-for="matkul in window.mataKuliahs.filter(m =>
-                                                (!addFilterProdi || m.id_prodi == addFilterProdi) &&
-                                                (!addKurikulum || m.id_kurikulum == addKurikulum) &&
-                                                (!addSemester || m.semester == addSemester) &&
-                                                (!addJenisSemester || (addJenisSemester === 'ganjil' && [1,3,5,7].includes(parseInt(m.semester))) || (addJenisSemester === 'genap' && [2,4,6,8].includes(parseInt(m.semester))))
-                                            )"
-                                            :key="matkul.kode_matkul"
-                                        >
-
-                                            <label class="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
-
-                                                <input
-                                                    type="checkbox"
-                                                    :value="String(matkul.kode_matkul).trim()"
-                                                    x-model="addSelectedMatkuls"
-                                                    class="mt-1"
-                                                >
-
-                                                <div>
-                                                    <div class="font-medium text-gray-800">
-                                                        <span x-text="matkul.nama_matkul"></span>
-                                                    </div>
-
-                                                    <div class="text-sm text-gray-500">
-                                                        <span x-text="matkul.kode_matkul"></span>
-                                                        • Semester
-                                                        <span x-text="matkul.semester"></span>
-                                                    </div>
-                                                </div>
-
-                                            </label>
-
-                                        </template>
-                                    </div>
-
-                                </div>
-                            </div>
-                            {{-- MATKUL TERPILIH --}}
-                            <div class="mt-4 border-t border-gray-150 pt-4" x-show="addSelectedMatkuls.length > 0">
-                                <!-- Fallback hidden inputs to submit all selected courses -->
-                                <template x-for="kode in addSelectedMatkuls" :key="'submit-'+kode">
-                                    <input type="hidden" name="mata_kuliah[]" :value="kode">
-                                </template>
-
-                                <label class="block text-sm font-bold text-gray-700 mb-3">
-                                    Mata Kuliah Terpilih
-                                </label>
-
-                                <div class="space-y-3.5">
-                                    <!-- Group Ganjil -->
-                                    <div class="bg-teal-50/60 p-4 rounded-xl border border-teal-150 space-y-3" x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [1,3,5,7].includes(parseInt(mk.semester)); })">
-                                        <h4 class="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-teal-200/50 pb-1.5 mb-1">
-                                            <span class="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></span>
-                                            Semester Ganjil
-                                        </h4>
-                                        <div class="space-y-3">
-                                            <template x-for="semNum in [1, 3, 5, 7]" :key="'add-ganjil-sem-'+semNum">
-                                                <div x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
-                                                    <span class="inline-block text-[10px] font-bold text-teal-700 bg-teal-100/60 px-2 py-0.5 rounded border border-teal-200" x-text="'Semester ' + semNum"></span>
-                                                    <div class="flex flex-wrap gap-2 pt-0.5">
-                                                        <template x-for="kode in addSelectedMatkuls" :key="'add-ganjil-sem-'+semNum+'-'+kode">
-                                                            <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
-                                                                <div class="inline-flex items-center gap-1.5 bg-white border border-teal-200 text-teal-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
-                                                                    <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
-                                                                    <button type="button" @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
-                                                                </div>
-                                                            </template>
-                                                        </template>
-                                                    </div>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-
-                                    <!-- Group Genap -->
-                                    <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-150 space-y-3" x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [2,4,6,8].includes(parseInt(mk.semester)); })">
-                                        <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-200/50 pb-1.5 mb-1">
-                                            <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
-                                            Semester Genap
-                                        </h4>
-                                        <div class="space-y-3">
-                                            <template x-for="semNum in [2, 4, 6, 8]" :key="'add-genap-sem-'+semNum">
-                                                <div x-show="addSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
-                                                    <span class="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded border border-indigo-200" x-text="'Semester ' + semNum"></span>
-                                                    <div class="flex flex-wrap gap-2 pt-0.5">
-                                                        <template x-for="kode in addSelectedMatkuls" :key="'add-genap-sem-'+semNum+'-'+kode">
-                                                            <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
-                                                                <div class="inline-flex items-center gap-1.5 bg-white border border-indigo-200 text-indigo-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
-                                                                    <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
-                                                                    <button type="button" @click="addSelectedMatkuls = addSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
-                                                                </div>
-                                                            </template>
-                                                        </template>
-                                                    </div>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
                             {{-- BUTTON --}}
@@ -665,7 +438,7 @@
                    bg-white rounded-xl text-left overflow-hidden
                    shadow-xl transform transition-all
                    sm:my-8 sm:align-middle
-                   w-auto min-w-[650px] max-w-[800px]"
+                   w-full max-w-lg"
         >
 
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
@@ -769,206 +542,6 @@
                             @endforeach
 
                         </select>
-                    </div>
-
-                    {{-- JUDUL --}}
-                    <label class="block text-lg font-medium text-gray-700 mb-2">
-                        Mata Kuliah Yang Diampu :
-                    </label>
-
-                    {{-- MATKUL --}}
-                    <div>
-
-                        <div class="border rounded-lg max-h-64 overflow-y-auto">
-
-                            {{-- FILTER --}}
-                            <div class="sticky top-0 bg-white z-10 px-4 pt-4 pb-3 border-b border-gray-200 mb-4">
-
-                                <div class="flex flex-wrap gap-4 items-end">
-
-                                    {{-- KURIKULUM --}}
-                                    <div class="w-40">
-
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                            Kurikulum
-                                        </label>
-
-                                        <select
-                                            x-model="editKurikulum"
-                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                        >
-                                            <option value="">Semua</option>
-
-                                            @foreach($kurikulums as $kurikulum)
-                                                <option value="{{ $kurikulum->id_kurikulum }}">
-                                                    {{ $kurikulum->nama_kurikulum }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                    {{-- TIPE SEMESTER --}}
-                                    <div class="w-36">
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                            Tipe Semester
-                                        </label>
-                                        <select
-                                            x-model="editJenisSemester"
-                                            @change="editSemester = ''"
-                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                        >
-                                            <option value="">Semua</option>
-                                            <option value="ganjil">Semester Ganjil</option>
-                                            <option value="genap">Semester Genap</option>
-                                        </select>
-                                    </div>
-
-                                    {{-- SEMESTER --}}
-                                    <div class="w-36">
-
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                            Semester
-                                        </label>
-
-                                        <select
-                                            x-model="editSemester"
-                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                        >
-                                            <option value="">Semua</option>
-                                            <template x-for="sem in semestersList.filter(s => !editJenisSemester || s.type === editJenisSemester)" :key="sem.val">
-                                                <option :value="sem.val" x-text="sem.label"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-
-                                    {{-- PRODI --}}
-                                    <div class="w-48">
-
-                                        <label class="block text-xs font-medium text-gray-600 mb-1">
-                                            Prodi
-                                        </label>
-
-                                        <select
-                                            x-model="editFilterProdi"
-                                            class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
-                                        >
-                                            <option value="">Semua Prodi</option>
-
-                                            @foreach($prodis as $prodi)
-                                                <option value="{{ $prodi->id_prodi }}">
-                                                    {{ $prodi->nama_prodi }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            {{-- LIST MATKUL --}}
-                            <div class="px-4 pb-4 space-y-2">
-
-                                <template
-                                    x-for="matkul in window.mataKuliahs.filter(m =>
-                                        (!editFilterProdi || m.id_prodi == editFilterProdi) &&
-                                        (!editKurikulum || m.id_kurikulum == editKurikulum) &&
-                                        (!editSemester || m.semester == editSemester) &&
-                                        (!editJenisSemester || (editJenisSemester === 'ganjil' && [1,3,5,7].includes(parseInt(m.semester))) || (editJenisSemester === 'genap' && [2,4,6,8].includes(parseInt(m.semester))))
-                                    )"
-                                    :key="matkul.kode_matkul"
-                                >
-
-                                    <label class="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
-
-                                    <input
-                                        type="checkbox"
-                                        :value="String(matkul.kode_matkul).trim()"
-                                        x-model="editSelectedMatkuls"
-                                        class="mt-1"
-                                    >
-
-                                        <div>
-                                            <div class="font-medium text-gray-800">
-                                                <span x-text="matkul.nama_matkul"></span>
-                                            </div>
-
-                                            <div class="text-sm text-gray-500">
-                                                <span x-text="matkul.kode_matkul"></span>
-                                                • Semester
-                                                <span x-text="matkul.semester"></span>
-                                            </div>
-                                        </div>
-
-                                    </label>
-
-                                </template>
-
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- MATKUL TERPILIH --}}
-                    <div class="mt-4 border-t border-gray-150 pt-4" x-show="editSelectedMatkuls.length > 0">
-                        <!-- Fallback hidden inputs to submit all selected courses -->
-                        <template x-for="kode in editSelectedMatkuls" :key="'submit-edit-'+kode">
-                            <input type="hidden" name="mata_kuliah[]" :value="kode">
-                        </template>
-
-                        <label class="block text-sm font-bold text-gray-700 mb-3">
-                            Mata Kuliah Terpilih
-                        </label>
-
-                        <div class="space-y-3.5">
-                            <!-- Group Ganjil -->
-                            <div class="bg-teal-50/60 p-4 rounded-xl border border-teal-150 space-y-3" x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [1,3,5,7].includes(parseInt(mk.semester)); })">
-                                <h4 class="text-xs font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-teal-200/50 pb-1.5 mb-1">
-                                    <span class="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></span>
-                                    Semester Ganjil
-                                </h4>
-                                <div class="space-y-3">
-                                    <template x-for="semNum in [1, 3, 5, 7]" :key="'edit-ganjil-sem-'+semNum">
-                                        <div x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
-                                            <span class="inline-block text-[10px] font-bold text-teal-700 bg-teal-100/60 px-2 py-0.5 rounded border border-teal-200" x-text="'Semester ' + semNum"></span>
-                                            <div class="flex flex-wrap gap-2 pt-0.5">
-                                                <template x-for="kode in editSelectedMatkuls" :key="'edit-ganjil-sem-'+semNum+'-'+kode">
-                                                    <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
-                                                        <div class="inline-flex items-center gap-1.5 bg-white border border-teal-200 text-teal-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
-                                                            <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
-                                                            <button type="button" @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
-                                                        </div>
-                                                    </template>
-                                                </template>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-
-                            <!-- Group Genap -->
-                            <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-150 space-y-3" x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && [2,4,6,8].includes(parseInt(mk.semester)); })">
-                                <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-200/50 pb-1.5 mb-1">
-                                    <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
-                                    Semester Genap
-                                </h4>
-                                <div class="space-y-3">
-                                    <template x-for="semNum in [2, 4, 6, 8]" :key="'edit-genap-sem-'+semNum">
-                                        <div x-show="editSelectedMatkuls.some(kode => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })" class="space-y-1.5">
-                                            <span class="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded border border-indigo-200" x-text="'Semester ' + semNum"></span>
-                                            <div class="flex flex-wrap gap-2 pt-0.5">
-                                                <template x-for="kode in editSelectedMatkuls" :key="'edit-genap-sem-'+semNum+'-'+kode">
-                                                    <template x-if="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk && parseInt(mk.semester) === semNum; })()">
-                                                        <div class="inline-flex items-center gap-1.5 bg-white border border-indigo-200 text-indigo-900 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
-                                                            <span x-text="(() => { let mk = window.mataKuliahs.find(m => m.kode_matkul == kode); return mk ? mk.nama_matkul + ' (' + mk.kode_matkul + ')' : kode; })()"></span>
-                                                            <button type="button" @click="editSelectedMatkuls = editSelectedMatkuls.filter(m => m != kode)" class="text-red-500 hover:text-red-700 font-bold ml-1 text-sm">×</button>
-                                                        </div>
-                                                    </template>
-                                                </template>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     {{-- BUTTON --}}
