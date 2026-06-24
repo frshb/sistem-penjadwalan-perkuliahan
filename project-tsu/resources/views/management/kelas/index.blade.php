@@ -30,10 +30,6 @@
         id_tahunakademik: '',
         kapasitas: ''
     },
-    isLoading: true,
-    init() {
-        setTimeout(() => this.isLoading = false, 1500)
-    },
     selectedKelas: [],
     selectedProdi: '',
     selectedSemester: '',

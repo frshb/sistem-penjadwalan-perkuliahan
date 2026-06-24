@@ -15,14 +15,10 @@
 <body
     x-data="{
         sidebarOpen: true,
-        isLoading: true,
         statusFilter: 'aktif',
         activeCount: {{ $tahunAkademiks->where('status_aktif', 1)->count() }},
         inactiveCount: {{ $tahunAkademiks->where('status_aktif', 0)->count() }},
-        totalCount: {{ $tahunAkademiks->count() }},
-        init() {
-            setTimeout(() => this.isLoading = false, 1200)
-        }
+        totalCount: {{ $tahunAkademiks->count() }}
     }"
     class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300"
 >
@@ -33,36 +29,8 @@
       :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'"
       class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out">
 
-    <!-- Skeleton -->
-    <div x-show="isLoading" class="animate-pulse space-y-6">
-
-        <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex items-center space-x-3 w-1/3">
-                <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
-                <div class="w-48 h-6 bg-gray-300 rounded"></div>
-            </div>
-
-            <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                @for ($i = 0; $i < 6; $i++)
-                    <div class="border border-gray-200 rounded-2xl p-6 space-y-4">
-                        <div class="w-32 h-5 bg-gray-300 rounded"></div>
-                        <div class="w-48 h-4 bg-gray-200 rounded"></div>
-                        <div class="w-full h-10 bg-gray-300 rounded-xl"></div>
-                    </div>
-                @endfor
-
-            </div>
-        </div>
-
-    </div>
-
     <!-- CONTENT -->
-    <div x-show="!isLoading" x-cloak>
+    <div>
 
         <!-- Header -->
         <div class="flex justify-between items-center">

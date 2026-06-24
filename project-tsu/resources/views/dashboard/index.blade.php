@@ -10,41 +10,12 @@
 <body class="bg-gray-50 overflow-x-hidden min-h-screen font-sans transition-colors duration-300">
 
     <div class="flex min-h-screen" x-data="{ 
-        sidebarOpen: true, 
-        isLoading: true, 
-        init() { setTimeout(() => this.isLoading = false, 2000) } 
+        sidebarOpen: true
     }">
         @include('components.sidebar')
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-10'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
             
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-8">
-                <!-- Title Skeleton -->
-                <div class="flex items-center mb-8">
-                    <div class="w-16 h-8 bg-gray-300 rounded"></div>
-                </div>
-
-                <!-- Top Grid Skeleton -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <div class="col-span-1 lg:col-span-2 h-48 bg-gray-300 rounded-2xl"></div>
-                    <div class="col-span-1 h-48 bg-gray-300 rounded-2xl"></div>
-                </div>
-
-                <!-- Bottom Grid Skeleton -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <div class="col-span-1 lg:col-span-2 h-64 bg-gray-300 rounded-xl"></div>
-                    <div class="col-span-1 h-64 bg-gray-300 rounded-xl"></div>
-                </div>
-
-                <!-- Bottom Cards Skeleton -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="h-32 bg-gray-300 rounded-xl"></div>
-                    <div class="h-32 bg-gray-300 rounded-xl"></div>
-                </div>
-            </div>
-
-            <!-- Real Content -->
-            <div x-show="!isLoading">
+            <div>
                 <div class="flex items-center mb-8">
                     <div class="flex flex-col mr-3">
                         <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>

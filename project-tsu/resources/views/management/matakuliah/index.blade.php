@@ -36,12 +36,6 @@
 
     editUrl: '',
 
-    isLoading: true,
-
-    init() {
-        setTimeout(() => this.isLoading = false, 2000)
-    },
-
     filterRooms(tipe) {
 
         if (tipe === 'Teori') {
@@ -99,37 +93,7 @@
 
         <!-- Konten Utama -->
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-gray-50">
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div class="flex items-center space-x-3 w-1/3">
-                        <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
-                        <div class="w-48 h-6 bg-gray-300 rounded"></div>
-                    </div>
-                    <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
-                </div>
-
-                <!-- Filter/Add Bar Skeleton -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
-                    <div class="flex flex-col sm:flex-row justify-between gap-4">
-                        <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
-                        <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
-                    </div>
-
-                    <!-- Table Skeleton -->
-                    <div class="border rounded-lg overflow-hidden">
-                        <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
-                            <div class="w-10 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div x-show="!isLoading">
+            <div>
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
                     <div class="flex flex-col">
@@ -301,30 +265,30 @@
                         <table class="min-w-full bg-white">
                             <thead class="bg-teal-800 text-white">
                                 <tr>
-                                    <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Mata Kuliah</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode Matkul</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Jumlah SKS</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Tipe</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Semester</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kurikulum</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Program Studi</th>
-                                    <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
+                                    <th class="w-16 text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">No</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Mata Kuliah</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Kode Matkul</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Jumlah SKS</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Tipe</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Semester</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Kurikulum</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Program Studi</th>
+                                    <th class="w-48 text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700">
 
                                 @forelse ($matkuls as $index => $matkul)
                                     <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-                                        <td class="text-left py-2 px-3 text-sm">{{ ($matkuls->currentPage() - 1) * $matkuls->perPage() + $index + 1 }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->nama_matkul }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kode_matkul }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->sks }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->jenis }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->semester }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">{{ $matkul->program_studi->nama_prodi ?? '-' }}</td>
-                                        <td class="text-left py-2 px-3 text-sm">
+                                        <td class="text-left py-4 px-5 text-sm">{{ ($matkuls->currentPage() - 1) * $matkuls->perPage() + $index + 1 }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ $matkul->nama_matkul }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ $matkul->kode_matkul }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ $matkul->sks }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ $matkul->jenis }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ $matkul->semester }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ $matkul->program_studi->nama_prodi ?? '-' }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">
                                             <div class="flex space-x-2">
                                                 <button
                                                     @click="openEditModal(

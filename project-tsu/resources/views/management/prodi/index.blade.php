@@ -8,40 +8,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, showExportMenu: false, isLoading: true, editData: { id: '', nama: '', kode: '' }, init() { setTimeout(() => this.isLoading = false, 2000) } }"  @close-modal.window="showAddModal = false; showEditModal = false;" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
+<body x-data="{ sidebarOpen: true, showAddModal: false, showEditModal: false, showExportMenu: false, editData: { id: '', nama: '', kode: '' } }"  @close-modal.window="showAddModal = false; showEditModal = false;" class="bg-gray-100/50 overflow-x-hidden min-h-screen transition-colors duration-300">
     <div class="flex min-h-screen">
         @include('components.sidebar')
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
-            <!-- Skeleton Loader -->
-            <div x-show="isLoading" class="animate-pulse space-y-6">
-                <!-- Header Skeleton -->
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div class="flex items-center space-x-3 w-1/3">
-                        <div class="w-2 h-8 bg-gray-300 rounded-lg"></div>
-                        <div class="w-48 h-6 bg-gray-300 rounded"></div>
-                    </div>
-                    <div class="w-32 h-10 bg-gray-300 rounded-full"></div>
-                </div>
-
-                <!-- Filter/Add Bar Skeleton -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 space-y-6">
-                    <div class="flex flex-col sm:flex-row justify-between gap-4">
-                        <div class="w-full sm:w-1/3 h-10 bg-gray-200 rounded-lg"></div>
-                        <div class="w-32 h-10 bg-gray-300 rounded-lg"></div>
-                    </div>
-
-                    <!-- Table Skeleton -->
-                    <div class="border rounded-lg overflow-hidden">
-                        <div class="bg-gray-50 h-12 flex items-center px-6 space-x-4 border-b">
-                            <div class="w-10 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                            <div class="w-1/4 h-4 bg-gray-300 rounded"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div x-show="!isLoading">
+            <div>
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
                     <div class="flex flex-col">
