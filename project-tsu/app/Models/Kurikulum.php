@@ -13,7 +13,9 @@ class Kurikulum extends Model
 
     public $timestamps = false;
     protected $fillable = [
+        'kode_kurikulum',
         'nama_kurikulum',
+        'tahun_berlaku',
         'status',
     ];
 }

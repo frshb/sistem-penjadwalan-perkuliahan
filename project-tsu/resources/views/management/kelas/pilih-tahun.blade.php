@@ -341,12 +341,14 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">
                     Nama Tahun Akademik
                 </label>
-                <input
-                    type="text"
+                <select
                     name="nama_tahunakademik"
-                    placeholder="Contoh: Ganjil 2024/2025"
-                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
                     required>
+                    <option value="" disabled selected>Pilih Semester</option>
+                    <option value="Ganjil">Ganjil</option>
+                    <option value="Genap">Genap</option>
+                </select>
             </div>
 
             <!-- Tahun Ajaran -->
@@ -507,13 +509,15 @@
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">
                     Nama Tahun Akademik
                 </label>
-                <input
-                    type="text"
+                <select
                     name="nama_tahunakademik"
                     x-model="editData.nama_tahunakademik"
-                    placeholder="Contoh: Ganjil 2024/2025"
-                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
                     required>
+                    <option value="" disabled>Pilih Semester</option>
+                    <option value="Ganjil">Ganjil</option>
+                    <option value="Genap">Genap</option>
+                </select>
             </div>
 
             <!-- Tahun Ajaran -->

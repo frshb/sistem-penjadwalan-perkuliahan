@@ -39,13 +39,9 @@
                 <div class="w-1.5 h-2.5 bg-amber-400 rounded-b"></div>
             </div>
             <div>
-                <h1 class="text-xl font-bold text-slate-800 leading-tight">Penjadwalan Otomatis</h1>
-                <p class="text-xs text-slate-400 mt-0.5">Genetic Algorithm Scheduler</p>
+                <h1 class="text-2xl font-bold text-slate-800 leading-tight">Buat Jadwal Otomatis</h1>
+                <p class="text-sm text-slate-500 mt-1">Sistem Cerdas Penyusun Jadwal Perkuliahan</p>
             </div>
-            <span class="ml-auto inline-flex items-center gap-1.5 bg-teal-50 text-teal-700 text-xs font-semibold px-3 py-1 rounded-full border border-teal-200">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
-                GA Engine v2
-            </span>
         </div>
     </div>
 
@@ -55,10 +51,10 @@
     {{-- ═══════════════════════════════════════════════════
          SECTION FORM — dua kolom: Konfigurasi | Pengaturan Lanjutan
     ══════════════════════════════════════════════════════ --}}
-    <div id="section-form" class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div id="section-form" class="max-w-3xl mx-auto space-y-6">
 
-        {{-- Kolom kiri: Konfigurasi Utama (3/5) --}}
-        <div class="lg:col-span-3 space-y-5">
+        {{-- Kolom Konfigurasi Utama --}}
+        <div class="space-y-5">
 
             {{-- Card: Tahun Akademik + Preset --}}
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -70,56 +66,64 @@
 
                     {{-- Tahun Akademik --}}
                     <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                            Tahun Akademik
+                        <label class="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                            Pilih Tahun Akademik
                         </label>
-                        <p class="text-xs text-slate-400 mb-2">
-                            Pilih semester yang jadwalnya ingin dibuat secara otomatis. Data kelas dan dosen akan diambil dari tahun akademik ini.
+                        <p class="text-sm text-slate-500 mb-3">
+                            Pilih semester mana yang ingin dibuatkan jadwalnya. Data dosen dan mata kuliah akan otomatis diambil dari semester ini.
                         </p>
                         <div class="relative">
                             <select id="inp-tahun"
-                                class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-400 outline-none text-sm font-medium text-slate-700 appearance-none">
-                                <option value="">— Pilih Tahun Akademik —</option>
+                                class="w-full pl-4 pr-10 py-3.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-base font-medium text-slate-700 appearance-none shadow-sm cursor-pointer">
+                                <option value="">— Silakan Pilih Tahun Akademik —</option>
                                 @foreach ($tahunAkademikList as $ta)
-                                    <option value="{{ $ta->id_tahunakademik }}" {{ $tahunAkademikAktif && $ta->id_tahunakademik === $tahunAkademikAktif->id_tahunakademik ? 'selected' : '' }}>{{ $ta->nama_tahunakademik }}</option>
+                                    <option value="{{ $ta->id_tahunakademik }}" {{ $tahunAkademikAktif && $ta->id_tahunakademik === $tahunAkademikAktif->id_tahunakademik ? 'selected' : '' }}>{{ $ta->nama_tahunakademik }} (Tahun Ajaran {{ $ta->tahun_ajaran }})</option>
                                 @endforeach
                             </select>
-                            <svg class="absolute right-3 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            <svg class="absolute right-4 top-4 w-5 h-5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </div>
                     </div>
 
                     {{-- Preset Mode --}}
                     <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                            Pilih Mode Sesuai Kebutuhan
+                        <label class="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
+                            Pilih Tingkat Ketelitian
                         </label>
-                        <p class="text-xs text-slate-400 mb-2">
-                            Tidak tahu harus pakai angka berapa? Pilih salah satu mode di bawah — semua parameter akan diatur otomatis.
+                        <p class="text-sm text-slate-500 mb-4">
+                            Sistem cerdas kami akan mencoba menyusun jadwal terbaik. Pilih seberapa detail sistem harus menganalisis data Anda.
                         </p>
-                        <div class="grid grid-cols-3 gap-2">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <button type="button" onclick="applyPreset('cepat')"
-                                class="preset-btn px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-teal-400 hover:bg-teal-50 text-xs font-semibold text-slate-600 transition text-center" data-preset="cepat">
-                                ⚡ Cepat
-                                <div class="text-slate-400 font-normal mt-0.5">Pop 50 · Gen 100</div>
-                                <div class="text-slate-400 font-normal text-xs mt-1 leading-tight">Cocok untuk uji coba atau data kelas sedikit (&lt;30)</div>
+                                class="preset-btn p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-teal-400 hover:bg-teal-50 text-base font-bold text-slate-700 transition text-center flex flex-col items-center" data-preset="cepat">
+                                <div class="text-2xl mb-1">⚡</div>
+                                Cepat (Uji Coba)
+                                <div class="text-slate-500 font-normal text-sm mt-2 leading-relaxed">
+                                    Proses lebih cepat. Cocok untuk melihat hasil sementara atau data kelas yang sedikit.
+                                </div>
                             </button>
+                            
                             <button type="button" onclick="applyPreset('seimbang')"
-                                class="preset-btn px-3 py-2.5 rounded-xl border-2 border-teal-400 bg-teal-50 text-xs font-semibold text-teal-700 transition text-center" data-preset="seimbang">
-                                ⚖ Seimbang
-                                <div class="text-teal-600 font-normal mt-0.5">Pop 100 · Gen 200</div>
-                                <div class="text-teal-600/70 font-normal text-xs mt-1 leading-tight">Disarankan untuk data normal (30–80 kelas)</div>
+                                class="preset-btn p-4 rounded-xl border-2 border-teal-500 bg-teal-50 text-base font-bold text-teal-800 transition text-center shadow-sm flex flex-col items-center" data-preset="seimbang">
+                                <div class="text-2xl mb-1">⚖️</div>
+                                Normal (Disarankan)
+                                <div class="text-teal-600/80 font-normal text-sm mt-2 leading-relaxed">
+                                    Pilihan terbaik untuk sebagian besar kasus. Menyeimbangkan waktu dan kualitas jadwal.
+                                </div>
                             </button>
+                            
                             <button type="button" onclick="applyPreset('optimal')"
-                                class="preset-btn px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-400 hover:bg-purple-50 text-xs font-semibold text-slate-600 transition text-center" data-preset="optimal">
-                                🎯 Optimal
-                                <div class="text-slate-400 font-normal mt-0.5">Pop 200 · Gen 500</div>
-                                <div class="text-slate-400 font-normal text-xs mt-1 leading-tight">Untuk data besar (&gt;80 kelas), proses lebih lama</div>
+                                class="preset-btn p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-400 hover:bg-purple-50 text-base font-bold text-slate-700 transition text-center flex flex-col items-center" data-preset="optimal">
+                                <div class="text-2xl mb-1">🎯</div>
+                                Maksimal (Data Besar)
+                                <div class="text-slate-500 font-normal text-sm mt-2 leading-relaxed">
+                                    Proses analisis lebih mendalam dan butuh waktu sedikit lebih lama. Untuk data jadwal yang sangat banyak.
+                                </div>
                             </button>
                         </div>
                     </div>
 
                     {{-- Populasi Slider --}}
-                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <div class="hidden bg-slate-50 rounded-xl p-4 border border-slate-100">
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex-1">
                                 <label class="text-sm font-bold text-slate-700 block">
@@ -163,7 +167,7 @@
                     </div>
 
                     {{-- Generasi Slider --}}
-                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <div class="hidden bg-slate-50 rounded-xl p-4 border border-slate-100">
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex-1">
                                 <label class="text-sm font-bold text-slate-700 block">
@@ -209,7 +213,7 @@
             </div>
 
             {{-- Card: Constraint Aktif --}}
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <button type="button" onclick="toggleCollapse('constraint')"
                     class="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition">
                     <div class="flex items-center gap-2">
@@ -305,7 +309,7 @@
         </div>
 
         {{-- Kolom kanan: Pengaturan Lanjutan (2/5) --}}
-        <div class="lg:col-span-2 space-y-5">
+        <div class="hidden lg:col-span-2 space-y-5">
 
             {{-- Card: Parameter GA Lanjutan --}}
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -498,7 +502,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 bg-slate-50/50">
                 <div class="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm flex items-center justify-between">
                     <div>
-                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Generasi</p>
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Tahap Proses</p>
                         <p class="text-2xl font-black text-blue-600 mt-1 leading-none" id="stat-gen">0</p>
                         <p class="text-[10px] text-slate-400 mt-1.5" id="stat-gen-max">dari 200</p>
                     </div>
@@ -508,7 +512,7 @@
                 </div>
                 <div class="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm flex items-center justify-between">
                     <div>
-                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Fitness terbaik</p>
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Kualitas Jadwal</p>
                         <p class="text-2xl font-black text-teal-600 mt-1 leading-none" id="stat-fitness">0%</p>
                         <p class="text-[10px] text-slate-400 mt-1.5" id="stat-fitness-delta"></p>
                     </div>
@@ -518,7 +522,7 @@
                 </div>
                 <div class="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm flex items-center justify-between">
                     <div>
-                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Konflik Hard</p>
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Bentrok Jadwal</p>
                         <p class="text-2xl font-black text-rose-500 mt-1 leading-none" id="stat-hard">—</p>
                         <p class="text-[10px] text-slate-400 mt-1.5" id="stat-hard-detail"></p>
                     </div>
@@ -528,9 +532,9 @@
                 </div>
                 <div class="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm flex items-center justify-between">
                     <div>
-                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Soft Violation</p>
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Peringatan</p>
                         <p class="text-2xl font-black text-amber-500 mt-1 leading-none" id="stat-soft">—</p>
-                        <p class="text-[10px] text-slate-400 mt-1.5">constraint lunak</p>
+                        <p class="text-[10px] text-slate-400 mt-1.5">hal yang kurang ideal</p>
                     </div>
                     <div class="p-2 rounded-lg bg-amber-50 text-amber-500">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -543,7 +547,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {{-- Fitness Chart --}}
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Kurva Konvergensi Fitness</p>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Grafik Peningkatan Kualitas</p>
                 <canvas id="fitness-chart"></canvas>
             </div>
 
@@ -582,11 +586,11 @@
             </div>
             <div class="grid grid-cols-3 gap-3 text-center">
                 <div class="bg-white/50 rounded-xl p-3">
-                    <p class="text-xs opacity-60">Fitness</p>
+                    <p class="text-xs opacity-60">Kualitas</p>
                     <p class="text-lg font-black" id="hasil-stat-fitness">—</p>
                 </div>
                 <div class="bg-white/50 rounded-xl p-3">
-                    <p class="text-xs opacity-60">Generasi</p>
+                    <p class="text-xs opacity-60">Tahap</p>
                     <p class="text-lg font-black" id="hasil-stat-gen">—</p>
                 </div>
                 <div class="bg-white/50 rounded-xl p-3">
@@ -600,7 +604,7 @@
         <div class="grid grid-cols-3 gap-6" id="conflict-breakdown">
             <div class="group bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-slate-300 transition-all duration-300 flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Konflik Dosen</p>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Bentrok Dosen</p>
                     <p class="text-2xl font-black text-rose-500 mt-1.5 tracking-tight" id="bd-dosen">0</p>
                     <p class="text-[10px] text-slate-400 mt-1 font-medium">Bentrok Jadwal</p>
                 </div>
@@ -610,7 +614,7 @@
             </div>
             <div class="group bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-slate-300 transition-all duration-300 flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Konflik Ruangan</p>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Bentrok Ruangan</p>
                     <p class="text-2xl font-black text-amber-500 mt-1.5 tracking-tight" id="bd-ruangan">0</p>
                     <p class="text-[10px] text-slate-400 mt-1 font-medium">Bentrok Ruang</p>
                 </div>
@@ -620,7 +624,7 @@
             </div>
             <div class="group bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-slate-300 transition-all duration-300 flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Soft Violation</p>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Peringatan Lunak</p>
                     <p class="text-2xl font-black text-indigo-500 mt-1.5 tracking-tight" id="bd-soft">0</p>
                     <p class="text-[10px] text-slate-400 mt-1 font-medium">Pelanggaran Lunak</p>
                 </div>

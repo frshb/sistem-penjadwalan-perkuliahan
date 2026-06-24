@@ -120,6 +120,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/dosen-pengampu/hapus', [PortalDosenPengampuController::class, 'hapus'])->name('dosen-pengampu.hapus');
     });
 
+    // Kurikulum / Tahun Akademik Setup
+    Route::middleware(['permission:management_data,Kelas Paralel'])->group(function () {
+        Route::get('/management/kurikulum', [\App\Http\Controllers\PortalKurikulumController::class, 'index'])->name('kurikulum.index');
+        Route::get('/management/kurikulum/setup', [\App\Http\Controllers\PortalKurikulumController::class, 'setup'])->name('kurikulum.setup');
+        Route::post('/management/kurikulum/store', [\App\Http\Controllers\PortalKurikulumController::class, 'store'])->name('kurikulum.store');
+        Route::post('/management/kurikulum/store-kurikulum', [\App\Http\Controllers\PortalKurikulumController::class, 'storeKurikulum'])->name('kurikulum.storeKurikulum');
+        Route::post('/management/kurikulum/store-tahun-akademik', [\App\Http\Controllers\PortalKurikulumController::class, 'storeTahunAkademik'])->name('kurikulum.storeTahunAkademik');
+        Route::post('/management/kurikulum/toggle-tahun/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'toggleTahunAkademik'])->name('kurikulum.toggleTahun');
+    });
+
     // Kelas Paralel
     Route::middleware(['permission:management_data,Kelas Paralel'])->group(function () {
         Route::get('/management/kelas/pilih-tahun', [KelasController::class, 'pilihTahun'])->name('kelas.pilih-tahun');
