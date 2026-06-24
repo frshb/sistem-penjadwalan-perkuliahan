@@ -100,9 +100,12 @@
 
             @forelse ($tahunAkademiks as $tahun)
 
+                @php
+                    $isRestricted = !auth()->user()->isAdmin() && !$tahun->status_aktif;
+                @endphp
                 <div
                     x-show="statusFilter === 'semua' || (statusFilter === 'aktif' && {{ $tahun->status_aktif ? 1 : 0 }} == 1) || (statusFilter === 'nonaktif' && {{ $tahun->status_aktif ? 0 : 1 }} == 1)"
-                    class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                    class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-all duration-300 {{ $isRestricted ? 'opacity-50' : 'hover:shadow-xl hover:-translate-y-1' }}">
 
                     <!-- Header Card -->
                     <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-6 py-5">
@@ -167,23 +170,31 @@
                         </div>
 
                         <!-- Button -->
-                        <a href="{{ route('dosen-pengampu.index', ['tahun' => $tahun->id_tahunakademik]) }}"
-                           class="w-full inline-flex items-center justify-center px-4 py-3 bg-teal-500 text-white font-semibold rounded-xl shadow-md hover:bg-teal-600 transition duration-200">
+                        @if($isRestricted)
+                            <button
+                                disabled
+                                class="w-full inline-flex items-center justify-center px-4 py-3 bg-gray-200 text-gray-400 font-semibold rounded-xl cursor-not-allowed">
+                                Tidak Aktif (Akses Terbatas)
+                            </button>
+                        @else
+                            <a href="{{ route('dosen-pengampu.index', ['tahun' => $tahun->id_tahunakademik]) }}"
+                               class="w-full inline-flex items-center justify-center px-4 py-3 bg-teal-500 text-white font-semibold rounded-xl shadow-md hover:bg-teal-600 transition duration-200">
 
-                            Atur Dosen Pengampu
+                                Atur Dosen Pengampu
 
-                            <svg class="w-5 h-5 ml-2"
-                                 fill="none"
-                                 stroke="currentColor"
-                                 viewBox="0 0 24 24">
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
-                                      d="M9 5l7 7-7 7">
-                                </path>
-                            </svg>
+                                <svg class="w-5 h-5 ml-2"
+                                     fill="none"
+                                     stroke="currentColor"
+                                     viewBox="0 0 24 24">
+                                    <path stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          stroke-width="2"
+                                          d="M9 5l7 7-7 7">
+                                    </path>
+                                </svg>
 
-                        </a>
+                            </a>
+                        @endif
 
                     </div>
 
@@ -202,7 +213,7 @@
                             Data Tahun Akademik Belum Ada
                         </h3>
                         <p class="text-gray-500">
-                            Silakan tambahkan data tahun akademik di menu Management Kelas terlebih dahulu.
+                            Silakan hubungi Admin untuk menambahkan data tahun akademik pada menu Pengaturan Kurikulum & TA.
                         </p>
                     </div>
                 </div>

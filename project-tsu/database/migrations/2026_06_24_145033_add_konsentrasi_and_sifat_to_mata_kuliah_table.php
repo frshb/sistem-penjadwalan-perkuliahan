@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('role', 'permissions')) {
-            Schema::table('role', function (Blueprint $table) {
-                $table->json('permissions')->nullable()->after('nama_role');
-            });
-        }
+        Schema::table('mata_kuliah', function (Blueprint $table) {
+            $table->string('konsentrasi', 100)->nullable()->after('semester');
+            $table->enum('sifat', ['W', 'P'])->default('W')->after('konsentrasi');
+        });
     }
 
     /**
@@ -23,8 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('role', function (Blueprint $table) {
-            $table->dropColumn('permissions');
+        Schema::table('mata_kuliah', function (Blueprint $table) {
+            $table->dropColumn(['konsentrasi', 'sifat']);
         });
     }
 };

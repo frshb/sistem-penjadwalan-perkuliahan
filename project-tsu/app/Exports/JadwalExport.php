@@ -61,7 +61,7 @@ class JadwalExport implements FromCollection, WithHeadings, WithStyles, WithTitl
                     $j->kelas->matakuliah->jenis ?? 'Teori',  // ← baca dari DB
                     $sks,
                     $j->kelas->dosen->nama_dosen       ?? '-',
-                    $j->ruangan->nama_ruang            ?? '-',
+                    $j->ruangan?->nama_ruang            ?? '-',
                     $j->slotMulai->waktu_mulai         ?? '-',
                     $slotSelesai->waktu_selesai        ?? '-',
                 ];

@@ -23,6 +23,8 @@ class MataKuliah extends Model
         'id_prodi',
         'semester',
         'id_kurikulum',
+        'konsentrasi',
+        'sifat',
     ];
 
     public function kurikulum()

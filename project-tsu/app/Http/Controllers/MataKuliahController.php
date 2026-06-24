@@ -35,6 +35,23 @@ class MataKuliahController extends Controller
             $query->where('id_prodi', $request->prodi);
         }
 
+        // Filter semester (mendukung nilai ganjil, genap, atau nomor semester)
+        if ($request->filled('semester')) {
+            $semesterVal = $request->semester;
+            if ($semesterVal === 'ganjil') {
+                $query->whereIn('semester', [1, 3, 5, 7]);
+            } elseif ($semesterVal === 'genap') {
+                $query->whereIn('semester', [2, 4, 6, 8]);
+            } else {
+                $query->where('semester', $semesterVal);
+            }
+        }
+
+        // Filter kurikulum
+        if ($request->filled('kurikulum')) {
+            $query->where('id_kurikulum', $request->kurikulum);
+        }
+
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('nama_matkul', 'like', '%' . $searchTerm . '%')
@@ -46,8 +63,8 @@ class MataKuliahController extends Controller
         $matkuls   = $query->paginate(100)->appends($request->query());
         $kurikulums = Kurikulum::all();
         $ruangans   = Ruangan::all();
-        $prodis     = $prodiId ? Prodi::where('id_prodi', $prodiId)->get()
-                            : Prodi::all();
+        $prodis     = $prodiId ? Prodi::where('id_prodi', $prodiId)->where('id_prodi', '!=', 99)->get()
+                            : Prodi::where('id_prodi', '!=', 99)->get();
 
         $userProdiName = $prodiId ? ($prodis->first()->nama_prodi ?? '') : null;
 
@@ -65,12 +82,14 @@ class MataKuliahController extends Controller
             'nama_matkul' => 'required|string|max:100',
             'kode_matkul' => 'required|string|max:20',
             'jumlah_sks' => 'required|integer|min:1',
-            'tipe' => 'required|string|in:Teori,Praktikum',
-            // 'semester' => 'required|integer|min:1|max:8',
-            // 'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum', // Validasi kurikulum
+            'tipe' => 'required|string',
+            'semester' => 'required|integer|min:1|max:8',
+            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum', // Validasi kurikulum
             'id_prodi' => 'required|integer|exists:program_studi,id_prodi', // Validasi program studi
             'ruangan_ids' => 'required|array',
             'ruangan_ids.*' => 'exists:ruang,id_ruang',
+            'konsentrasi' => 'nullable|string|in:AI,Programming and Software Development,IT Mobility and Security',
+            'sifat' => 'required|string|in:W,P',
         ]);
 
         // Simpan data (termasuk id_kurikulum)
@@ -79,9 +98,11 @@ class MataKuliahController extends Controller
             'kode_matkul' => $request->kode_matkul,
             'sks' => $request->jumlah_sks,
             'jenis' => strtolower($request->tipe),
-            // 'semester' => $request->semester,
-            // 'id_kurikulum' => $request->id_kurikulum,
+            'semester' => $request->semester,
+            'id_kurikulum' => $request->id_kurikulum,
             'id_prodi' => $request->id_prodi,
+            'konsentrasi' => $request->konsentrasi ?: null,
+            'sifat' => $request->sifat,
         ]);
          // SIMPAN RELASI RUANGAN
         $matkul->ruangans()->sync($request->ruangan_ids);
@@ -104,11 +125,13 @@ class MataKuliahController extends Controller
             'kode_matkul' => 'required|string|max:20',
             'jumlah_sks' => 'required|integer|min:1',
             'tipe' => 'required|string', // strtolower nanti
-            // 'semester' => 'required|integer|min:1|max:8',
-            // 'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum',
+            'semester' => 'required|integer|min:1|max:8',
+            'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum',
             'id_prodi' => 'required|integer|exists:program_studi,id_prodi',
             'ruangan_ids' => 'required|array',
             'ruangan_ids.*' => 'exists:ruang,id_ruang',
+            'konsentrasi' => 'nullable|string|in:AI,Programming and Software Development,IT Mobility and Security',
+            'sifat' => 'required|string|in:W,P',
         ]);
 
         // Update Data
@@ -117,9 +140,11 @@ class MataKuliahController extends Controller
             'kode_matkul' => $request->kode_matkul,
             'sks' => $request->jumlah_sks,
             'jenis' => strtolower($request->tipe),
-            // 'semester' => $request->semester,
-            // 'id_kurikulum' => $request->id_kurikulum,
+            'semester' => $request->semester,
+            'id_kurikulum' => $request->id_kurikulum,
             'id_prodi' => $request->id_prodi,
+            'konsentrasi' => $request->konsentrasi ?: null,
+            'sifat' => $request->sifat,
         ]);
         $matkul->ruangans()->sync($request->ruangan_ids);
 

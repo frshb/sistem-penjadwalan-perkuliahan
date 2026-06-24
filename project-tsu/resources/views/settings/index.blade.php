@@ -22,6 +22,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Management Role Card -->
+                @if(Auth::user()->isAdmin())
                 <a href="{{ route('settings.roles.index') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
 
@@ -34,8 +35,10 @@
                         <p class="text-gray-500 leading-relaxed">Kelola peran pengguna, hak akses, dan perizinan dalam sistem.</p>
                     </div>
                 </a>
+                @endif
 
                 <!-- Kalender Akademik Card -->
+                @if(Auth::user()->isAdmin())
                 <a href="{{ route('settings.academic_calendar.index') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
 
@@ -48,8 +51,10 @@
                         <p class="text-gray-500 leading-relaxed">Atur tahun ajaran, semester, dan jadwal penting akademik lainnya.</p>
                     </div>
                 </a>
+                @endif
 
                 <!-- User Registration Card -->
+                @if(Auth::user()->isAdmin())
                 <a href="{{ route('settings.users.create') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
 
@@ -62,6 +67,22 @@
                         <p class="text-gray-500 leading-relaxed">Buat akun baru untuk Kaprodi, Dekan, atau Dosen.</p>
                     </div>
                 </a>
+                @endif
+
+                <!-- Setup Kurikulum & TA Card -->
+                <a href="{{ route('kurikulum.index') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+
+                    <div class="relative z-10">
+                        <div class="w-14 h-14 bg-emerald-100 rounded-xl flex items-center justify-center mb-6 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        </div>
+
+                        <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-emerald-700 transition-colors">Kurikulum & TA</h3>
+                        <p class="text-gray-500 leading-relaxed">Kelola data master kurikulum dan tahun akademik/semester aktif.</p>
+                    </div>
+                </a>
+            </div>
         </main>
     </div>
 </body>

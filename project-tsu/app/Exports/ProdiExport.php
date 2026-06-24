@@ -24,7 +24,7 @@ class ProdiExport implements FromView, ShouldAutoSize, WithEvents, WithColumnWid
     public function view(): View
     {
         return view('exports.prodi', [
-            'prodis' => Prodi::all(),
+            'prodis' => Prodi::where('id_prodi', '!=', 99)->get(),
             'isPdf' => $this->isPdf
         ]);
     }

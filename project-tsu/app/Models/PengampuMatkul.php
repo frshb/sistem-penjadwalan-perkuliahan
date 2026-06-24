@@ -12,6 +12,8 @@ class PengampuMatkul extends Model
         'id_dosen',
         'kode_matkul',
         'id_kelas',
+        'id_prodi',
+        'id_tahunakademik',
     ];
 
     public $timestamps = false;
@@ -24,5 +26,10 @@ class PengampuMatkul extends Model
     public function mataKuliah()
     {
         return $this->belongsTo(MataKuliah::class, 'kode_matkul', 'kode_matkul');
+    }
+
+    public function tahunAkademik()
+    {
+        return $this->belongsTo(TahunAkademik::class, 'id_tahunakademik', 'id_tahunakademik');
     }
 }

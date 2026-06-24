@@ -69,25 +69,34 @@ class AuthController extends Controller
             'id_prodi' => 'nullable|exists:program_studi,id_prodi', // Validate id_prodi
         ]);
 
+        $role = Role::find($validated['id_role']);
+        if (!$role) {
+            return back()->withInput()->withErrors(['id_role' => 'Role tidak valid.']);
+        }
+
         // Admin limit check
-        if ($validated['id_role'] == User::ROLE_ADMIN) {
-            $adminCount = User::where('id_role', User::ROLE_ADMIN)->count();
+        if ($role->nama_role === User::ROLE_ADMIN) {
+            $adminCount = User::whereHas('role', function ($query) {
+                $query->where('nama_role', User::ROLE_ADMIN);
+            })->count();
             if ($adminCount >= 3) {
                 return back()->withErrors(['id_role' => 'Maksimal 3 Admin diperbolehkan.']);
             }
         }
 
-        // Check if role requires mapping
-        $roleId = (int)$validated['id_role'];
-        
         // Kaprodi must start with Prodi
-        if ($roleId === User::ROLE_KAPRODI && empty($validated['id_prodi'])) {
+        if ($role->nama_role === User::ROLE_KAPRODI && empty($validated['id_prodi'])) {
              return back()->withInput()->withErrors(['id_prodi' => 'Program Studi harus dipilih untuk Kaprodi.']);
         }
 
         // Dosen must start with Dosen
-        if ($roleId === User::ROLE_DOSEN && empty($validated['id_dosen'])) {
+        if ($role->nama_role === User::ROLE_DOSEN && empty($validated['id_dosen'])) {
              return back()->withInput()->withErrors(['id_dosen' => 'Dosen harus dipilih untuk role Dosen.']);
+        }
+
+        // Dekan must start with Dosen
+        if ($role->nama_role === User::ROLE_DEKAN && empty($validated['id_dosen'])) {
+             return back()->withInput()->withErrors(['id_dosen' => 'Dosen harus dipilih untuk role Dekan.']);
         }
         
         // Create User

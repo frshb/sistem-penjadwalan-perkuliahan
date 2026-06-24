@@ -32,6 +32,7 @@
 <script>
     window.__MATKULS__   = @json($matkulsJs);
     window.__PENGAMPUS__ = @json($pengampusJs);
+    var ID_TAHUNAKADEMIK = {{ $tahunAkademik->id_tahunakademik }};
 </script>
 
 <main :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="transition-all duration-300 p-6 sm:p-8">
@@ -97,7 +98,6 @@
                 <div class="p-4 border-b border-gray-100 rounded-t-2xl bg-white relative z-30">
                     <h2 class="text-base font-bold text-gray-800 mb-3">Daftar Mata Kuliah</h2>
 
-                    {{-- Search + Filter Button --}}
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1">
                             <input
@@ -166,7 +166,6 @@
                                     </div>
                                 </div>
 
-                                {{-- Counter --}}
                                 <p id="matkul-counter" class="text-xs text-gray-400 border-t pt-2"></p>
                             </div>
                         </div>
@@ -194,7 +193,7 @@
                                 <h3 class="font-semibold text-gray-800 text-sm leading-tight">{{ $item->nama_matkul }}</h3>
                                 <p class="text-xs text-gray-500 mt-0.5">{{ $item->program_studi->nama_prodi ?? '-' }}</p>
                                 <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                                    <span class="text-[10px] px-2 py-0.5 bg-teal-50 text-teal-700 rounded font-mono">{{ $item->kode_matkul }}</span>
+                                    <span class="text-xs px-2 py-0.5 bg-teal-50 text-teal-700 rounded font-mono">{{ $item->kode_matkul }}</span>
                                     <span class="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded">{{ $item->sks }} SKS</span>
                                     <span class="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded">Smt {{ $item->semester }}</span>
                                 </div>
@@ -310,26 +309,31 @@
         PENGAMPUS.forEach(function(p) {
             var zone = document.querySelector('.dosen-dropzone[data-dosen-id="' + p.id_dosen + '"]');
             if (!zone) return;
-            zone.appendChild(buildCard(p.kode_matkul, p.nama_matkul, p.sks, p.nama_prodi, String(p.id_dosen)));
+            zone.appendChild(buildCard(p.kode_matkul, p.nama_matkul, p.sks, p.nama_prodi, String(p.id_dosen), p.id_prodi, p.semester));
         });
         document.querySelectorAll('.dosen-card').forEach(updateSks);
         updateCounter();
     }
 
     // ── Build assigned card ──────────────────────────────────────
-    function buildCard(kodeMatkul, namaMatkul, sks, namaProdi, dosenId) {
+    function buildCard(kodeMatkul, namaMatkul, sks, namaProdi, dosenId, idProdi, semester) {
         var div = document.createElement('div');
         div.className = 'assigned-card bg-white border border-gray-200 rounded-lg p-2.5 flex items-start justify-between gap-2 group shadow-sm hover:border-teal-300 transition-all';
         div.dataset.matkulId = kodeMatkul;
+        div.dataset.idProdi  = idProdi || '';
         div.dataset.sks      = sks;
         div.dataset.dosenId  = dosenId;
         div.innerHTML =
             '<div class="min-w-0 flex-1">' +
                 '<p class="font-semibold text-gray-800 text-xs leading-tight truncate" title="' + namaMatkul + '">' + namaMatkul + '</p>' +
                 '<p class="text-[10px] text-gray-500 truncate mt-0.5">' + namaProdi + '</p>' +
-                '<span class="inline-block text-[10px] font-semibold px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded mt-1">' + sks + ' SKS</span>' +
+                '<div class="flex flex-wrap items-center gap-1.5 mt-1">' +
+                    '<span class="text-[10px] font-mono px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded">' + kodeMatkul + '</span>' +
+                    '<span class="text-[10px] font-semibold px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">' + sks + ' SKS</span>' +
+                    '<span class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">Smt ' + (semester || '-') + '</span>' +
+                '</div>' +
             '</div>' +
-            '<button onclick="hapusPengampu(\'' + kodeMatkul + '\',\'' + dosenId + '\',this)" ' +
+            '<button onclick="hapusPengampu(\'' + kodeMatkul + '\',\'' + (idProdi || '') + '\',\'' + dosenId + '\',this)" ' +
                 'class="flex-shrink-0 text-gray-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition opacity-0 group-hover:opacity-100" ' +
                 'title="Lepaskan">' +
                 '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
@@ -365,7 +369,12 @@
         item.addEventListener('dragstart', function(e) {
             item.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'copy';
-            e.dataTransfer.setData('text/plain', item.dataset.id);
+            
+            var dragData = {
+                kode_matkul: item.dataset.id,
+                id_prodi: item.dataset.idProdi
+            };
+            e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
         });
         item.addEventListener('dragend', function() {
             item.classList.remove('dragging');
@@ -383,34 +392,43 @@
         zone.addEventListener('drop', function(e) {
             e.preventDefault();
             zone.classList.remove('drag-over');
-            var kodeMatkul = e.dataTransfer.getData('text/plain');
-            var dosenId    = zone.dataset.dosenId;
-            if (!kodeMatkul || !dosenId) return;
-            simpan(kodeMatkul, dosenId, zone);
+            var rawData = e.dataTransfer.getData('text/plain');
+            var dosenId = zone.dataset.dosenId;
+            if (!rawData || !dosenId) return;
+            
+            try {
+                var dragData = JSON.parse(rawData);
+                simpan(dragData.kode_matkul, dragData.id_prodi, dosenId, zone);
+            } catch (err) {
+                simpan(rawData, null, dosenId, zone);
+            }
         });
     });
 
     // ── Simpan AJAX ──────────────────────────────────────────────
-    function simpan(kodeMatkul, dosenId, zone) {
-        var mk = MATKULS.find(function(m) { return String(m.kode_matkul) === String(kodeMatkul); });
+    function simpan(kodeMatkul, idProdi, dosenId, zone) {
+        var mk = MATKULS.find(function(m) { 
+            return String(m.kode_matkul) === String(kodeMatkul) && 
+                   (!idProdi || String(m.id_prodi) === String(idProdi)); 
+        });
         if (!mk) return;
 
         fetch('{{ route("dosen-pengampu.simpan") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({ kode_matkul: kodeMatkul, id_dosen: dosenId })
+            body: JSON.stringify({ kode_matkul: kodeMatkul, id_prodi: idProdi, id_dosen: dosenId, id_tahunakademik: ID_TAHUNAKADEMIK })
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.success) { alert(data.message || 'Gagal menyimpan.'); return; }
-            zone.appendChild(buildCard(mk.kode_matkul, mk.nama_matkul, mk.sks, mk.nama_prodi, String(dosenId)));
+            zone.appendChild(buildCard(mk.kode_matkul, mk.nama_matkul, mk.sks, mk.nama_prodi, String(dosenId), mk.id_prodi, mk.semester));
             updateSks(zone.closest('.dosen-card'));
         })
         .catch(function() { alert('Terjadi kesalahan jaringan.'); });
     }
 
     // ── Hapus pengampu ───────────────────────────────────────────
-    window.hapusPengampu = function(kodeMatkul, dosenId, btn) {
+    window.hapusPengampu = function(kodeMatkul, idProdi, dosenId, btn) {
         var card     = btn.closest('.assigned-card');
         var dosenCard = btn.closest('.dosen-card');
         card.style.opacity = '0.4';
@@ -419,7 +437,7 @@
         fetch('{{ route("dosen-pengampu.hapus") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({ kode_matkul: kodeMatkul, id_dosen: dosenId })
+            body: JSON.stringify({ kode_matkul: kodeMatkul, id_prodi: idProdi, id_dosen: dosenId, id_tahunakademik: ID_TAHUNAKADEMIK })
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {

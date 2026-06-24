@@ -302,13 +302,13 @@ class OptimizeJadwal
                         'jadwal_id'     => $a->id_jadwal,
                         'jadwal_lawan'  => $b->id_jadwal,
                         'tipe'          => 'bentrok_ruangan',
-                        'keterangan'    => 'Ruangan ' . ($a->ruangan->nama_ruang ?? '-') . ' dipakai dua kelas sekaligus',
+                        'keterangan'    => 'Ruangan ' . ($a->ruangan?->nama_ruang ?? '-') . ' dipakai dua kelas sekaligus',
                     ];
                     $bentrokList[] = [
                         'jadwal_id'     => $b->id_jadwal,
                         'jadwal_lawan'  => $a->id_jadwal,
                         'tipe'          => 'bentrok_ruangan',
-                        'keterangan'    => 'Ruangan ' . ($b->ruangan->nama_ruang ?? '-') . ' dipakai dua kelas sekaligus',
+                        'keterangan'    => 'Ruangan ' . ($b->ruangan?->nama_ruang ?? '-') . ' dipakai dua kelas sekaligus',
                     ];
                 }
 
@@ -352,7 +352,7 @@ class OptimizeJadwal
                         'jadwal_id'    => $j->id_jadwal,
                         'jadwal_lawan' => null,
                         'tipe'         => 'ruangan_tidak_valid',
-                        'keterangan'   => 'Ruangan ' . ($j->ruangan->nama_ruang ?? '-') . ' tidak terdaftar untuk mata kuliah ini',
+                        'keterangan'   => 'Ruangan ' . ($j->ruangan?->nama_ruang ?? '-') . ' tidak terdaftar untuk mata kuliah ini',
                     ];
                 }
             }
@@ -1074,7 +1074,7 @@ class OptimizeJadwal
             'dosen'      => $jadwal->kelas->dosen->nama_dosen ?? '-',
             'hari'       => $jadwal->hari->nama_hari          ?? '-',
             'slot_asal'  => $jadwal->id_slot_mulai,
-            'ruangan'    => $jadwal->ruangan->nama_ruang      ?? '-',
+            'ruangan'    => $jadwal->ruangan?->nama_ruang      ?? '-',
             'alasan'     => implode('; ', array_unique($alasan)),
         ];
     }

@@ -77,7 +77,7 @@ class JadwalExportController extends Controller
                     'jenis' => $j->kelas->matakuliah->jenis ?? 'Teori',  // ← baca dari DB
                     'sks'         => $sks,
                     'dosen'       => $j->kelas->dosen->nama_dosen         ?? '-',
-                    'ruangan'     => $j->ruangan->nama_ruang              ?? '-',
+                    'ruangan'     => $j->ruangan?->nama_ruang              ?? '-',
                     'jam_mulai'   => $j->slotMulai->waktu_mulai           ?? '-',
                     'jam_selesai' => $slotSelesai->waktu_selesai          ?? '-',
                 ];

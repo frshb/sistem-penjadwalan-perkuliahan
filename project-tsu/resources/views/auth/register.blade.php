@@ -99,12 +99,12 @@
                     </div>
                 </div>
 
-                <div>
+                 <div>
                     <label for="id_role" class="block text-gray-500 text-sm mb-1 ml-1">Role</label>
                     <div class="relative">
                         <select id="id_role" name="id_role" class="block w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 bg-white text-gray-700 appearance-none" onchange="toggleInputs()">
                             @foreach($roles as $role)
-                                <option value="{{ $role->id_role }}">{{ ucfirst(str_replace('_', ' ', $role->nama_role)) }}</option>
+                                <option value="{{ $role->id_role }}" data-name="{{ $role->nama_role }}">{{ ucfirst(str_replace('_', ' ', $role->nama_role)) }}</option>
                             @endforeach
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
@@ -155,18 +155,19 @@
                 <script>
                     function toggleInputs() {
                         const roleSelect = document.getElementById('id_role');
+                        const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+                        const roleName = selectedOption ? selectedOption.getAttribute('data-name') : '';
+
                         const dosenInput = document.getElementById('dosen-input');
                         const prodiInput = document.getElementById('prodi-input');
-                        const roleId = parseInt(roleSelect.value);
 
                         // Reset hidden
                         dosenInput.classList.add('hidden');
                         prodiInput.classList.add('hidden');
 
-                        // 2 = Kaprodi, 4 = Dosen (Sesuaikan dengan ID di Database)
-                        if (roleId === 2) { // Kaprodi
+                        if (roleName === 'kaprodi') {
                             prodiInput.classList.remove('hidden');
-                        } else if (roleId === 4) { // Dosen
+                        } else if (roleName === 'dosen' || roleName === 'dekan') {
                             dosenInput.classList.remove('hidden');
                         }
                     }

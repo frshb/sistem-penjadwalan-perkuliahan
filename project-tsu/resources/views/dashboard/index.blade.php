@@ -23,6 +23,23 @@
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
                 </div>
+
+                @if(!Auth::user()->isAdmin() && !Auth::user()->isDosen() && isset($activeYear))
+                <div class="mb-8 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-l-4 border-emerald-500 rounded-r-xl shadow-sm flex items-start space-x-3.5 transform transition-all duration-300 hover:shadow-md">
+                    <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg flex-shrink-0 animate-pulse">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-base font-bold text-emerald-900 mb-0.5">Penjadwalan Tahun Akademik Aktif Telah Dibuka!</h4>
+                        <p class="text-sm text-emerald-700 leading-relaxed font-medium">
+                            Saat ini tahun akademik <span class="font-bold text-emerald-800">{{ $activeYear->nama_tahunakademik }}</span> telah aktif dan penyusunan jadwal perkuliahan resmi dibuka. Silakan periksa detail mata kuliah dan kelas yang diampu.
+                        </p>
+                    </div>
+                </div>
+                @endif
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                     <!-- Yellow Profile Box with View Profile & Logout -->
                     <div class="col-span-1 lg:col-span-2 relative min-h-[160px] rounded-2xl shadow-2xl p-6 flex items-center cursor-pointer transition-transform transform hover:scale-[1.01]" 
@@ -209,33 +226,106 @@
                     
 
                     <div class="col-span-1 lg:col-span-2 bg-white rounded-xl shadow-xl p-6 border border-gray-200">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4">Jadwal</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-                            <!-- Informatika: Code/Terminal Icon -->
-                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-yellow-600 group-hover:scale-110 transition-transform">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                        @if(Auth::user()->id_dosen)
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-4 border-b border-gray-100">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800 mb-1">Jadwal Mengajar Anda</h3>
+                                    <p class="text-xs text-gray-500">Daftar kelas dan mata kuliah yang Anda ampu pada Tahun Akademik Aktif.</p>
                                 </div>
-                                <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Informatika</span>
+                                @if(isset($activeYear))
+                                    <span class="mt-2 sm:mt-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+                                        <svg class="w-3.5 h-3.5 mr-1 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        TA: {{ $activeYear->nama_tahunakademik }}
+                                    </span>
+                                @endif
                             </div>
 
-                            <!-- Sistem Informasi: Database/Flow Icon -->
-                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-purple-600 group-hover:scale-110 transition-transform">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                            @if($jadwalDosen && count($jadwalDosen) > 0)
+                                <div class="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+                                    <table class="min-w-full divide-y divide-gray-200 text-left">
+                                        <thead class="bg-gray-50/75">
+                                            <tr>
+                                                <th scope="col" class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Hari</th>
+                                                <th scope="col" class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Waktu</th>
+                                                <th scope="col" class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Mata Kuliah</th>
+                                                <th scope="col" class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Kelas</th>
+                                                <th scope="col" class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">SKS</th>
+                                                <th scope="col" class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500">Ruangan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 bg-white">
+                                            @foreach($jadwalDosen as $jadwal)
+                                                <tr class="hover:bg-teal-50/30 transition-colors duration-150">
+                                                    <td class="whitespace-nowrap px-4 py-3.5 text-sm font-semibold text-gray-800 capitalize">
+                                                        {{ $jadwal['hari'] }}
+                                                    </td>
+                                                    <td class="whitespace-nowrap px-4 py-3.5 text-sm text-gray-600 font-mono">
+                                                        {{ $jadwal['jam_mulai'] }} - {{ $jadwal['jam_selesai'] }}
+                                                    </td>
+                                                    <td class="px-4 py-3.5 text-sm">
+                                                        <div class="font-bold text-gray-800 leading-snug">{{ $jadwal['nama_mk'] }}</div>
+                                                        <div class="text-xs text-gray-400 mt-0.5">{{ $jadwal['kode_mk'] }}</div>
+                                                    </td>
+                                                    <td class="whitespace-nowrap px-4 py-3.5 text-sm">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                                                            {{ $jadwal['kelas'] }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="whitespace-nowrap px-4 py-3.5 text-sm text-center font-semibold text-gray-700">
+                                                        {{ $jadwal['sks'] }}
+                                                    </td>
+                                                    <td class="whitespace-nowrap px-4 py-3.5 text-sm">
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
+                                                            {{ $jadwal['ruangan'] }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Sistem Informasi</span>
-                            </div>
+                            @else
+                                <div class="flex flex-col items-center justify-center p-8 text-center bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-2xl">
+                                    <div class="w-12 h-12 mb-3.5 text-gray-400 bg-gray-100 p-2.5 rounded-full flex items-center justify-center">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                        </svg>
+                                    </div>
+                                    <h4 class="text-base font-bold text-gray-700 mb-1">Belum Ada Jadwal Mengajar</h4>
+                                    <p class="text-sm text-gray-500 max-w-sm">Penyusunan jadwal kuliah untuk tahun akademik ini belum selesai atau Anda tidak mengampu kelas.</p>
+                                </div>
+                            @endif
+                        @else
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">Jadwal</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-                            <!-- Rekayasa Komputer: Chip/Hardware Icon -->
-                            <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-blue-600 group-hover:scale-110 transition-transform">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                                <!-- Informatika: Code/Terminal Icon -->
+                                <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-yellow-600 group-hover:scale-110 transition-transform">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                    </div>
+                                    <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Informatika</span>
                                 </div>
-                                <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Rekayasa Komputer</span>
+
+                                <!-- Sistem Informasi: Database/Flow Icon -->
+                                <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-purple-600 group-hover:scale-110 transition-transform">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                    </div>
+                                    <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Sistem Informasi</span>
+                                </div>
+
+                                <!-- Rekayasa Komputer: Chip/Hardware Icon -->
+                                <div class="rounded-xl p-4 sm:p-6 flex flex-col items-center justify-center text-center shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 group">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 mb-3 text-blue-600 group-hover:scale-110 transition-transform">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                                    </div>
+                                    <span class="font-semibold text-gray-800 text-sm sm:text-base">S1 Rekayasa Komputer</span>
+                                </div>
                             </div>
-                        </div>
+                        @endif
                     </div>
 
 

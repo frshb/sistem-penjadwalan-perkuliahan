@@ -24,6 +24,7 @@
     showExportMenu: false,
 
     semesterType: 'ganjil',
+    addSemester: '',
 
     editProdi: '',
     editNamaMatkul: '',
@@ -32,6 +33,8 @@
     editSemester: '',
     editTipe: '',
     editKurikulum: '',
+    editKonsentrasi: '',
+    editSifat: 'W',
     editRuanganIds: [],
 
     editUrl: '',
@@ -62,7 +65,7 @@
         }
     },
 
-    openEditModal(kode, nama, sks, jenis, semester, kurikulum, prodi, ruanganIds) {
+    openEditModal(kode, nama, sks, jenis, semester, kurikulum, prodi, ruanganIds, konsentrasi, sifat) {
 
         this.editProdi = prodi;
         this.editKodeMatkul = kode;
@@ -73,6 +76,8 @@
 
         this.editSemester = semester;
         this.editKurikulum = kurikulum;
+        this.editKonsentrasi = konsentrasi || '';
+        this.editSifat = sifat || 'W';
 
         this.editRuanganIds = ruanganIds;
         this.editSelectedRooms = ruanganIds;
@@ -184,7 +189,7 @@
 
                 <!-- Unified Toolbar: Filters Only -->
                 <div class="bg-gray-50/75 p-5 rounded-2xl border border-gray-100 mb-6">
-                    <form action="{{ route('matakuliah.index') }}" method="GET" class="space-y-4">
+                    <form id="filter-form" action="{{ route('matakuliah.index') }}" method="GET" class="space-y-4">
                         {{-- PERTAHANKAN PENCARIAN YANG SUDAH DIPILIH --}}
                         <input type="hidden" name="search" value="{{ request('search') }}">
 
@@ -202,7 +207,7 @@
 
                             <!-- Select Semester Dropdown -->
                             <div class="relative min-w-[140px]">
-                                <select id="select-semester" name="semester" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+                                <select id="select-semester" name="semester" onchange="this.form.submit()" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
                                     <!-- Opsi diisi JavaScript -->
                                 </select>
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
@@ -212,7 +217,7 @@
 
                             <!-- Kurikulum Dropdown -->
                             <div class="relative min-w-[160px]">
-                                <select name="kurikulum" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+                                <select name="kurikulum" onchange="this.form.submit()" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
                                     <option value="">Semua Kurikulum</option>
                                     @foreach ($kurikulums as $kurikulum)
                                         <option value="{{ $kurikulum->id_kurikulum }}" {{ request('kurikulum') == $kurikulum->id_kurikulum ? 'selected' : '' }}>
@@ -227,7 +232,7 @@
 
                             <!-- Prodi Dropdown -->
                             <div class="relative min-w-[160px]">
-                                <select name="prodi" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+                                <select name="prodi" onchange="this.form.submit()" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
                                     <option value="">Semua Prodi</option>
                                     @foreach ($prodis as $prodi)
                                         <option value="{{ $prodi->id_prodi }}" {{ request('prodi') == $prodi->id_prodi ? 'selected' : '' }}>
@@ -239,14 +244,6 @@
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                 </div>
                             </div>
-
-                            <!-- Submit Button -->
-                            <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-sm transition-all duration-200 text-sm whitespace-nowrap">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 8.293A1 1 0 013 7.586V4z"></path>
-                                </svg>
-                                Filter
-                            </button>
                             
                             <!-- Reset Button (Visible only when filters/search are active) -->
                             @if(request()->anyFilled(['search', 'semester', 'kurikulum', 'prodi']))
@@ -273,6 +270,8 @@
                                     <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Semester</th>
                                     <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Kurikulum</th>
                                     <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Program Studi</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Sifat</th>
+                                    <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Konsentrasi</th>
                                     <th class="w-48 text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
@@ -288,6 +287,8 @@
                                         <td class="text-left py-4 px-5 text-sm">{{ $matkul->semester }}</td>
                                         <td class="text-left py-4 px-5 text-sm">{{ $matkul->kurikulum->nama_kurikulum ?? '-' }}</td>
                                         <td class="text-left py-4 px-5 text-sm">{{ $matkul->program_studi->nama_prodi ?? '-' }}</td>
+                                        <td class="text-left py-4 px-5 text-sm font-semibold">{{ $matkul->sifat ?? 'W' }}</td>
+                                        <td class="text-left py-4 px-5 text-sm">{{ in_array($matkul->semester, [5, 6]) ? ($matkul->konsentrasi ?? '-') : '-' }}</td>
                                         <td class="text-left py-4 px-5 text-sm">
                                             <div class="flex space-x-2">
                                                 <button
@@ -299,7 +300,9 @@
                                                         '{{ $matkul->semester }}',
                                                         '{{ $matkul->id_kurikulum }}',
                                                         '{{ $matkul->id_prodi }}',
-                                                        {{ json_encode($matkul->ruangans->pluck('id_ruang')) }}
+                                                        {{ json_encode($matkul->ruangans->pluck('id_ruang')) }},
+                                                        '{{ $matkul->konsentrasi }}',
+                                                        '{{ $matkul->sifat }}'
                                                     )"
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -314,7 +317,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-gray-500">
+                                        <td colspan="11" class="text-center py-4 text-gray-500">
                                             Data mata kuliah tidak ditemukan.
                                         </td>
                                     </tr>
@@ -403,7 +406,7 @@
                             </div>
                             <div>
                                 <label for="semester" class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-                                <input type="number" id="semester" name="semester" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                <input type="number" id="semester" name="semester" x-model="addSemester" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
                             </div>
                             <div>
                                 <label for="tipe" class="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
@@ -422,6 +425,22 @@
                                     @foreach ($kurikulums as $kurikulum)
                                         <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
                                     @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label for="sifat" class="block text-sm font-medium text-gray-700 mb-1">Sifat Mata Kuliah</label>
+                                <select id="sifat" name="sifat" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                    <option value="W">Wajib (W)</option>
+                                    <option value="P">Pilihan (P)</option>
+                                </select>
+                            </div>
+                            <div x-show="addSemester == 5 || addSemester == 6" x-transition>
+                                <label for="konsentrasi" class="block text-sm font-medium text-gray-700 mb-1">Konsentrasi</label>
+                                <select id="konsentrasi" name="konsentrasi" :disabled="addSemester != 5 && addSemester != 6" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option value="">-- Pilih Konsentrasi (Opsional) --</option>
+                                    <option value="AI">AI</option>
+                                    <option value="Programming and Software Development">Programming and Software Development</option>
+                                    <option value="IT Mobility and Security">IT Mobility and Security</option>
                                 </select>
                             </div>
                             <div class="md:col-span-2">
@@ -589,6 +608,22 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div>
+                                <label for="edit_sifat" class="block text-sm font-medium text-gray-700 mb-1">Sifat Mata Kuliah</label>
+                                <select id="edit_sifat" name="sifat" x-model="editSifat" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                                    <option value="W">Wajib (W)</option>
+                                    <option value="P">Pilihan (P)</option>
+                                </select>
+                            </div>
+                            <div x-show="editSemester == 5 || editSemester == 6" x-transition>
+                                <label for="edit_konsentrasi" class="block text-sm font-medium text-gray-700 mb-1">Konsentrasi</label>
+                                <select id="edit_konsentrasi" name="konsentrasi" x-model="editKonsentrasi" :disabled="editSemester != 5 && editSemester != 6" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option value="">-- Pilih Konsentrasi (Opsional) --</option>
+                                    <option value="AI">AI</option>
+                                    <option value="Programming and Software Development">Programming and Software Development</option>
+                                    <option value="IT Mobility and Security">IT Mobility and Security</option>
+                                </select>
+                            </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Ruangan Yang Bisa Digunakan
@@ -675,8 +710,11 @@
             function updateSemesterOptions(type) {
                 selectSemester.innerHTML = '';
                 const allOption = document.createElement('option');
-                allOption.value = '';
+                allOption.value = type;
                 allOption.text = 'Semua Semester';
+                if ( '{{ request('semester') }}' == type || !'{{ request('semester') }}' ) {
+                    allOption.selected = true;
+                }
                 selectSemester.appendChild(allOption);
 
                 const options = (type === 'ganjil') ? ganjilOptions : genapOptions;
@@ -701,13 +739,20 @@
             }
             if(btnGanjil && btnGenap && selectSemester) {
                 const currentSemester = '{{ request('semester') }}';
-                if (genapOptions.includes(parseInt(currentSemester))) {
+                const isGenap = genapOptions.includes(parseInt(currentSemester)) || currentSemester === 'genap';
+                if (isGenap) {
                     updateSemesterOptions('genap');
                 } else {
                     updateSemesterOptions('ganjil');
                 }
-                btnGanjil.addEventListener('click', () => updateSemesterOptions('ganjil'));
-                btnGenap.addEventListener('click', () => updateSemesterOptions('genap'));
+                btnGanjil.addEventListener('click', () => {
+                    updateSemesterOptions('ganjil');
+                    selectSemester.form.submit();
+                });
+                btnGenap.addEventListener('click', () => {
+                    updateSemesterOptions('genap');
+                    selectSemester.form.submit();
+                });
             }
 
             // Helper for Edit Form population (can be moved to Alpine but keeping simple function for now or refactor completely)
@@ -905,7 +950,7 @@
 
                     // Configure headers
                     headers.forEach((header, index) => {
-                        if (index === 0 || index === 8) return;
+                        if (index === 0 || index === 10) return;
 
                         header.classList.add('cursor-pointer', 'select-none', 'hover:bg-teal-900', 'transition-all', 'duration-200');
                         

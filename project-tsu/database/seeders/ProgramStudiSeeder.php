@@ -45,6 +45,11 @@ class ProgramStudiSeeder extends Seeder
                 'nama_prodi' => 'D3 Sistem Informasi',
                 'kode_prodi' => 'D3-SI'
             ],
+            [
+                'id_prodi' => 99,
+                'nama_prodi' => 'Dosen Eksternal Fakultas',
+                'kode_prodi' => 'EXT'
+            ],
         ]);
     }
 }

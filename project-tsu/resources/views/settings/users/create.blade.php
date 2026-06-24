@@ -34,7 +34,7 @@
                     updateFields() {
                         // Role IDs: Kaprodi=2, Dekan=3, Dosen=4
                         this.showProdi = (this.selectedRole == '2');
-                        this.showDosen = (this.selectedRole == '2' || this.selectedRole == '4');
+                        this.showDosen = (this.selectedRole == '2' || this.selectedRole == '3' || this.selectedRole == '4');
                     }
                 }">
 
@@ -89,9 +89,9 @@
                                 <p class="text-xs text-gray-500 mt-1">Wajib dipilih untuk akun Kaprodi.</p>
                             </div>
 
-                            <!-- Dosen Link (Optional for Kaprodi, Recommended for Dosen) -->
+                            <!-- Dosen Link (Required for Dosen/Dekan, Optional for Kaprodi) -->
                             <div x-show="showDosen" x-transition class="md:col-span-2" style="display: none;">
-                                <label for="id_dosen" class="block text-sm font-medium text-gray-700 mb-2">Link Data Dosen <span class="text-gray-400 font-normal">(Opsional)</span></label>
+                                <label for="id_dosen" class="block text-sm font-medium text-gray-700 mb-2">Link Data Dosen <span class="text-red-500" x-show="selectedRole == '3' || selectedRole == '4'">*</span><span class="text-gray-400 font-normal" x-show="selectedRole == '2'">(Opsional)</span></label>
                                 <div class="relative">
                                     <select id="id_dosen" name="id_dosen" class="w-full rounded-lg border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 transition shadow-sm p-3 appearance-none">
                                         <option value="">-- Tidak Terhubung ke Data Dosen --</option>

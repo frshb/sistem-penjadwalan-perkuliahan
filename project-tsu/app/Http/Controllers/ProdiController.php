@@ -16,12 +16,12 @@ class ProdiController extends Controller
         if ($user && !$user->isAdmin() && !$user->isDekan()) {
             $prodiId = $user->getProdiId();
             if ($prodiId) {
-                $prodis = Prodi::where('id_prodi', $prodiId)->get();
+                $prodis = Prodi::where('id_prodi', $prodiId)->where('id_prodi', '!=', 99)->get();
             } else {
-                $prodis = Prodi::all();
+                $prodis = Prodi::where('id_prodi', '!=', 99)->get();
             }
         } else {
-            $prodis = Prodi::all();
+            $prodis = Prodi::where('id_prodi', '!=', 99)->get();
         }
         return view('management.prodi.index', [
             'prodis' => $prodis

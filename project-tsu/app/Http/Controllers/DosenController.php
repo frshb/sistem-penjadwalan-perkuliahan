@@ -25,9 +25,9 @@ class DosenController extends Controller
 
         $query = Dosen::with(['prodi', 'mataKuliahs']);
 
-        // ✅ Filter by prodi (otomatis untuk kaprodi/dosen)
+        // ✅ Filter by prodi (otomatis untuk kaprodi/dosen, tampilkan juga dosen eksternal)
         if ($prodiId) {
-            $query->where('id_prodi', $prodiId);
+            $query->whereIn('id_prodi', [$prodiId, 99]);
         }
 
         // Filter manual by prodi (hanya untuk admin/dekan yang bisa pilih)
@@ -42,15 +42,15 @@ class DosenController extends Controller
 
         $dosens = $query->paginate(10)->appends($request->query())->onEachSide(1);
 
-        // Dropdown data — dibatasi sesuai prodi jika kaprodi/dosen
-        $prodis      = $prodiId ? Prodi::where('id_prodi', $prodiId)->get()
+        // Dropdown data — dibatasi sesuai prodi jika kaprodi/dosen (tambahkan pilihan Dosen Eksternal)
+        $prodis      = $prodiId ? Prodi::whereIn('id_prodi', [$prodiId, 99])->get()
                                 : Prodi::all();
         $mataKuliahs = $prodiId ? MataKuliah::where('id_prodi', $prodiId)->get()
                                 : MataKuliah::all();
         $kurikulums  = Kurikulum::all();
 
         // Nama prodi untuk ditampilkan di header (jika kaprodi/dosen)
-        $userProdiName = $prodiId ? ($prodis->first()->nama_prodi ?? '') : null;
+        $userProdiName = $prodiId ? (Prodi::where('id_prodi', $prodiId)->first()->nama_prodi ?? '') : null;
 
         return view('management.dosen.index', compact(
             'dosens', 'userProdiName', 'prodis', 'kurikulums', 'mataKuliahs', 'searchTerm'
@@ -87,12 +87,17 @@ class DosenController extends Controller
         ]);
 
         if ($request->mata_kuliah) {
+            $activeTahun = TahunAkademik::where('status_aktif', 1)->first();
+            $idTahun = $activeTahun ? $activeTahun->id_tahunakademik : null;
 
             foreach ($request->mata_kuliah as $kodeMatkul) {
+                $mk = MataKuliah::where('kode_matkul', $kodeMatkul)->first();
 
                 PengampuMatkul::create([
                     'id_dosen' => $dosen->id_dosen,
                     'kode_matkul' => $kodeMatkul,
+                    'id_prodi' => $mk->id_prodi ?? null,
+                    'id_tahunakademik' => $idTahun,
                 ]);
             }
         }
@@ -134,18 +139,23 @@ class DosenController extends Controller
             'id_prodi' => $request->id_prodi,
         ]);
 
-        PengampuMatkul::where(
-            'id_dosen',
-            $dosen->id_dosen
-        )->delete();
+        $activeTahun = TahunAkademik::where('status_aktif', 1)->first();
+        $idTahun = $activeTahun ? $activeTahun->id_tahunakademik : null;
+
+        PengampuMatkul::where('id_dosen', $dosen->id_dosen)
+            ->where('id_tahunakademik', $idTahun)
+            ->delete();
 
         if ($request->mata_kuliah) {
 
             foreach ($request->mata_kuliah as $kodeMatkul) {
+                $mk = MataKuliah::where('kode_matkul', $kodeMatkul)->first();
 
                 PengampuMatkul::create([
                     'id_dosen' => $dosen->id_dosen,
                     'kode_matkul' => $kodeMatkul,
+                    'id_prodi' => $mk->id_prodi ?? null,
+                    'id_tahunakademik' => $idTahun,
                 ]);
             }
         }

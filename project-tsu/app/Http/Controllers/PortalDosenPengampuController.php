@@ -30,6 +30,11 @@ class PortalDosenPengampuController extends Controller
         }
 
         $tahunAkademik = TahunAkademik::findOrFail($idTahun);
+
+        if (!auth()->user()->isAdmin() && !$tahunAkademik->status_aktif) {
+            abort(403, 'Anda tidak memiliki akses ke tahun akademik yang dinonaktifkan.');
+        }
+
         $prodiId       = ProdiFilter::getProdiId(); // ✅ Ganti logika panjang jadi satu baris
 
         // Mata kuliah
@@ -39,8 +44,9 @@ class PortalDosenPengampuController extends Controller
         }
         $matkuls = $matkulQuery->orderBy('semester')->orderBy('nama_matkul')->get();
 
-        // Pengampu — filter by kode matkul yang sudah difilter prodi
-        $pengampuQuery = PengampuMatkul::with(['mataKuliah.program_studi']);
+        // Pengampu — filter by kode matkul yang sudah difilter prodi & by tahun akademik
+        $pengampuQuery = PengampuMatkul::with(['mataKuliah.program_studi'])
+            ->where('id_tahunakademik', $idTahun);
         if ($prodiId) {
             $kodeMatkuls = $matkuls->pluck('kode_matkul');
             $pengampuQuery->whereIn('kode_matkul', $kodeMatkuls);
@@ -50,7 +56,7 @@ class PortalDosenPengampuController extends Controller
         // Dosen
         $dosenQuery = Dosen::with(['prodi'])->orderBy('nama_dosen');
         if ($prodiId) {
-            $dosenQuery->where('id_prodi', $prodiId);
+            $dosenQuery->whereIn('id_prodi', [$prodiId, 99]);
         }
         $dosens = $dosenQuery->get();
 
@@ -71,14 +77,22 @@ class PortalDosenPengampuController extends Controller
             'nama_prodi'   => $m->program_studi->nama_prodi ?? '-',
         ])->values();
 
-        $pengampusJs = $pengampus->map(fn($p) => [
-            'id'          => $p->id,
-            'id_dosen'    => $p->id_dosen,
-            'kode_matkul' => $p->kode_matkul,
-            'nama_matkul' => $p->mataKuliah->nama_matkul ?? '',
-            'sks'         => $p->mataKuliah->sks ?? 0,
-            'nama_prodi'  => $p->mataKuliah->program_studi->nama_prodi ?? '-',
-        ])->values();
+        $pengampusJs = $pengampus->map(function ($p) {
+            $mk = \App\Models\MataKuliah::where('kode_matkul', $p->kode_matkul)
+                ->where('id_prodi', $p->id_prodi)
+                ->first() ?? $p->mataKuliah;
+
+            return [
+                'id'          => $p->id,
+                'id_dosen'    => $p->id_dosen,
+                'kode_matkul' => $p->kode_matkul,
+                'id_prodi'    => $p->id_prodi,
+                'nama_matkul' => $mk->nama_matkul ?? '',
+                'sks'         => $mk->sks ?? 0,
+                'semester'    => $mk->semester ?? 0,
+                'nama_prodi'  => $mk->program_studi->nama_prodi ?? '-',
+            ];
+        })->values();
 
         return view('dosen-pengampu.index', compact(
             'tahunAkademik', 'matkuls', 'pengampus', 'dosens',
@@ -89,22 +103,28 @@ class PortalDosenPengampuController extends Controller
     public function simpan(Request $request)
     {
         $request->validate([
-            'kode_matkul' => 'required|string|exists:mata_kuliah,kode_matkul',
-            'id_dosen'    => 'required|exists:dosen,id_dosen',
+            'kode_matkul'      => 'required|string|exists:mata_kuliah,kode_matkul',
+            'id_dosen'         => 'required|exists:dosen,id_dosen',
+            'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
+            'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
         ]);
 
-        // Boleh dosen berbeda mengajar matkul yang sama — cek duplikat dosen+matkul
+        // Boleh dosen berbeda mengajar matkul yang sama — cek duplikat dosen+matkul+prodi+tahunakademik
         $exists = PengampuMatkul::where('kode_matkul', $request->kode_matkul)
             ->where('id_dosen', $request->id_dosen)
+            ->where('id_prodi', $request->id_prodi)
+            ->where('id_tahunakademik', $request->id_tahunakademik)
             ->exists();
 
         if ($exists) {
-            return response()->json(['success' => false, 'message' => 'Dosen ini sudah mengampu mata kuliah tersebut.']);
+            return response()->json(['success' => false, 'message' => 'Dosen ini sudah mengampu mata kuliah tersebut pada tahun akademik ini.']);
         }
 
         PengampuMatkul::create([
-            'kode_matkul' => $request->kode_matkul,
-            'id_dosen'    => $request->id_dosen,
+            'kode_matkul'      => $request->kode_matkul,
+            'id_dosen'         => $request->id_dosen,
+            'id_prodi'         => $request->id_prodi,
+            'id_tahunakademik' => $request->id_tahunakademik,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Dosen pengampu berhasil ditugaskan.']);
@@ -113,12 +133,16 @@ class PortalDosenPengampuController extends Controller
     public function hapus(Request $request)
     {
         $request->validate([
-            'kode_matkul' => 'required|string|exists:mata_kuliah,kode_matkul',
-            'id_dosen'    => 'required|exists:dosen,id_dosen',
+            'kode_matkul'      => 'required|string|exists:mata_kuliah,kode_matkul',
+            'id_dosen'         => 'required|exists:dosen,id_dosen',
+            'id_prodi'         => 'nullable|integer',
+            'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
         ]);
 
         PengampuMatkul::where('kode_matkul', $request->kode_matkul)
             ->where('id_dosen', $request->id_dosen)
+            ->where('id_prodi', $request->id_prodi)
+            ->where('id_tahunakademik', $request->id_tahunakademik)
             ->delete();
 
         return response()->json(['success' => true, 'message' => 'Dosen pengampu berhasil dilepaskan.']);

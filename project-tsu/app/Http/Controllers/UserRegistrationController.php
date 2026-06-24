@@ -34,6 +34,7 @@ class UserRegistrationController extends Controller
     {
         $kaprodRole = Role::where('nama_role', User::ROLE_KAPRODI)->value('id_role');
         $dosenRole  = Role::where('nama_role', User::ROLE_DOSEN)->value('id_role');
+        $dekanRole  = Role::where('nama_role', User::ROLE_DEKAN)->value('id_role');
 
         $request->validate(
             // ✅ Rules
@@ -51,7 +52,11 @@ class UserRegistrationController extends Controller
                     Rule::requiredIf($request->id_role == $kaprodRole),
                     'exists:program_studi,id_prodi',
                 ],
-                'id_dosen' => 'nullable|exists:dosen,id_dosen',
+                'id_dosen' => [
+                    'nullable',
+                    Rule::requiredIf($request->id_role == $dosenRole || $request->id_role == $dekanRole),
+                    'exists:dosen,id_dosen',
+                ],
             ],
             // ✅ Custom messages — parameter kedua validate()
             [
@@ -62,6 +67,7 @@ class UserRegistrationController extends Controller
                 'password.min'      => 'Password minimal 6 karakter.',
                 'id_role.required'  => 'Role wajib dipilih.',
                 'id_prodi.required' => 'Program Studi wajib dipilih untuk role Kaprodi.',
+                'id_dosen.required' => 'Dosen wajib dipilih untuk role Dosen / Dekan.',
             ]
         );
 

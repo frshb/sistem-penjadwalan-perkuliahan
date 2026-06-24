@@ -144,4 +144,64 @@ class PortalKurikulumController extends Controller
             return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
         }
     }
+
+    public function updateTahunAkademik(Request $request, $id)
+    {
+        $request->validate([
+            'nama_tahunakademik' => 'required|string|max:20',
+            'tahun_ajaran'       => 'required|string|max:20',
+            'status_aktif'       => 'required|boolean',
+        ]);
+
+        $tahun = TahunAkademik::findOrFail($id);
+        $tahun->update([
+            'nama_tahunakademik' => $request->nama_tahunakademik,
+            'tahun_ajaran'       => $request->tahun_ajaran,
+            'status_aktif'       => $request->status_aktif,
+        ]);
+
+        return redirect()->route('kurikulum.index')->with('success', 'Tahun akademik berhasil diperbarui.');
+    }
+
+    public function destroyTahunAkademik($id)
+    {
+        try {
+            $tahun = TahunAkademik::findOrFail($id);
+            $tahun->delete();
+            return redirect()->route('kurikulum.index')->with('success', 'Tahun akademik berhasil dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus. Tahun akademik mungkin masih digunakan.');
+        }
+    }
+
+    public function updateKurikulum(Request $request, $id)
+    {
+        $request->validate([
+            'kode_kurikulum' => 'required|string|max:20|unique:kurikulum,kode_kurikulum,' . $id . ',id_kurikulum',
+            'nama_kurikulum' => 'required|string|max:50',
+            'tahun_berlaku' => 'required|digits:4',
+            'status' => 'required|in:Aktif,Tidak Aktif',
+        ]);
+
+        $kurikulum = \App\Models\Kurikulum::findOrFail($id);
+        $kurikulum->update([
+            'kode_kurikulum' => $request->kode_kurikulum,
+            'nama_kurikulum' => $request->nama_kurikulum,
+            'tahun_berlaku' => $request->tahun_berlaku,
+            'status' => $request->status,
+        ]);
+
+        return redirect()->route('kurikulum.index')->with('success', 'Kurikulum berhasil diperbarui.');
+    }
+
+    public function destroyKurikulum($id)
+    {
+        try {
+            $kurikulum = \App\Models\Kurikulum::findOrFail($id);
+            $kurikulum->delete();
+            return redirect()->route('kurikulum.index')->with('success', 'Kurikulum berhasil dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus. Kurikulum mungkin masih digunakan.');
+        }
+    }
 }

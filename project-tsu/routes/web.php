@@ -48,11 +48,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/profile/update', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
 
-    // Admin Only
-    Route::middleware(['role:admin'])->group(function () {
+    // Settings Group (Admin & Dekan)
+    Route::middleware(['role:admin,dekan'])->group(function () {
         Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
+        Route::get('/settings/kurikulum', [\App\Http\Controllers\PortalKurikulumController::class, 'index'])->name('kurikulum.index');
+    });
 
-        // ✅ Pindahkan Role Management ke sini, hapus yang duplikat di bawah
+    // Admin Only Settings & Actions
+    Route::middleware(['role:admin'])->group(function () {
+        // Role Management
         Route::get('/settings/roles', [RoleManagementController::class, 'index'])->name('settings.roles.index');
         Route::post('/settings/roles', [RoleManagementController::class, 'update'])->name('settings.roles.update');
 
@@ -65,6 +69,16 @@ Route::middleware(['auth'])->group(function () {
         // Admin User Registration
         Route::get('/settings/users/register', [\App\Http\Controllers\UserRegistrationController::class, 'create'])->name('settings.users.create');
         Route::post('/settings/users', [\App\Http\Controllers\UserRegistrationController::class, 'store'])->name('settings.users.store');
+
+        // Kurikulum Write Actions
+        Route::post('/settings/kurikulum/store', [\App\Http\Controllers\PortalKurikulumController::class, 'store'])->name('kurikulum.store');
+        Route::post('/settings/kurikulum/store-kurikulum', [\App\Http\Controllers\PortalKurikulumController::class, 'storeKurikulum'])->name('kurikulum.storeKurikulum');
+        Route::post('/settings/kurikulum/store-tahun-akademik', [\App\Http\Controllers\PortalKurikulumController::class, 'storeTahunAkademik'])->name('kurikulum.storeTahunAkademik');
+        Route::post('/settings/kurikulum/toggle-tahun/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'toggleTahunAkademik'])->name('kurikulum.toggleTahun');
+        Route::put('/settings/kurikulum/tahun/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'updateTahunAkademik'])->name('kurikulum.updateTahun');
+        Route::delete('/settings/kurikulum/tahun/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'destroyTahunAkademik'])->name('kurikulum.destroyTahun');
+        Route::put('/settings/kurikulum/master/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'updateKurikulum'])->name('kurikulum.updateKurikulum');
+        Route::delete('/settings/kurikulum/master/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'destroyKurikulum'])->name('kurikulum.destroyKurikulum');
     });
 
     // KP & Skripsi
@@ -120,15 +134,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/dosen-pengampu/hapus', [PortalDosenPengampuController::class, 'hapus'])->name('dosen-pengampu.hapus');
     });
 
-    // Kurikulum / Tahun Akademik Setup
-    Route::middleware(['permission:management_data,Kelas Paralel'])->group(function () {
-        Route::get('/management/kurikulum', [\App\Http\Controllers\PortalKurikulumController::class, 'index'])->name('kurikulum.index');
-        Route::get('/management/kurikulum/setup', [\App\Http\Controllers\PortalKurikulumController::class, 'setup'])->name('kurikulum.setup');
-        Route::post('/management/kurikulum/store', [\App\Http\Controllers\PortalKurikulumController::class, 'store'])->name('kurikulum.store');
-        Route::post('/management/kurikulum/store-kurikulum', [\App\Http\Controllers\PortalKurikulumController::class, 'storeKurikulum'])->name('kurikulum.storeKurikulum');
-        Route::post('/management/kurikulum/store-tahun-akademik', [\App\Http\Controllers\PortalKurikulumController::class, 'storeTahunAkademik'])->name('kurikulum.storeTahunAkademik');
-        Route::post('/management/kurikulum/toggle-tahun/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'toggleTahunAkademik'])->name('kurikulum.toggleTahun');
-    });
 
     // Kelas Paralel
     Route::middleware(['permission:management_data,Kelas Paralel'])->group(function () {
@@ -139,9 +144,6 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('/management/kelas', KelasController::class)->except(['show', 'index']);
         Route::post('/management/kelas/generate', [KelasController::class, 'generate'])->name('kelas.generate');
         Route::post('/management/kelas/bulk-delete', [KelasController::class, 'bulkDelete'])->name('kelas.bulk-delete');
-        Route::post('/kelas/tahun-akademik', [KelasController::class, 'storeTahunAkademik'])->name('kelas.tahun-akademik.store');
-        Route::delete('/kelas/tahun-akademik/{id}', [KelasController::class, 'destroyTahunAkademik'])->name('kelas.tahun-akademik.destroy');
-        Route::put('/kelas/tahun-akademik/{id}', [KelasController::class, 'updateTahunAkademik'])->name('kelas.tahun-akademik.update');
     });
 
     // Mahasiswa

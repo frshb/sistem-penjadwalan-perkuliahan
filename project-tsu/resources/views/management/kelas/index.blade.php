@@ -23,12 +23,19 @@
     showEditModal: false,
     showExportMenu: false,
     activeTab: 'all',
+    currentEditMatkul: '',
     editData: {
         id_kelas: null,
         nama_kelas: '',
         id_prodi: '',
         id_tahunakademik: '',
-        kapasitas: ''
+        kapasitas: '',
+        semester: '',
+        kode_matkul: '',
+        id_kurikulum: '',
+        sks: '',
+        id_dosen: '',
+        dosen: null
     },
     selectedKelas: [],
     selectedProdi: '',
@@ -39,68 +46,86 @@
 
     filteredDosens: [],
 
-    selectMatkul(kode) {
+    /**
+     * Bandingkan dua nilai secara longgar sebagai string.
+     * Mengatasi campur tipe data (int dari DB vs string dari <select> HTML)
+     * dan nilai kosong ('' / null / undefined) yang dianggap 'tidak memfilter'.
+     */
+    eq(filterValue, dataValue) {
+        if (filterValue === '' || filterValue === null || filterValue === undefined) {
+            return true;
+        }
+        return String(filterValue) === String(dataValue);
+    },
 
-        let matkul = this.mataKuliahs.find(
-            item => item.kode_matkul == kode
+    selectMatkul(kode) {
+        let matkul = this.mataKuliahs.find(item =>
+            this.eq(kode, item.kode_matkul) && this.eq(this.selectedProdi, item.id_prodi)
         );
 
         if (matkul) {
-
-            this.selectedSks = matkul.sks;
-
-            this.filteredDosens = matkul.pengampus.map(
-                item => item.dosen
-            );
-
+            this.selectedSks = matkul.sks ?? '';
+            this.filteredDosens = (matkul.pengampus || [])
+                .map(item => item.dosen)
+                .filter(Boolean);
         } else {
-
             this.selectedSks = '';
             this.filteredDosens = [];
         }
     },
 
     filteredEditDosens: [],
-    selectEditMatkul(kode) {
 
-        let matkul = this.mataKuliahs.find(
-            item => item.kode_matkul == kode
+    selectEditMatkul(kode) {
+        let matkul = this.mataKuliahs.find(item =>
+            this.eq(kode, item.kode_matkul) && this.eq(this.editData.id_prodi, item.id_prodi)
         );
 
         if (matkul) {
+            this.editData.sks = matkul.sks ?? '';
 
-            this.editData.sks = matkul.sks;
+            let list = (matkul.pengampus || [])
+                .map(item => item.dosen)
+                .filter(Boolean);
 
-            this.filteredEditDosens = matkul.pengampus.map(
-                item => item.dosen
-            );
+            // Pastikan dosen yang sedang terpasang di kelas tetap muncul,
+            // walau dia bukan termasuk daftar pengampu resmi matkul tersebut
+            // (misal data lama / penugasan manual sebelumnya).
+            if (this.editData.dosen && !list.some(d => this.eq(this.editData.id_dosen, d.id_dosen))) {
+                list.push(this.editData.dosen);
+            }
 
+            this.filteredEditDosens = list;
         } else {
-
             this.editData.sks = '';
             this.filteredEditDosens = [];
         }
     },
 
     openEdit(kelas) {
+        this.currentEditMatkul = kelas.kode_matkul;
 
         this.editData = {
             ...kelas,
             id_kurikulum: kelas.matakuliah?.id_kurikulum ?? '',
-            sks: kelas.matakuliah?.sks ?? ''
+            sks: kelas.matakuliah?.sks ?? '',
+            id_dosen: kelas.id_dosen ?? '',
+            dosen: kelas.dosen ?? null,
         };
 
-        this.selectEditMatkul(kelas.kode_matkul);
-
         this.showEditModal = true;
+
+        // Isi dropdown Dosen SETELAH editData lengkap terisi (termasuk id_prodi
+        // dan id_dosen asli), supaya filter langsung benar tanpa perlu
+        // beberapa lapis $nextTick seperti versi sebelumnya.
+        this.$nextTick(() => {
+            this.selectEditMatkul(kelas.kode_matkul);
+        });
     },
 
     showGenerateModal: false,
-
     selectedGenerateProdi: '',
-
     selectedGenerateProdiName: '',
-
     semesterOptions: @js(
         str_contains(strtolower($tahunAkademik->nama_tahunakademik), 'genap')
             ? [2,4,6,8]
@@ -166,14 +191,14 @@
                     Export
                     <svg class="w-3.5 h-3.5 ml-1.5 transition-transform duration-200" :class="showExportMenu ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
-                <div x-show="showExportMenu" 
+                <div x-show="showExportMenu"
                      x-transition:enter="transition ease-out duration-100"
                      x-transition:enter-start="transform opacity-0 scale-95"
                      x-transition:enter-end="transform opacity-100 scale-100"
                      x-transition:leave="transition ease-in duration-75"
                      x-transition:leave-start="transform opacity-100 scale-100"
                      x-transition:leave-end="transform opacity-0 scale-95"
-                     class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 p-1" 
+                     class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 p-1"
                      style="display: none;">
                     <a href="{{ route('kelas.export.excel') }}" class="flex items-center px-4 py-2.5 text-sm text-gray-700 rounded-md hover:bg-teal-50 hover:text-teal-800 transition-colors">
                         <svg class="w-4 h-4 mr-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -198,7 +223,6 @@
 
         <form action="{{ route('kelas.index') }}" method="GET">
 
-            <!-- SIMPAN TAHUN AKADEMIK -->
             <input type="hidden"
                 name="tahun"
                 value="{{ $tahunAkademik->id_tahunakademik }}">
@@ -258,7 +282,6 @@
 
             <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
 
-                 {{-- GENERATE --}}
                 <div class="flex justify-between items-center mb-6">
 
                     <h3 class="text-xl font-bold text-gray-700">
@@ -286,85 +309,42 @@
 
                             <thead class="bg-teal-700 text-white">
                                 <tr>
-                                    <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        No
-                                    </th>
-
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        Nama Kelas
-                                    </th>
-
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        Semester
-                                    </th>
-
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        Kode MK
-                                    </th>
-
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        Mata Kuliah
-                                    </th>
-
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        SKS
-                                    </th>
-
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        Kapasitas
-                                    </th>
-
-                                    <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">
-                                        Aksi
-                                    </th>
-
+                                    <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Nama Kelas</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Semester</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode MK</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Mata Kuliah</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">SKS</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Dosen</th>
+                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
+                                    <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
                                 </tr>
                             </thead>
 
                             <tbody class="text-gray-700">
 
                                 @php
-
                                     $kelasSorted = $kelasGroup->sortBy(function ($kelas) {
-
                                         $semester = $kelas->semester ?? 999;
-
                                         $namaMatkul = $kelas->matakuliah->nama_matkul ?? '';
-
-                                        // Ambil suffix kelas (A/B/C)
                                         preg_match('/-([A-Z])$/', $kelas->nama_kelas, $match);
-
                                         $suffix = $match[1] ?? 'Z';
 
-                                        return sprintf(
-                                            '%02d-%s-%s',
-                                            $semester,
-                                            $namaMatkul,
-                                            $suffix
-                                        );
-
+                                        return sprintf('%02d-%s-%s', $semester, $namaMatkul, $suffix);
                                     });
-
                                 @endphp
 
                                 @forelse ($kelasSorted as $kelas)
 
                                 <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
                                     <td class="text-left py-2 px-3 text-sm">
-
                                         <div class="flex items-center space-x-3">
-
                                             <input
                                                 type="checkbox"
                                                 value="{{ $kelas->id_kelas }}"
                                                 class="checkbox-kelas-{{ $prodi->id_prodi }} rounded border-gray-300 text-red-600 focus:ring-red-500">
-
-                                            <span>
-                                                {{ $loop->iteration }}
-                                            </span>
-
+                                            <span>{{ $loop->iteration }}</span>
                                         </div>
-
                                     </td>
 
                                     <td class="text-left py-2 px-3 text-sm font-medium">
@@ -387,39 +367,35 @@
                                         {{ $kelas->matakuliah->sks ?? '-' }}
                                     </td>
 
+                                    <td class="text-left py-2 px-3 text-sm font-medium">
+                                        {{ $kelas->dosen->nama_dosen ?? '-' }}
+                                    </td>
+
                                     <td class="text-left py-2 px-3 text-sm">
                                         {{ $kelas->kapasitas }}
                                     </td>
 
                                     <td class="text-left py-2 px-3 text-sm">
-
                                         <div class="flex space-x-2">
-
                                             <button
-                                                @click='openEdit(@json($kelas))'
+                                                @click="openEdit(@js($kelas))"
                                                 class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
-
                                                 Edit
                                             </button>
 
                                             <button
                                                 onclick="confirmDelete('{{ route('kelas.destroy', $kelas->id_kelas) }}')"
                                                 class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-
                                                 Hapus
                                             </button>
-
                                         </div>
-
                                     </td>
-
                                 </tr>
 
                                 @empty
 
                                 <tr>
-                                    <td colspan="10"
-                                        class="text-center py-4 text-gray-500">
+                                    <td colspan="10" class="text-center py-4 text-gray-500">
                                         Data kelas belum tersedia.
                                     </td>
                                 </tr>
@@ -439,29 +415,21 @@
 
                     <div class="flex items-center space-x-2">
 
-                        <!-- PILIH SEMUA -->
                         <button
                             type="button"
                             @click="
                                 let checkboxes = document.querySelectorAll('.checkbox-kelas-{{ $prodi->id_prodi }}');
-
                                 let allChecked = [...checkboxes].every(cb => cb.checked);
-
-                                checkboxes.forEach(cb => {
-                                    cb.checked = !allChecked;
-                                });
+                                checkboxes.forEach(cb => { cb.checked = !allChecked; });
                             "
                             class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-
                             Pilih Semua
                         </button>
 
-                        <!-- HAPUS SEMUA -->
                         <button
                             type="button"
                             onclick="deleteSelected('{{ $prodi->id_prodi }}')"
                             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-
                             Hapus Semua
                         </button>
 
@@ -491,182 +459,148 @@
         <div class="bg-white rounded-lg shadow-xl sm:max-w-lg sm:w-full p-6">
 
             <div class="flex justify-between items-center border-b pb-3">
-                <h2 class="text-xl font-bold text-teal-800">
-                    Tambah Kelas Baru
-                </h2>
-
-                <button @click="showAddModal = false">
-                    ✕
-                </button>
+                <h2 class="text-xl font-bold text-teal-800">Tambah Kelas Baru</h2>
+                <button @click="showAddModal = false">✕</button>
             </div>
 
-                <form action="{{ route('kelas.store') }}"
-                    method="POST"
-                    class="mt-4 space-y-4">
+            <form action="{{ route('kelas.store') }}"
+                method="POST"
+                class="mt-4 space-y-4">
 
-                    @csrf
+                @csrf
 
-                    <!-- hidden tahun akademik -->
-                    <input type="hidden"
-                        name="id_tahunakademik"
-                        value="{{ $tahunAkademik->id_tahunakademik }}">
+                <input type="hidden"
+                    name="id_tahunakademik"
+                    value="{{ $tahunAkademik->id_tahunakademik }}">
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                        <!-- Nama Kelas -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Nama Kelas
-                            </label>
-
-                            <input type="text"
-                                name="nama_kelas"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                required>
-                        </div>
-
-                        <!-- Semester -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Semester
-                            </label>
-
-                            <select name="semester"
-                                    x-model="selectedSemester"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                    required>
-
-                                <option value="">-- Pilih Semester --</option>
-
-                                @for ($i = 1; $i <= 8; $i++)
-                                    <option value="{{ $i }}">
-                                        Semester {{ $i }}
-                                    </option>
-                                @endfor
-
-                            </select>
-                        </div>
-
-                        <!-- Prodi -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Program Studi
-                            </label>
-
-                            <select
-                                name="id_prodi"
-                                x-model="selectedProdi"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                required>
-
-                                <option value="">-- Pilih Prodi --</option>
-
-                                @foreach ($prodis as $prodi)
-                                    <option value="{{ $prodi->id_prodi }}">
-                                        {{ $prodi->nama_prodi }}
-                                    </option>
-                                @endforeach
-
-                            </select>
-                        </div>
-
-                        <!-- Kurikulum -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Kurikulum
-                            </label>
-
-                            <select
-                                x-model="selectedKurikulum"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-
-                                <option value="">-- Pilih Kurikulum --</option>
-
-                                @foreach ($kurikulums as $kurikulum)
-                                    <option value="{{ $kurikulum->id_kurikulum }}">
-                                        {{ $kurikulum->nama_kurikulum }}
-                                    </option>
-                                @endforeach
-
-                            </select>
-                        </div>
-
-                        <!-- Mata Kuliah -->
-                        <div class="md:col-span-2">
-
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Mata Kuliah
-                            </label>
-
-                            <select
-                                name="kode_matkul"
-                                @change="selectMatkul($event.target.value)"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                required>
-
-                                <option value="">-- Pilih Mata Kuliah --</option>
-
-                                <template
-                                    x-for="matkul in mataKuliahs.filter(m =>
-                                        (!selectedProdi || m.id_prodi == selectedProdi) &&
-                                        (!selectedSemester || m.semester == selectedSemester) &&
-                                        (!selectedKurikulum || m.id_kurikulum == selectedKurikulum)
-                                    )"
-                                    :key="matkul.kode_matkul">
-
-                                    <option
-                                        :value="matkul.kode_matkul"
-                                        x-text="`${matkul.kode_matkul} - ${matkul.nama_matkul}`">
-                                    </option>
-
-                                </template>
-
-                            </select>
-
-                        </div>
-
-                        <!-- SKS otomatis -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                SKS
-                            </label>
-
-                            <input type="text"
-                                x-model="selectedSks"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
-                                readonly>
-                        </div>
-
-                        <!-- Kapasitas -->
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Kapasitas
-                            </label>
-
-                            <input type="number"
-                                name="kapasitas"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                required>
-                        </div>
-
+                    <!-- Nama Kelas -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kelas</label>
+                        <input type="text"
+                            name="nama_kelas"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
                     </div>
 
-                    <div class="flex justify-end space-x-3 pt-4">
-
-                        <button type="button"
-                                @click="showAddModal = false"
-                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                            Batal
-                        </button>
-
-                        <button type="submit"
-                                class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">
-                            Simpan
-                        </button>
-
+                    <!-- Semester -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                        <select name="semester"
+                                x-model="selectedSemester"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                required>
+                            <option value="">-- Pilih Semester --</option>
+                            @for ($i = 1; $i <= 8; $i++)
+                                <option value="{{ $i }}">Semester {{ $i }}</option>
+                            @endfor
+                        </select>
                     </div>
 
-                </form>
+                    <!-- Prodi -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Program Studi</label>
+                        <select
+                            name="id_prodi"
+                            x-model="selectedProdi"
+                            @change="selectMatkul(document.querySelector('select[name=kode_matkul]')?.value || '')"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+                            <option value="">-- Pilih Prodi --</option>
+                            @foreach ($prodis as $prodi)
+                                <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Kurikulum -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kurikulum</label>
+                        <select
+                            name="id_kurikulum"
+                            x-model="selectedKurikulum"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">-- Pilih Kurikulum --</option>
+                            @foreach ($kurikulums as $kurikulum)
+                                <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Mata Kuliah -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mata Kuliah</label>
+                        <select
+                            name="kode_matkul"
+                            @change="selectMatkul($event.target.value)"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+                            <option value="">-- Pilih Mata Kuliah --</option>
+                            <template
+                                x-for="matkul in mataKuliahs.filter(m =>
+                                    eq(selectedProdi, m.id_prodi) &&
+                                    eq(selectedSemester, m.semester) &&
+                                    eq(selectedKurikulum, m.id_kurikulum)
+                                )"
+                                :key="matkul.id">
+                                <option
+                                    :value="matkul.kode_matkul"
+                                    x-text="`${matkul.kode_matkul} - ${matkul.nama_matkul}`">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- SKS otomatis -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">SKS</label>
+                        <input type="text"
+                            x-model="selectedSks"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                            readonly>
+                    </div>
+
+                    <!-- Dosen Pengampu -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dosen Pengampu</label>
+                        <select
+                            name="id_dosen"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">-- Pilih Dosen Pengampu --</option>
+                            <template x-for="dosen in filteredDosens" :key="dosen.id_dosen">
+                                <option :value="dosen.id_dosen" x-text="dosen.nama_dosen"></option>
+                            </template>
+                        </select>
+                        <p x-show="filteredDosens.length === 0" class="text-xs text-gray-400 mt-1">
+                            Pilih mata kuliah terlebih dahulu, atau mata kuliah ini belum memiliki dosen pengampu.
+                        </p>
+                    </div>
+
+                    <!-- Kapasitas -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kapasitas</label>
+                        <input type="number"
+                            name="kapasitas"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            required>
+                    </div>
+
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button"
+                            @click="showAddModal = false"
+                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">
+                        Simpan
+                    </button>
+                </div>
+
+            </form>
 
         </div>
 
@@ -685,15 +619,8 @@
         <div class="bg-white rounded-lg shadow-xl sm:max-w-lg sm:w-full p-6">
 
             <div class="flex justify-between items-center border-b pb-3">
-
-                <h2 class="text-xl font-bold text-teal-800">
-                    Edit Kelas
-                </h2>
-
-                <button @click="showEditModal = false">
-                    ✕
-                </button>
-
+                <h2 class="text-xl font-bold text-teal-800">Edit Kelas</h2>
+                <button @click="showEditModal = false">✕</button>
             </div>
 
             <form :action="`/management/kelas/${editData.id_kelas}`"
@@ -703,7 +630,6 @@
                 @csrf
                 @method('PUT')
 
-                <!-- hidden tahun -->
                 <input type="hidden"
                        name="id_tahunakademik"
                        :value="editData.id_tahunakademik">
@@ -712,10 +638,7 @@
 
                     <!-- Nama Kelas -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Nama Kelas
-                        </label>
-
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kelas</label>
                         <input type="text"
                                name="nama_kelas"
                                x-model="editData.nama_kelas"
@@ -725,124 +648,103 @@
 
                     <!-- Semester -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Semester
-                        </label>
-
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
                         <select
                             name="semester"
                             x-model="editData.semester"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                             required>
-
                             <option value="">-- Pilih Semester --</option>
-
                             @for ($i = 1; $i <= 8; $i++)
-                                <option value="{{ $i }}">
-                                    Semester {{ $i }}
-                                </option>
+                                <option value="{{ $i }}">Semester {{ $i }}</option>
                             @endfor
-
                         </select>
                     </div>
 
                     <!-- Prodi -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Program Studi
-                        </label>
-
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Program Studi</label>
                         <select
                             name="id_prodi"
                             x-model="editData.id_prodi"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                             required>
-
                             <option value="">-- Pilih Prodi --</option>
-
                             @foreach ($prodis as $prodi)
-                                <option value="{{ $prodi->id_prodi }}">
-                                    {{ $prodi->nama_prodi }}
-                                </option>
+                                <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
                             @endforeach
-
                         </select>
                     </div>
 
                     <!-- Kurikulum -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Kurikulum
-                        </label>
-
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kurikulum</label>
                         <select
                             x-model="editData.id_kurikulum"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-
                             <option value="">-- Pilih Kurikulum --</option>
-
                             @foreach ($kurikulums as $kurikulum)
-                                <option value="{{ $kurikulum->id_kurikulum }}">
-                                    {{ $kurikulum->nama_kurikulum }}
-                                </option>
+                                <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
                             @endforeach
-
                         </select>
                     </div>
 
                     <!-- Mata Kuliah -->
                     <div class="md:col-span-2">
-
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Mata Kuliah
-                        </label>
-
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mata Kuliah</label>
                         <select
                             name="kode_matkul"
                             x-model="editData.kode_matkul"
                             @change="selectEditMatkul($event.target.value)"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                             required>
-
                             <option value="">-- Pilih Mata Kuliah --</option>
-
                             <template
                                 x-for="matkul in mataKuliahs.filter(m =>
-                                    (!editData.id_prodi || m.id_prodi == editData.id_prodi) &&
-                                    (!editData.semester || m.semester == editData.semester) &&
-                                    (!editData.id_kurikulum || m.id_kurikulum == editData.id_kurikulum)
+                                    eq(m.kode_matkul, currentEditMatkul) || (
+                                        eq(editData.id_prodi, m.id_prodi) &&
+                                        eq(editData.semester, m.semester) &&
+                                        eq(editData.id_kurikulum, m.id_kurikulum)
+                                    )
                                 )"
-                                :key="matkul.kode_matkul">
-
+                                :key="matkul.id">
                                 <option
                                     :value="matkul.kode_matkul"
                                     x-text="`${matkul.kode_matkul} - ${matkul.nama_matkul}`">
                                 </option>
-
                             </template>
-
                         </select>
-
                     </div>
 
                     <!-- SKS -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            SKS
-                        </label>
-
+                        <label class="block text-sm font-medium text-gray-700 mb-1">SKS</label>
                         <input type="text"
                                x-model="editData.sks"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
                                readonly>
                     </div>
 
+                    <!-- Dosen Pengampu -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dosen Pengampu</label>
+                        <select
+                            name="id_dosen"
+                            x-model="editData.id_dosen"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">-- Pilih Dosen Pengampu --</option>
+                            <template x-for="dosen in filteredEditDosens" :key="dosen.id_dosen">
+                                <option :value="dosen.id_dosen" x-text="dosen.nama_dosen"></option>
+                            </template>
+                        </select>
+                        <p x-show="filteredEditDosens.length === 0" class="text-xs text-gray-400 mt-1">
+                            Mata kuliah ini belum memiliki dosen pengampu yang terdaftar.
+                        </p>
+                    </div>
+
                     <!-- Kapasitas -->
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Kapasitas
-                        </label>
-
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kapasitas</label>
                         <input type="number"
                                name="kapasitas"
                                x-model="editData.kapasitas"
@@ -853,18 +755,15 @@
                 </div>
 
                 <div class="flex justify-end space-x-3 pt-4">
-
                     <button type="button"
                             @click="showEditModal = false"
                             class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
                         Batal
                     </button>
-
                     <button type="submit"
                             class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">
                         Simpan Perubahan
                     </button>
-
                 </div>
 
             </form>
@@ -886,23 +785,11 @@
         <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
 
             <div class="flex justify-between items-center border-b pb-3">
-
                 <div>
-
-                    <h2 class="text-xl font-bold text-teal-800">
-                        Generate Kelas
-                    </h2>
-
-                    <p class="text-sm text-gray-500 mt-1"
-                       x-text="selectedGenerateProdiName">
-                    </p>
-
+                    <h2 class="text-xl font-bold text-teal-800">Generate Kelas</h2>
+                    <p class="text-sm text-gray-500 mt-1" x-text="selectedGenerateProdiName"></p>
                 </div>
-
-                <button @click="showGenerateModal = false">
-                    ✕
-                </button>
-
+                <button @click="showGenerateModal = false">✕</button>
             </div>
 
             <form action="{{ route('kelas.generate') }}"
@@ -911,99 +798,49 @@
 
                 @csrf
 
-                <input type="hidden"
-                       name="id_prodi"
-                       :value="selectedGenerateProdi">
+                <input type="hidden" name="id_prodi" :value="selectedGenerateProdi">
+                <input type="hidden" name="id_tahunakademik" value="{{ $tahunAkademik->id_tahunakademik }}">
 
-                <input type="hidden"
-                       name="id_tahunakademik"
-                       value="{{ $tahunAkademik->id_tahunakademik }}">
-
-                <!-- KURIKULUM -->
                 <div>
-
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Kurikulum
-                    </label>
-
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kurikulum</label>
                     <select name="id_kurikulum"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                             required>
-
-                        <option value="">
-                            -- Pilih Kurikulum --
-                        </option>
-
+                        <option value="">-- Pilih Kurikulum --</option>
                         @foreach ($kurikulums as $kurikulum)
-
-                            <option value="{{ $kurikulum->id_kurikulum }}">
-                                {{ $kurikulum->nama_kurikulum }}
-                            </option>
-
+                            <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
                         @endforeach
-
                     </select>
-
                 </div>
 
-                <!-- semester -->
                 <div>
-
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Semester
-                    </label>
-
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
                     <select name="semester"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                             required>
-
-                        <option value="">
-                            -- Pilih Semester --
-                        </option>
-
+                        <option value="">-- Pilih Semester --</option>
                         <template x-for="semester in semesterOptions">
-
-                            <option
-                                :value="semester"
-                                x-text="'Semester ' + semester">
-                            </option>
-
+                            <option :value="semester" x-text="'Semester ' + semester"></option>
                         </template>
-
                     </select>
-
                 </div>
 
-                <!-- jumlah mahasiswa -->
                 <div>
-
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Jumlah Mahasiswa
-                    </label>
-
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Mahasiswa</label>
                     <input type="number"
                            name="jumlah_mahasiswa"
                            min="1"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                            required>
-
                 </div>
 
                 <div class="flex justify-end space-x-3 pt-4">
-
-                    <button type="button"
-                            @click="showGenerateModal = false"
-                            class="px-4 py-2 bg-gray-200 rounded-lg">
-
+                    <button type="button" @click="showGenerateModal = false" class="px-4 py-2 bg-gray-200 rounded-lg">
                         Batal
                     </button>
-
-                    <button type="submit"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                         Generate
                     </button>
-
                 </div>
 
             </form>
@@ -1021,9 +858,7 @@
 
 function deleteSelected(prodiId)
 {
-    let checked = document.querySelectorAll(
-        `.checkbox-kelas-${prodiId}:checked`
-    );
+    let checked = document.querySelectorAll(`.checkbox-kelas-${prodiId}:checked`);
 
     if (checked.length === 0) {
         alert('Pilih minimal 1 kelas.');
@@ -1035,13 +870,9 @@ function deleteSelected(prodiId)
     }
 
     let ids = [];
-
-    checked.forEach(item => {
-        ids.push(item.value);
-    });
+    checked.forEach(item => { ids.push(item.value); });
 
     document.getElementById('bulkDeleteIds').value = ids.join(',');
-
     document.getElementById('bulkDeleteForm').submit();
 }
 
@@ -1051,13 +882,8 @@ function deleteSelected(prodiId)
       action="{{ route('kelas.bulk-delete') }}"
       method="POST"
       style="display:none;">
-
     @csrf
-
-    <input type="hidden"
-           name="ids"
-           id="bulkDeleteIds">
-
+    <input type="hidden" name="ids" id="bulkDeleteIds">
 </form>
 
 </body>
