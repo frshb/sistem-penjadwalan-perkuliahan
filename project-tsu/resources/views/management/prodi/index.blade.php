@@ -128,7 +128,7 @@
         <div class="p-6">
             <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                 <h2 class="text-xl font-bold text-teal-800">Tambah Program Studi</h2>
-                <button onclick="closeModal('tambah')" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <button @click="showAddModal = false" type="button" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <form id="form-tambah-prodi" action="{{ route('prodi.store') }}" method="POST" class="mt-6 space-y-6">
                 @csrf
@@ -142,7 +142,7 @@
                     <input type="text" id="kode_prodi" name="kode_prodi" class="w-2/3 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
                 <div class="flex justify-end space-x-4 pt-6">
-                    <button type="button" onclick="closeModal('tambah')" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
+                    <button type="button" @click="showAddModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
                     <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">Simpan</button>
                 </div>
             </form>
@@ -154,7 +154,7 @@
         <div class="p-6">
             <div class="flex justify-between items-center pb-3 border-b border-gray-200">
                 <h2 class="text-xl font-bold text-teal-800">Edit Program Studi</h2>
-                <button onclick="closeModal('edit')" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <button @click="showEditModal = false" type="button" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <form id="form-edit-prodi" method="POST" class="mt-6 space-y-6">
                 @csrf
@@ -172,7 +172,7 @@
                 </div>
 
                 <div class="flex justify-end space-x-4 pt-6">
-                    <button type="button" onclick="closeModal('edit')" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
+                    <button type="button" @click="showEditModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Batal</button>
                     <button type="submit" class="px-5 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700">Update</button>
                 </div>
             </form>
@@ -224,12 +224,11 @@
                         }
                     })
                     .then(data => {
-                        // Close Modal via Alpine.js
+                        // Close Modal via Event
+                        window.dispatchEvent(new CustomEvent('close-modal'));
+
                         if (modalType === 'add') {
-                            document.querySelector('[x-data]').__x.$data.showAddModal = false;
                             document.getElementById('form-tambah-prodi').reset();
-                        } else {
-                            document.querySelector('[x-data]').__x.$data.showEditModal = false;
                         }
 
                         // Tampilkan popup sukses
@@ -255,13 +254,6 @@
 
                         errorBox.innerHTML = errorMessage;
                         errorBox.classList.remove('hidden');
-                    });
-
-                    .then(data => {
-                        if (window.showSuccessPopup) {
-                            window.showSuccessPopup(data.message || 'Berhasil!');
-                        }
-                        setTimeout(() => window.location.reload(), 800);
                     });
 
                 });

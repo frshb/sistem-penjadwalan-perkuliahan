@@ -212,8 +212,14 @@ class JadwalController extends Controller
     }
 
     /**
-     * Endpoint ringan — hanya hitung jumlah bentrok saat ini
-     * tanpa menjalankan optimasi. Digunakan untuk refresh badge.
+     * Endpoint ringan — hanya hitung jumlah bentrok/pelanggaran constraint
+     * saat ini tanpa menjalankan optimasi. Digunakan untuk refresh badge.
+     *
+     * Eager-load 'kelas.matakuliah.ruangans' DITAMBAHKAN agar konsisten
+     * dengan deteksiBentrok() di OptimizeJadwal yang sekarang juga
+     * memeriksa HC10 (ruangan harus valid/terdaftar untuk mata kuliah).
+     * Tanpa ini, Eloquent tetap berjalan via lazy-load otomatis, hanya
+     * lebih banyak query (N+1) untuk endpoint yang dipanggil cukup sering.
      */
     public function statusBentrok(Request $request, OptimizeJadwal $service)
     {
@@ -227,6 +233,7 @@ class JadwalController extends Controller
             'kelas.matakuliah',
             'kelas.dosen',
             'kelas.prodi',
+            'kelas.matakuliah.ruangans',
             'slotMulai',
             'hari',
             'ruangan',

@@ -10,6 +10,54 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
+
+    /* ── History Panel ── */
+        #hist-panel {
+            position: fixed; right: 24px; bottom: 24px; z-index: 9998;
+            width: 320px; background: #fff; border-radius: 16px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.18); border: 1px solid #e5e7eb;
+            overflow: hidden; display: none; flex-direction: column; max-height: 480px;
+        }
+        #hist-panel.open { display: flex; }
+        .hist-panel-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;
+        }
+        .hist-panel-head span { font-size: 13px; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 6px; }
+        .hist-panel-btns { display: flex; gap: 6px; align-items: center; }
+        .hist-clear-btn { font-size: 12px; color: #ef4444; border: none; background: none; cursor: pointer; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+        .hist-clear-btn:hover { background: #fef2f2; }
+        .hist-close-btn { width: 26px; height: 26px; border-radius: 6px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 16px; line-height: 1; }
+        .hist-close-btn:hover { background: #f3f4f6; color: #374151; }
+        .hist-list { flex: 1; overflow-y: auto; min-height: 0; }
+        .hist-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: background .1s; position: relative; }
+        .hist-item:last-child { border-bottom: none; }
+        .hist-item:hover { background: #f9fafb; }
+        .hist-item.hist-current { background: #f0fdf4; }
+        .hist-item.hist-future { opacity: .4; }
+        .hist-current-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #059669; border-radius: 0 2px 2px 0; }
+        .hist-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+        .hist-icon-future { background: #f3f4f6; color: #9ca3af; }
+        .hist-icon-add    { background: #f0fdf4; color: #059669; }
+        .hist-icon-move   { background: #eff6ff; color: #2563eb; }
+        .hist-icon-del    { background: #fef2f2; color: #dc2626; }
+        .hist-icon-edit   { background: #fffbeb; color: #d97706; }
+        .hist-icon-merge  { background: #f5f3ff; color: #7c3aed; }
+        .hist-icon-split  { background: #fdf2f8; color: #be185d; }
+        .hist-icon-reset  { background: #f9fafb; color: #6b7280; }
+        .hist-icon-ruang  { background: #fffbeb; color: #d97706; }
+        .hist-body { flex: 1; min-width: 0; }
+        .hist-title { font-size: 12px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hist-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+        .hist-time { font-size: 11px; color: #d1d5db; flex-shrink: 0; padding-top: 2px; }
+        .hist-now-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 8px; background: #d1fae5; color: #059669; font-weight: 700; margin-left: 4px; vertical-align: middle; }
+        .hist-empty { padding: 2rem; text-align: center; color: #9ca3af; font-size: 13px; line-height: 1.7; }
+        .hist-footer { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #e5e7eb; background: #f9fafb; flex-shrink: 0; }
+        .hist-foot-btn { flex: 1; padding: 8px; font-size: 13px; font-weight: 600; border-radius: 10px; border: 1.5px solid #e5e7eb; background: #fff; cursor: pointer; transition: background .15s; color: #374151; }
+        .hist-foot-btn:hover:not(:disabled) { background: #f3f4f6; }
+        .hist-foot-btn:disabled { opacity: .35; cursor: not-allowed; }
+        [x-cloak] { display: none !important; }
+
         /* ── Modal Optimasi ── */
          #modal-optimasi-overlay {
         position: fixed; inset: 0; z-index: 9999;
@@ -246,10 +294,40 @@
     </div>{{-- /modal-optimasi-box --}}
 </div>
 
+{{-- ============================================================ --}}
+{{-- HISTORY PANEL                                                --}}
+{{-- ============================================================ --}}
+<div id="hist-panel" role="dialog" aria-label="Riwayat Perubahan">
+    <div class="hist-panel-head">
+        <span>
+            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Riwayat Perubahan
+        </span>
+        <div class="hist-panel-btns">
+            <button class="hist-clear-btn" onclick="historyClear()">Hapus</button>
+            <button class="hist-close-btn" onclick="tutupHistoryPanel()">✕</button>
+        </div>
+    </div>
+    <div class="hist-list" id="hist-list">
+        <div class="hist-empty" id="hist-empty">
+            <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin:0 auto 8px;opacity:.3;display:block">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Belum ada perubahan.<br>Mulai menyusun jadwal<br>untuk merekam riwayat.
+        </div>
+    </div>
+    <div class="hist-footer">
+        <button class="hist-foot-btn" id="hist-undo-panel-btn" onclick="historyUndo()" disabled>↩ Undo</button>
+        <button class="hist-foot-btn" id="hist-redo-panel-btn" onclick="historyRedo()" disabled>Redo ↪</button>
+    </div>
+</div>
+
 <main :class="sidebarOpen ? 'lg:ml-64' : 'ml-0'" class="transition-all duration-300 p-6 sm:p-8">
 
     {{-- HEADER --}}
-    <div class="flex items-center justify-between" x-show="!focusMode" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-2">
+    <div class="flex items-center justify-between" x-show="!focusMode" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-2">
         <div>
             <div class="flex items-center gap-3">
                 <div class="flex flex-col">
@@ -270,103 +348,170 @@
     </div>
 
     {{-- ACTION BAR --}}
-    <div class="mt-8 flex items-center justify-between" :class="focusMode ? 'mt-0 bg-white p-3 rounded-2xl border border-gray-150 shadow-sm' : ''">
-        <div class="flex items-center gap-3">
-            <!-- Focus Period Badge -->
-            <div x-show="focusMode" class="text-sm font-bold text-teal-800 bg-teal-50 px-3.5 py-2 rounded-xl border border-teal-200 flex items-center gap-2 mr-2">
-                <span class="flex h-2 w-2 relative">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
-                </span>
-                <span>Periode: {{ $tahunAkademik->nama_tahunakademik }}</span>
+    <div class="mt-8" :class="focusMode ? 'mt-0 bg-white p-3 rounded-2xl border border-gray-150 shadow-sm' : ''">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+
+            {{-- Grup Kiri --}}
+            <div class="flex flex-wrap items-center gap-2">
+
+                <!-- Focus Mode Badge -->
+                <div x-show="focusMode" x-cloak
+                    class="text-sm font-bold text-teal-800 bg-teal-50 px-3.5 py-2 rounded-xl border border-teal-200 flex items-center gap-2">
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                    </span>
+                    <span class="hidden sm:inline">Periode:</span>
+                    <span>{{ $tahunAkademik->nama_tahunakademik }}</span>
+                </div>
+
+                <!-- Optimasi -->
+                <button
+                    id="btn-optimasi"
+                    onclick="bukaModalOptimasi()"
+                    class="px-3 sm:px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold shadow flex items-center gap-2 transition text-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    <span class="hidden sm:inline">Optimasi Jadwal</span>
+                    <span class="sm:hidden">Optimasi</span>
+                </button>
+
+                <!-- Lihat Bentrok -->
+                <button
+                    id="btn-lihat-bentrok"
+                    onclick="lihatBentrok()"
+                    class="px-3 sm:px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-2 transition text-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="hidden sm:inline">Lihat Bentrok</span>
+                    <span class="sm:hidden">Bentrok</span>
+                </button>
+
+                <!-- Reset -->
+                <button
+                    onclick="resetWorkspace()"
+                    class="px-3 sm:px-5 py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl font-semibold flex items-center gap-2 transition text-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    <span class="hidden sm:inline">Reset Jadwal</span>
+                    <span class="sm:hidden">Reset</span>
+                </button>
+
+                <!-- Simpan -->
+                <button
+                    onclick="simpanSemuaJadwal()"
+                    id="btn-simpan-semua"
+                    class="px-3 sm:px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow flex items-center gap-2 transition text-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span id="btn-simpan-label">
+                        <span class="hidden sm:inline">Simpan Jadwal</span>
+                        <span class="sm:hidden">Simpan</span>
+                    </span>
+                </button>
+
+                <!-- Undo -->
+                <button
+                    id="hist-undo-btn"
+                    onclick="historyUndo()"
+                    disabled
+                    title="Undo (Ctrl+Z)"
+                    class="px-3 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-1.5 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14L4 9m0 0l5-5M4 9h11a6 6 0 010 12h-1"/>
+                    </svg>
+                    <span class="hidden md:inline">Undo</span>
+                </button>
+
+                <!-- Redo -->
+                <button
+                    id="hist-redo-btn"
+                    onclick="historyRedo()"
+                    disabled
+                    title="Redo (Ctrl+Y)"
+                    class="px-3 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-1.5 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 14l5-5m0 0l-5-5m5 5H9a6 6 0 000 12h1"/>
+                    </svg>
+                    <span class="hidden md:inline">Redo</span>
+                </button>
+
+                <!-- History -->
+                <button
+                    id="hist-toggle-btn"
+                    onclick="bukaHistoryPanel()"
+                    title="Riwayat perubahan"
+                    class="px-3 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-1.5 transition text-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span id="hist-stack-info" class="hidden md:inline">Riwayat</span>
+                </button>
+
             </div>
 
-            <button
-                id="btn-optimasi"
-                onclick="bukaModalOptimasi()"
-                class="px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold shadow flex items-center gap-2 transition"
-            >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-                Optimasi Jadwal
-            </button>
+            {{-- Grup Kanan --}}
+            <div class="flex flex-wrap items-center gap-2">
 
-            <button
-                id="btn-lihat-bentrok"
-                onclick="lihatBentrok()"
-                class="px-5 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-2 transition"
-            >
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Lihat Bentrok
-            </button>
+                <!-- Toggle Sidebar Kelas -->
+                <button
+                    @click="classSidebarOpen = !classSidebarOpen"
+                    :class="classSidebarOpen ? 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'"
+                    class="px-3 sm:px-4 py-2.5 border rounded-xl font-semibold flex items-center gap-2 transition text-sm shadow-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                    </svg>
+                    <span class="hidden lg:inline" x-text="classSidebarOpen ? 'Sembunyikan Kelas' : 'Tampilkan Kelas'"></span>
+                    <span class="lg:hidden" x-text="classSidebarOpen ? 'Kelas ✕' : 'Kelas'"></span>
+                </button>
 
-            {{-- Setelah tombol "Lihat Bentrok" --}}
-            <button
-                onclick="resetWorkspace()"
-                class="px-5 py-3 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl font-semibold flex items-center gap-2 transition"
-            >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-                Reset Jadwal
-            </button>
+                <!-- Mode Fokus -->
+                <button
+                    @click="focusMode = !focusMode; sidebarOpen = !focusMode; classSidebarOpen = !focusMode"
+                    :class="focusMode ? 'bg-gray-800 border-transparent text-white hover:bg-gray-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'"
+                    class="px-3 sm:px-4 py-2.5 border rounded-xl font-semibold flex items-center gap-2 transition text-sm shadow-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="focusMode" style="display:none;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!focusMode">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+                    </svg>
+                    <span class="hidden lg:inline" x-text="focusMode ? 'Normal View' : 'Workspace Fokus'"></span>
+                    <span class="lg:hidden" x-text="focusMode ? 'Normal' : 'Fokus'"></span>
+                </button>
 
-            <button
-                onclick="simpanSemuaJadwal()"
-                id="btn-simpan-semua"
-                class="px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow flex items-center gap-2 transition"
-            >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span id="btn-simpan-label">Simpan Jadwal</span>
-            </button>
-        </div>
-        <div class="flex items-center gap-2.5">
-            <!-- Toggle Sidebar Kelas -->
-            <button
-                @click="classSidebarOpen = !classSidebarOpen"
-                :class="classSidebarOpen ? 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'"
-                class="px-4 py-3 border rounded-xl font-semibold flex items-center gap-2 transition text-sm shadow-sm"
-                title="Tampilkan/Sembunyikan daftar kelas"
-            >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                </svg>
-                <span x-text="classSidebarOpen ? 'Sembunyikan Kelas' : 'Tampilkan Kelas'"></span>
-            </button>
+                <!-- Tampilan Tabel -->
+                <button
+                    @click="showTablePreview = !showTablePreview"
+                    class="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold shadow transition border-2 border-dashed border-teal-400 text-sm"
+                >
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18"/>
+                    </svg>
+                    <span class="hidden sm:inline" x-show="!showTablePreview">Tampilan Tabel</span>
+                    <span class="hidden sm:inline" x-show="showTablePreview">Tutup Tabel</span>
+                    <span class="sm:hidden">Tabel</span>
+                </button>
 
-            <!-- Mode Fokus -->
-            <button
-                @click="focusMode = !focusMode; sidebarOpen = !focusMode; classSidebarOpen = !focusMode"
-                :class="focusMode ? 'bg-gray-800 border-transparent text-white hover:bg-gray-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'"
-                class="px-4 py-3 border rounded-xl font-semibold flex items-center gap-2 transition text-sm shadow-sm"
-                title="Aktifkan mode fokus tanpa sidebar untuk memperluas area kerja"
-            >
-                <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="focusMode" style="display: none;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!focusMode">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-                </svg>
-                <span x-text="focusMode ? 'Normal View' : 'Workspace Fokus'"></span>
-            </button>
-
-            <button
-                @click="showTablePreview = !showTablePreview"
-                class="flex items-center gap-2 px-4 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold shadow transition border-2 border-dashed border-teal-400 text-sm"
-            >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18"/>
-                </svg>
-                <span x-show="!showTablePreview">Tampilan Tabel</span>
-                <span x-show="showTablePreview">Tutup Tabel</span>
-            </button>
+            </div>
         </div>
     </div>
 
@@ -579,7 +724,7 @@
                     </div>
                     @endforeach
 
-                    <div id="jadwal-layer" class="absolute top-0 left-[16.666667%] right-0 bottom-0" style="min-width: 2000px; pointer-events: none;"></div>
+                    <div id="jadwal-layer" class="absolute top-0 left-[16.666667%] right-0 bottom-0" style="pointer-events: none;"></div>
                 </div>
 
             </div>
@@ -618,12 +763,22 @@
                         </select>
                     </div>
                 </div>
-                <div class="px-5 py-4 border-t border-gray-100 flex gap-2">
+                <div class="px-5 py-4 border-t border-gray-100 flex flex-col gap-2">
                     <button id="dp-btn-split" class="hidden flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-sm font-semibold transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
                         </svg>
                         Pisahkan
+                    </button>
+                    <button
+                        id="dp-btn-simpan"
+                        class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Simpan Perubahan
                     </button>
                     <button id="dp-btn-hapus" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-sm font-semibold transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -773,26 +928,285 @@ const CARD_WIDTH     = 185;
 const CARD_GAP       = 12;
 const CSRF_TOKEN     = document.querySelector('meta[name="csrf-token"]').content;
 const TAHUN_AKADEMIK = document.querySelector('meta[name="tahun-akademik-id"]').content;
-const ROUTE_OPTIMASI      = "{{ route('jadwal.optimasi') }}";
-const ROUTE_STATUS_BENTROK= "{{ route('jadwal.status-bentrok') }}";
+const ROUTE_OPTIMASI       = "{{ route('jadwal.optimasi') }}";
+const ROUTE_STATUS_BENTROK = "{{ route('jadwal.status-bentrok') }}";
 
-let ALL_RUANGAN = [];
+let ALL_RUANGAN      = [];
 let activeTab        = 'belum';
 let activeDetailCard = null;
 let draggedCard      = null;
-
-let slotElMap = {};
-let SLOT_VALID = [];
-
-// ── Konfigurasi generate (bisa diubah dari modal) ──
-let GEN_CONFIG = {
-    maxSksDosen:   6,
-    maxKelasSlot:  4,
-    maxMkProdi:    4,
-    randomize:     true,
-    seed:          null,
-};
+let slotElMap        = {};
+let SLOT_VALID       = [];
 let _hasilOptimasiJadwal = null;
+
+// ============================================================
+// UNDO / REDO — STATE
+// ============================================================
+const MAX_HISTORY  = 80;
+let _historyStack  = [];
+let _historyIndex  = -1;
+let _historyPaused = false;
+
+const HIST_CFG = {
+    add:   { label: 'Tambah jadwal',   iconSvg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>',  cls: 'hist-icon-add'   },
+    move:  { label: 'Pindah jadwal',   iconSvg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>',                                        cls: 'hist-icon-move'  },
+    del:   { label: 'Hapus jadwal',    iconSvg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>',  cls: 'hist-icon-del'   },
+    merge: { label: 'Gabung kelas',    iconSvg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',                                                          cls: 'hist-icon-merge' },
+    split: { label: 'Pisah kelas',     iconSvg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>',                                       cls: 'hist-icon-split' },
+    reset: { label: 'Reset workspace', iconSvg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>',  cls: 'hist-icon-reset' },
+    ruang: { label: 'Ubah ruangan',    iconSvg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>',  cls: 'hist-icon-ruang' },
+};
+
+// ── Ambil snapshot seluruh workspace ──
+function _snapshotWorkspace() {
+    return [...document.querySelectorAll('.jadwal-card')].map(card => ({
+        kelasList:   card.dataset.kelasList   || '[]',
+        kelasIdList: card.dataset.kelasIdList || '[]',
+        start:       card.dataset.start,
+        end:         card.dataset.end,
+        sks:         card.dataset.sks,
+        nama:        card.dataset.nama,
+        kelas:       card.dataset.kelas,
+        kelasId:     card.dataset.kelasId,
+        day:         card.dataset.day,
+        dosen:       card.dataset.dosen,
+        kodeMk:      card.dataset.kodeMk,
+        ruangan:     card.dataset.ruangan,
+        ruanganId:   card.dataset.ruanganId,
+        prodi:       card.dataset.prodi,
+        jenis:       card.dataset.jenis,
+        jamMulai:    card.dataset.jamMulai,
+        jamSelesai:  card.dataset.jamSelesai,
+        jadwalIds:   card.dataset.jadwalIds   || '[]',
+    }));
+}
+
+function _updateWorkspaceMinWidth() {
+    const layer = document.getElementById('jadwal-layer');
+    if (!layer) return;
+
+    let maxColumns = 0;
+    document.querySelectorAll('.jadwal-card').forEach(c => {
+        const col = parseInt(c.dataset.column || 0);
+        if (col + 1 > maxColumns) maxColumns = col + 1;
+    });
+
+    // Hanya beri min-width kalau memang ada >1 kolom card yang numpuk.
+    // Kalau cuma 1 kolom, biarkan 100% adaptif (tidak perlu scroll horizontal).
+    const neededWidth = maxColumns > 1
+        ? (maxColumns * (CARD_WIDTH + CARD_GAP)) + 32
+        : 0;
+
+    layer.style.minWidth = neededWidth > 0 ? `${neededWidth}px` : '';
+}
+
+// ── Push dengan snapshot yang sudah disiapkan (state SEBELUM aksi) ──
+function _historyPushRaw(actionType, description, snapshot) {
+    if (_historyPaused) return;
+    if (_historyIndex < _historyStack.length - 1) {
+        _historyStack = _historyStack.slice(0, _historyIndex + 1);
+    }
+    _historyStack.push({ type: actionType, description, snapshot, time: new Date() });
+    if (_historyStack.length > MAX_HISTORY) _historyStack.shift();
+    _historyIndex = _historyStack.length - 1;
+    _renderHistoryPanel();
+    _updateUndoRedoButtons();
+}
+
+// ── Restore workspace dari snapshot (tanpa sentuh DB) ──
+function _restoreWorkspace(snapshot) {
+    _historyPaused = true;
+    document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
+    document.querySelectorAll('.kelas-item').forEach(el => setSidebarStatus(el.dataset.id, 'belum'));
+
+    snapshot.forEach(s => {
+        const c = createCard({
+            sks:        parseInt(s.sks),
+            nama:       s.nama,
+            kelas:      s.kelas,
+            kelasId:    parseInt(s.kelasId),
+            dosen:      s.dosen,
+            kodeMk:     s.kodeMk,
+            ruangan:    s.ruangan,
+            ruanganId:  s.ruanganId,
+            slotId:     parseInt(s.start),
+            day:        s.day,
+            jamMulai:   s.jamMulai,
+            jamSelesai: s.jamSelesai,
+            jadwalIds:  JSON.parse(s.jadwalIds || '[]'),
+            prodi:      s.prodi,
+            jenis:      s.jenis,
+        }, true);
+
+        const kelasList   = JSON.parse(s.kelasList   || '[]');
+        const kelasIdList = JSON.parse(s.kelasIdList || '[]');
+        if (kelasList.length > 1) {
+            c.dataset.kelasList   = s.kelasList;
+            c.dataset.kelasIdList = s.kelasIdList;
+            const color = getCourseColor(s.nama);
+            c.innerHTML = `
+                <div>
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-[13px] ${color.text}">${kelasList.join(' + ')}</span>
+                            <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan</span>
+                        </div>
+                        <button class="text-gray-400 hover:text-red-500 transition ml-2" onclick="removeCard(this)">✕</button>
+                    </div>
+                    <div class="mt-1">
+                        <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${s.kodeMk || '-'}</span>
+                    </div>
+                    <h3 class="mt-1 text-[13px] leading-snug font-bold text-gray-800">${s.nama || '-'}</h3>
+                    <div class="mt-2 space-y-1">
+                        <p class="text-sm text-gray-700 font-medium">${s.dosen}</p>
+                        <p class="text-sm text-gray-700 font-semibold ruangan-text">${s.ruangan || '-'} <span class="mx-1 text-gray-300">|</span> ${s.sks} SKS</p>
+                    </div>
+                </div>`;
+        }
+        kelasIdList.forEach(kid => setSidebarStatus(kid, 'sudah'));
+    });
+
+    updateCounter();
+    applyFilter();
+    const activeDay = (typeof Alpine !== 'undefined' ? Alpine.$data(document.body)?.selectedDay : null) || 'senin';
+    filterCardsByDay(activeDay);
+    renderTablePreview();
+    updateBentrokButton();
+    closeDetailPanel();
+    _historyPaused = false;
+}
+
+// ── Undo ──
+function historyUndo() {
+    if (_historyIndex <= 0) return;
+    const desc = _historyStack[_historyIndex].description;
+    _historyIndex--;
+    _restoreWorkspace(_historyStack[_historyIndex].snapshot);
+    _renderHistoryPanel();
+    _updateUndoRedoButtons();
+    showToast('↩ Undo: ' + desc, 'green');
+}
+
+// ── Redo ──
+function historyRedo() {
+    if (_historyIndex >= _historyStack.length - 1) return;
+    _historyIndex++;
+    _restoreWorkspace(_historyStack[_historyIndex].snapshot);
+    _renderHistoryPanel();
+    _updateUndoRedoButtons();
+    showToast('↪ Redo: ' + _historyStack[_historyIndex].description, 'green');
+}
+
+// ── Lompat ke titik tertentu ──
+function historyJumpTo(idx) {
+    if (idx < 0 || idx >= _historyStack.length) return;
+    _historyIndex = idx;
+    _restoreWorkspace(_historyStack[idx].snapshot);
+    _renderHistoryPanel();
+    _updateUndoRedoButtons();
+    showToast('⏱ Kembali ke: ' + _historyStack[idx].description, 'green');
+}
+
+// ── Hapus semua riwayat ──
+function historyClear() {
+    if (!_historyStack.length) return;
+    if (!confirm('Hapus seluruh riwayat perubahan? Workspace tidak akan berubah.')) return;
+    _historyStack = [];
+    _historyIndex = -1;
+    _renderHistoryPanel();
+    _updateUndoRedoButtons();
+}
+
+// ── Update tombol undo/redo ──
+function _updateUndoRedoButtons() {
+    const canUndo = _historyIndex > 0;
+    const canRedo = _historyIndex < _historyStack.length - 1;
+    ['hist-undo-btn', 'hist-undo-panel-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !canUndo;
+    });
+    ['hist-redo-btn', 'hist-redo-panel-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !canRedo;
+    });
+    const infoEl = document.getElementById('hist-stack-info');
+    if (infoEl) {
+        if (!_historyStack.length) {
+            infoEl.textContent = 'Riwayat';
+        } else {
+            const redoCnt = _historyStack.length - 1 - _historyIndex;
+            infoEl.textContent = redoCnt > 0
+                ? `Riwayat (${redoCnt} redo)`
+                : `Riwayat (${_historyStack.length})`;
+        }
+    }
+}
+
+// ── Render isi panel ──
+function _renderHistoryPanel() {
+    const list = document.getElementById('hist-list');
+    if (!list) return;
+    if (!_historyStack.length) {
+        list.innerHTML = `<div class="hist-empty">
+            <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin:0 auto 8px;opacity:.3;display:block">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Belum ada perubahan.<br>Mulai menyusun jadwal<br>untuk merekam riwayat.</div>`;
+        return;
+    }
+    list.innerHTML = '';
+    for (let i = _historyStack.length - 1; i >= 0; i--) {
+        const e   = _historyStack[i];
+        const cfg = HIST_CFG[e.type] || HIST_CFG.add;
+        const isCurrent = (i === _historyIndex);
+        const isFuture  = (i > _historyIndex);
+        const timeStr   = e.time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const item = document.createElement('div');
+        item.className = 'hist-item' + (isCurrent ? ' hist-current' : '') + (isFuture ? ' hist-future' : '');
+        item.title = 'Klik untuk kembali ke titik ini';
+        item.setAttribute('tabindex', '0');
+        item.addEventListener('click', (function(idx){ return () => historyJumpTo(idx); })(i));
+        item.addEventListener('keydown', (function(idx){ return ev => { if (ev.key === 'Enter' || ev.key === ' ') historyJumpTo(idx); }; })(i));
+        item.innerHTML = `
+            ${isCurrent ? '<div class="hist-current-bar"></div>' : ''}
+            <div class="hist-icon ${isFuture ? 'hist-icon-future' : cfg.cls}">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">${cfg.iconSvg}</svg>
+            </div>
+            <div class="hist-body">
+                <div class="hist-title">${e.description}${isCurrent ? '<span class="hist-now-badge">sekarang</span>' : ''}</div>
+                <div class="hist-meta">${cfg.label}</div>
+            </div>
+            <div class="hist-time">${timeStr}</div>`;
+        list.appendChild(item);
+    }
+}
+
+// ── Buka / tutup panel ──
+function bukaHistoryPanel() {
+    const panel = document.getElementById('hist-panel');
+    if (panel) panel.classList.toggle('open');
+}
+function tutupHistoryPanel() {
+    const panel = document.getElementById('hist-panel');
+    if (panel) panel.classList.remove('open');
+}
+
+// ============================================================
+// KEYBOARD SHORTCUT (SATU listener saja)
+// ============================================================
+document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape') {
+        tutupModalOptimasi();
+        tutupHistoryPanel();
+        return;
+    }
+    const tag = document.activeElement ? document.activeElement.tagName : '';
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    const isMac = navigator.platform.toUpperCase().includes('MAC');
+    const ctrl  = isMac ? ev.metaKey : ev.ctrlKey;
+    if (ctrl && ev.key === 'z' && !ev.shiftKey) { ev.preventDefault(); historyUndo(); return; }
+    if (ctrl && (ev.key === 'y' || (ev.key === 'z' && ev.shiftKey))) { ev.preventDefault(); historyRedo(); }
+});
 
 // ============================================================
 // MODAL OPTIMASI — OPEN / CLOSE
@@ -801,35 +1215,23 @@ function bukaModalOptimasi() {
     tampilStateModal('konfirmasi');
     document.getElementById('modal-optimasi-overlay').classList.add('show');
 }
-
 function tutupModalOptimasi() {
     document.getElementById('modal-optimasi-overlay').classList.remove('show');
 }
-
 function tutupModalOptimasiDanRefresh() {
     tutupModalOptimasi();
     if (_hasilOptimasiJadwal && _hasilOptimasiJadwal.length) {
         refreshWorkspaceDariOptimasi(_hasilOptimasiJadwal);
     }
 }
-
-// Tutup saat klik overlay
 document.getElementById('modal-optimasi-overlay').addEventListener('click', function(e) {
     if (e.target === this) tutupModalOptimasi();
 });
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') tutupModalOptimasi();
-});
-
-/** Ganti state tampilan dalam modal */
 function tampilStateModal(state) {
-    // state: 'konfirmasi' | 'loading' | 'hasil'
     document.getElementById('modal-state-konfirmasi').style.display = state === 'konfirmasi' ? '' : 'none';
     document.getElementById('modal-state-loading').style.display    = state === 'loading'    ? '' : 'none';
     document.getElementById('modal-state-hasil').style.display      = state === 'hasil'      ? '' : 'none';
 }
-
-
 
 // ============================================================
 // WARNA CARD
@@ -855,26 +1257,17 @@ async function simpanJadwal(card) {
     const kelasIdList = JSON.parse(card.dataset.kelasIdList || '[]');
     const hariMap = { senin: 1, selasa: 2, rabu: 3, kamis: 4, jumat: 5 };
     const hariId  = hariMap[card.dataset.day] ?? 1;
-
     try {
         const results = await Promise.all(kelasIdList.map(kelasId => {
             const sidebarEl = document.querySelector(`.kelas-item[data-id="${kelasId}"]`);
             return fetch('{{ route("jadwal.simpan-slot") }}', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': CSRF_TOKEN,
-                    'Accept': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
                 body: JSON.stringify({
-                    kelas_id:          kelasId,
-                    slot_id:           parseInt(card.dataset.start),
-                    hari_id:           hariId,
-                    ruang_id:          card.dataset.ruanganId || null,
-                    durasi_sks:        parseInt(card.dataset.sks),
-                    kode_matkul:       card.dataset.kodeMk || '',
-                    dosen_id:          sidebarEl?.dataset.dosenId || null,
-                    tahun_akademik_id: TAHUN_AKADEMIK,
+                    kelas_id: kelasId, slot_id: parseInt(card.dataset.start),
+                    hari_id: hariId, ruang_id: card.dataset.ruanganId || null,
+                    durasi_sks: parseInt(card.dataset.sks), kode_matkul: card.dataset.kodeMk || '',
+                    dosen_id: sidebarEl?.dataset.dosenId || null, tahun_akademik_id: TAHUN_AKADEMIK,
                 }),
             }).then(async r => {
                 if (!r.ok) { const err = await r.text(); throw new Error(err); }
@@ -891,20 +1284,15 @@ async function simpanJadwal(card) {
 async function simpanSemuaJadwal() {
     const cards = [...document.querySelectorAll('.jadwal-card')];
     if (!cards.length) { alert('Belum ada jadwal yang disusun di workspace.'); return; }
-
     const btn   = document.getElementById('btn-simpan-semua');
     const label = document.getElementById('btn-simpan-label');
-    btn.disabled = true;
-    label.innerText = 'Menyimpan...';
-
+    btn.disabled = true; label.innerText = 'Menyimpan...';
     let berhasil = 0, gagal = 0;
     for (const card of cards) {
         try { await simpanJadwal(card); berhasil++; }
-        catch (e) { gagal++; console.error('Gagal simpan card:', card.dataset.kelas, e); }
+        catch (e) { gagal++; console.error('Gagal simpan card:', e); }
     }
-
-    btn.disabled = false;
-    label.innerText = 'Simpan Jadwal';
+    btn.disabled = false; label.innerText = 'Simpan Jadwal';
     showToast(gagal === 0 ? `✓ ${berhasil} jadwal berhasil disimpan!` : `${berhasil} berhasil, ${gagal} gagal. Cek console.`, gagal === 0 ? 'green' : 'red');
 }
 
@@ -1009,8 +1397,15 @@ function filterCardsByDay(day) {
 function removeCard(btn) {
     const card     = btn.closest('.jadwal-card');
     const kelasIds = JSON.parse(card.dataset.kelasIdList || '[]');
+    const kelas    = card.dataset.kelas || card.dataset.nama || 'jadwal';
+    const day      = card.dataset.day || '';
+
+    // Snapshot SEBELUM hapus
+    _historyPushRaw('del', `Hapus: ${kelas} — ${day.charAt(0).toUpperCase() + day.slice(1)}`, _snapshotWorkspace());
+
     hapusJadwal(card);
     card.remove();
+    _updateWorkspaceMinWidth();
     kelasIds.forEach(kid => {
         const remaining = document.querySelectorAll(`.jadwal-card[data-kelas-id="${kid}"]`);
         if (!remaining.length) setSidebarStatus(kid, 'belum');
@@ -1045,9 +1440,8 @@ function openDetailPanel(card) {
     document.getElementById('dp-kode').innerText     = card.dataset.kodeMk || '-';
     document.getElementById('dp-semester').innerText = `Semester ${semester}`;
 
-    const select   = document.getElementById('dp-ruangan-select');
+    const select = document.getElementById('dp-ruangan-select');
     select.innerHTML = '<option value="">-- Pilih Ruangan --</option>';
-    // ✅ BARU — semua ruangan, ruangan terkait MK ditandai
     ALL_RUANGAN.forEach(r => {
         const opt    = document.createElement('option');
         opt.value    = r.id;
@@ -1061,7 +1455,6 @@ function openDetailPanel(card) {
         if (closeBtn) closeBtn.click();
     };
 
-    // ── Tombol Split: tampil hanya jika card gabungan ──
     const btnSplit = document.getElementById('dp-btn-split');
     if (kelasList.length > 1) {
         btnSplit.classList.remove('hidden');
@@ -1071,6 +1464,10 @@ function openDetailPanel(card) {
         btnSplit.onclick = null;
     }
 
+    document.getElementById('dp-btn-simpan').onclick = async () => {
+        try { await simpanJadwal(card); showToast('✓ Perubahan jadwal berhasil disimpan', 'green'); }
+        catch (e) { showToast('Gagal menyimpan perubahan', 'red'); }
+    };
 
     const panel = document.getElementById('detail-panel');
     panel.classList.remove('hidden');
@@ -1084,97 +1481,81 @@ function closeDetailPanel() {
 }
 
 // ============================================================
-// SPLIT / PISAHKAN CARD GABUNGAN
+// SPLIT CARD
 // ============================================================
 function splitCard(card) {
     const kelasList   = JSON.parse(card.dataset.kelasList   || '[]');
     const kelasIdList = JSON.parse(card.dataset.kelasIdList || '[]');
-
-    if (kelasList.length <= 1) {
-        showToast('Kelas ini tidak dalam kondisi gabungan.', 'red');
-        return;
-    }
-
+    if (kelasList.length <= 1) { showToast('Kelas ini tidak dalam kondisi gabungan.', 'red'); return; }
     if (!confirm(`Pisahkan ${kelasList.length} kelas (${kelasList.join(' + ')}) menjadi card terpisah?`)) return;
 
-    // Simpan semua data sebelum card dihapus
-    const slotId     = parseInt(card.dataset.start);
-    const day        = card.dataset.day;
-    const sks        = parseInt(card.dataset.sks);
-    const nama       = card.dataset.nama;
-    const dosen      = card.dataset.dosen;
-    const kodeMk     = card.dataset.kodeMk;
-    const ruangan    = card.dataset.ruangan;
-    const ruanganId  = card.dataset.ruanganId;
-    const prodi      = card.dataset.prodi;
-    const jenis      = card.dataset.jenis;
-    const jamMulai   = card.dataset.jamMulai;
-    const jamSelesai = card.dataset.jamSelesai;
+    // Snapshot SEBELUM split
+    _historyPushRaw('split', `Pisah kelas: ${kelasList.join(' + ')}`, _snapshotWorkspace());
 
-    // Hapus card gabungan dari DB & DOM
+    const slotId    = parseInt(card.dataset.start);
+    const day       = card.dataset.day;
+    const sks       = parseInt(card.dataset.sks);
+    const nama      = card.dataset.nama;
+    const dosen     = card.dataset.dosen;
+    const kodeMk    = card.dataset.kodeMk;
+    const ruangan   = card.dataset.ruangan;
+    const ruanganId = card.dataset.ruanganId;
+    const prodi     = card.dataset.prodi;
+    const jenis     = card.dataset.jenis;
+    const jamMulai  = card.dataset.jamMulai;
+    const jamSelesai= card.dataset.jamSelesai;
+
     hapusJadwal(card);
     card.remove();
     closeDetailPanel();
 
-    // Buat card individual untuk setiap kelas
+    _historyPaused = true;
     kelasList.forEach((kelasNama, i) => {
-        const kelasId  = kelasIdList[i];
-
-        // Ambil prodi per-kelas dari sidebar jika tersedia
-        // (bisa berbeda jika kelas lintas prodi digabung)
+        const kelasId    = kelasIdList[i];
         const sidebarEl  = document.getElementById(`kelas-${kelasId}`);
         const prodiKelas = sidebarEl?.dataset.prodi || prodi || '-';
         const jenisKelas = sidebarEl?.dataset.jenis || jenis || 'Teori';
-
-        createCard({
-            sks, nama, dosen, kodeMk, ruangan, ruanganId,
-            slotId, day, jamMulai, jamSelesai,
-            kelas:    kelasNama,
-            kelasId:  parseInt(kelasId),
-            prodi:    prodiKelas,
-            jenis:    jenisKelas,
-            jadwalIds: [],
-        });
-
+        createCard({ sks, nama, dosen, kodeMk, ruangan, ruanganId, slotId, day, jamMulai, jamSelesai,
+            kelas: kelasNama, kelasId: parseInt(kelasId), prodi: prodiKelas, jenis: jenisKelas, jadwalIds: [] });
         setSidebarStatus(kelasId, 'sudah');
     });
+    _historyPaused = false;
 
     updateCounter();
     applyFilter();
     renderTablePreview();
     updateBentrokButton();
-
     showToast(`✓ ${kelasList.length} kelas berhasil dipisahkan!`, 'green');
 }
 
+// ============================================================
+// UPDATE RUANGAN DI CARD
+// ============================================================
 function updateCardRuangan(ruanganId, ruanganNama) {
     if (!activeDetailCard) return;
+    // Snapshot SEBELUM ubah
+    _historyPushRaw('ruang', `Ruangan → ${ruanganNama || '-'} (${activeDetailCard.dataset.kelas || '-'})`, _snapshotWorkspace());
     activeDetailCard.dataset.ruangan   = ruanganNama;
     activeDetailCard.dataset.ruanganId = ruanganId;
     const el = activeDetailCard.querySelector('.ruangan-text');
     if (el) el.innerText = ruanganNama || '-';
     renderTablePreview();
     updateBentrokButton();
+    activeDetailCard.classList.add('ring-2', 'ring-amber-400');
+    setTimeout(() => activeDetailCard.classList.remove('ring-2', 'ring-amber-400'), 1500);
 }
 
 // ============================================================
 // PREVIEW TABLE — FILTER & SEARCH
 // ============================================================
-
-// Populate dropdown Prodi, Semester, Kurikulum dari data yang ada di tbody
 function populatePreviewDropdowns() {
     const rows = [...document.querySelectorAll('#tbody-preview tr[data-preview]')];
-
-    const prodis     = new Set();
-    const semesters  = new Set();
-    const kurikulums = new Set();
-
+    const prodis = new Set(), semesters = new Set(), kurikulums = new Set();
     rows.forEach(tr => {
-        if (tr.dataset.prodi)    prodis.add(tr.dataset.prodi);
-        if (tr.dataset.semester) semesters.add(tr.dataset.semester);
+        if (tr.dataset.prodi)     prodis.add(tr.dataset.prodi);
+        if (tr.dataset.semester)  semesters.add(tr.dataset.semester);
         if (tr.dataset.kurikulum) kurikulums.add(tr.dataset.kurikulum);
     });
-
     const fillSelect = (id, values, label) => {
         const sel = document.getElementById(id);
         if (!sel) return;
@@ -1182,13 +1563,11 @@ function populatePreviewDropdowns() {
         sel.innerHTML = `<option value="">${label}</option>`;
         [...values].sort().forEach(v => {
             const opt = document.createElement('option');
-            opt.value = v;
-            opt.textContent = v;
+            opt.value = opt.textContent = v;
             if (v === cur) opt.selected = true;
             sel.appendChild(opt);
         });
     };
-
     fillSelect('pf-prodi',     prodis,    'Semua Prodi');
     fillSelect('pf-semester',  semesters, 'Semua Semester');
     fillSelect('pf-kurikulum', kurikulums,'Semua Kurikulum');
@@ -1201,46 +1580,27 @@ function applyPreviewFilter() {
     const semester  = document.getElementById('pf-semester')?.value  || '';
     const sesi      = document.getElementById('pf-sesi')?.value      || '';
     const kurikulum = document.getElementById('pf-kurikulum')?.value || '';
-
     const rows = [...document.querySelectorAll('#tbody-preview tr[data-preview]')];
     let visible = 0;
-
     rows.forEach(tr => {
-        const matchSearch = !query || (
-            (tr.dataset.dosen  || '').toLowerCase().includes(query) ||
-            (tr.dataset.mk     || '').toLowerCase().includes(query) ||
-            (tr.dataset.kelas  || '').toLowerCase().includes(query)
-        );
-        const matchHari      = !hari      || tr.dataset.hari      === hari;
-        const matchProdi     = !prodi     || tr.dataset.prodi     === prodi;
-        const matchSemester  = !semester  || tr.dataset.semester  === semester;
-        const matchSesi      = !sesi      || tr.dataset.sesi      === sesi;
-        const matchKurikulum = !kurikulum || tr.dataset.kurikulum === kurikulum;
-
-        const show = matchSearch && matchHari && matchProdi && matchSemester && matchSesi && matchKurikulum;
+        const matchSearch = !query || (tr.dataset.dosen||'').toLowerCase().includes(query) || (tr.dataset.mk||'').toLowerCase().includes(query) || (tr.dataset.kelas||'').toLowerCase().includes(query);
+        const show = matchSearch && (!hari||tr.dataset.hari===hari) && (!prodi||tr.dataset.prodi===prodi) && (!semester||tr.dataset.semester===semester) && (!sesi||tr.dataset.sesi===sesi) && (!kurikulum||tr.dataset.kurikulum===kurikulum);
         tr.style.display = show ? '' : 'none';
         if (show) visible++;
     });
-
     const info = document.getElementById('preview-filter-info');
     if (info) info.textContent = `${visible} dari ${rows.length} jadwal ditampilkan`;
 }
 
 function resetPreviewFilter() {
-    ['preview-search'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
+    const el = document.getElementById('preview-search');
+    if (el) el.value = '';
     ['pf-hari','pf-prodi','pf-semester','pf-sesi','pf-kurikulum'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
+        const e = document.getElementById(id); if (e) e.value = '';
     });
     applyPreviewFilter();
 }
 
-// ============================================================
-// TABLE PREVIEW
-// ============================================================
 function renderTablePreview() {
     const tbody = document.getElementById('tbody-preview');
     if (!tbody) return;
@@ -1249,55 +1609,38 @@ function renderTablePreview() {
         const dDiff = days.indexOf(a.dataset.day) - days.indexOf(b.dataset.day);
         return dDiff || parseInt(a.dataset.start) - parseInt(b.dataset.start);
     });
-
     if (!cards.length) {
         tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-6 text-center text-gray-400">Belum ada jadwal yang disusun.</td></tr>`;
         const info = document.getElementById('preview-filter-info');
         if (info) info.textContent = '';
         return;
     }
-
     tbody.innerHTML = '';
     cards.forEach(card => {
-        const kelasList = JSON.parse(card.dataset.kelasList || '[]');
-        const slotId    = parseInt(card.dataset.start);
-        const sesi = slotId <= 11 ? 'Pagi' : 'Malam';
-        const hariLabel = card.dataset.day.charAt(0).toUpperCase() + card.dataset.day.slice(1);
-
+        const kelasList    = JSON.parse(card.dataset.kelasList || '[]');
+        const slotId       = parseInt(card.dataset.start);
+        const sesi         = slotId <= 11 ? 'Pagi' : 'Malam';
+        const hariLabel    = card.dataset.day.charAt(0).toUpperCase() + card.dataset.day.slice(1);
         const kelasPertama = kelasList[0];
         const sidebarEl    = document.querySelector(`.kelas-item[data-kelas="${kelasPertama}"]`);
         const prodi        = sidebarEl?.querySelector('.bg-purple-100')?.innerText?.trim() || '-';
         const semester     = sidebarEl?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '-';
-        // Kurikulum = 2 digit awal kode kelas, e.g. "23uf4" → "20 23"
-        const kodeKelas   = kelasPertama || '';
-        const kurikulumRaw = kodeKelas.substring(0, 2);
-        const kurikulum   = kurikulumRaw ? '20' + kurikulumRaw : '-';
+        const kurikulum    = kelasPertama ? '20' + kelasPertama.substring(0, 2) : '-';
         const namaKelas    = kelasList.length > 1
             ? kelasList.join(' + ') + ' <span class="text-xs px-1.5 py-0.5 bg-pink-100 text-pink-700 rounded font-semibold">Gabungan</span>'
             : kelasPertama;
-
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50 border-b border-gray-100';
         tr.setAttribute('data-preview', '1');
-        // Data attributes untuk filter
-        tr.dataset.hari      = hariLabel;
-        tr.dataset.prodi     = prodi;
-        tr.dataset.semester  = semester;
-        tr.dataset.sesi      = sesi;
-        tr.dataset.kurikulum = kurikulum;
-        tr.dataset.dosen     = card.dataset.dosen     || '';
-        tr.dataset.mk        = card.dataset.nama       || '';
-        tr.dataset.kelas     = kelasList.join(' ')     || '';
-
+        tr.dataset.hari = hariLabel; tr.dataset.prodi = prodi; tr.dataset.semester = semester;
+        tr.dataset.sesi = sesi; tr.dataset.kurikulum = kurikulum;
+        tr.dataset.dosen = card.dataset.dosen || ''; tr.dataset.mk = card.dataset.nama || '';
+        tr.dataset.kelas = kelasList.join(' ') || '';
         tr.innerHTML = `
             <td class="px-4 py-3 text-sm">${hariLabel}</td>
             <td class="px-4 py-3 text-sm">${prodi}</td>
             <td class="px-4 py-3 text-sm">${semester}</td>
-            <td class="px-4 py-3 text-sm">
-                <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${sesi === 'Pagi' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}">
-                    ${sesi}
-                </span>
-            </td>
+            <td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${sesi==='Pagi'?'bg-amber-100 text-amber-700':'bg-indigo-100 text-indigo-700'}">${sesi}</span></td>
             <td class="px-4 py-3 text-sm font-medium">${namaKelas}</td>
             <td class="px-4 py-3 text-sm font-mono text-teal-700">${card.dataset.kodeMk || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.nama || '-'}</td>
@@ -1307,11 +1650,8 @@ function renderTablePreview() {
             <td class="px-4 py-3 text-sm">${card.dataset.ruangan || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.jamMulai || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.jamSelesai || '-'}</td>`;
-
         tbody.appendChild(tr);
-
     });
-
     populatePreviewDropdowns();
     applyPreviewFilter();
 }
@@ -1319,6 +1659,8 @@ function renderTablePreview() {
 // ============================================================
 // BUAT CARD
 // ============================================================
+
+
 function createCard(data, skipSave = false) {
     const { sks, nama, kelas, kelasId, dosen, kodeMk, ruangan, ruanganId,
             slotId, day, jamMulai, jamSelesai, jadwalIds, prodi, jenis } = data;
@@ -1349,16 +1691,15 @@ function createCard(data, skipSave = false) {
     Object.assign(card.dataset, {
         kelasList:   JSON.stringify([kelas]),
         kelasIdList: JSON.stringify([kelasId]),
-        start:    slotId,
-        end:      slotId + sks,
-        column,   dosen, sks, nama, kelas, day, kodeMk, kelasId,
-        prodi:      prodi || '',
+        start:    slotId, end: slotId + sks, column,
+        dosen, sks, nama, kelas, day, kodeMk, kelasId,
+        prodi:      prodi      || '',
         jamMulai:   jamMulai   || '-',
         jamSelesai: jamSelesai || '-',
         ruangan:    ruangan    || '',
         ruanganId:  ruanganId  || '',
         jadwalIds:  jadwalIds ? JSON.stringify(Array.isArray(jadwalIds) ? jadwalIds : [jadwalIds]) : '[]',
-        jenis: jenis || 'Teori',
+        jenis:      jenis      || 'Teori',
     });
 
     card.style.cssText = `width:170px; height:${sks * SLOT_HEIGHT - 18}px; left:${left}px; top:${top}px; pointer-events:${isVisible ? 'auto' : 'none'}; user-select:none; touch-action:none; display:${isVisible ? 'flex' : 'none'};`;
@@ -1383,7 +1724,7 @@ function createCard(data, skipSave = false) {
     enableCardDrag(card);
     enableMerge(card);
     updateBentrokButton();
-
+    _updateWorkspaceMinWidth();
     return card;
 }
 
@@ -1391,80 +1732,71 @@ function createCard(data, skipSave = false) {
 try {
     const rawRuangan = document.getElementById('all-ruangan-data');
     if (rawRuangan) ALL_RUANGAN = JSON.parse(rawRuangan.textContent.trim());
-} catch(e) {
-    console.error('Gagal parse all-ruangan-data:', e);
-}
+} catch(e) { console.error('Gagal parse all-ruangan-data:', e); }
+
 // ============================================================
 // LOAD JADWAL TERSIMPAN DARI DATABASE
 // ============================================================
 function loadExistingJadwals() {
     const raw = document.getElementById('existing-jadwal-data');
     if (!raw) return;
-
     let jadwals = [];
-    try {
-        jadwals = JSON.parse(raw.textContent.trim());
-    } catch (e) {
-        console.error('Gagal parse existing-jadwal-data:', e);
-        return;
-    }
+    try { jadwals = JSON.parse(raw.textContent.trim()); }
+    catch (e) { console.error('Gagal parse existing-jadwal-data:', e); return; }
     if (!jadwals.length) return;
 
+    _historyPaused = true;
     jadwals.forEach(j => {
-        const slotIdInt = parseInt(j.slot_id);   // ← parseInt, bukan string
+        const slotIdInt = parseInt(j.slot_id);
         const sksInt    = parseInt(j.sks);
-
         const infoStart = slotElMap[slotIdInt];
         const infoEnd   = slotElMap[slotIdInt + sksInt - 1];
-
-        if (!infoStart) {
-            console.warn('Slot tidak ditemukan:', slotIdInt, '| Tersedia:', Object.keys(slotElMap));
-            return;
-        }
-
-        // Ambil prodi dari sidebar jika ada
+        if (!infoStart) { console.warn('Slot tidak ditemukan:', slotIdInt); return; }
         const sidebarEl = document.querySelector(`.kelas-item[data-id="${j.kelas_id}"]`);
         const prodi     = sidebarEl?.dataset.prodi || '-';
         const jenis     = sidebarEl?.dataset.jenis || 'Teori';
-
         createCard({
-            sks:        sksInt,
-            nama:       j.nama,
-            kelas:      j.nama_kelas,
-            kelasId:    parseInt(j.kelas_id),
-            dosen:      j.dosen,
-            kodeMk:     j.kode_mk,
-            ruangan:    j.ruangan    || '',
-            ruanganId:  j.ruangan_id || '',
-            slotId:     slotIdInt,
-            day:        j.hari,
-            jamMulai:   infoStart.jamMulai,
-            jamSelesai: infoEnd?.jamSelesai || '-',
-            jadwalIds:  [j.jadwal_id],
-            prodi:      prodi,
-            jenis:      jenis,
+            sks: sksInt, nama: j.nama, kelas: j.nama_kelas, kelasId: parseInt(j.kelas_id),
+            dosen: j.dosen, kodeMk: j.kode_mk, ruangan: j.ruangan || '', ruanganId: j.ruangan_id || '',
+            slotId: slotIdInt, day: j.hari,
+            jamMulai: infoStart.jamMulai, jamSelesai: infoEnd?.jamSelesai || '-',
+            jadwalIds: [j.jadwal_id], prodi, jenis,
         }, true);
-
         setSidebarStatus(j.kelas_id, 'sudah');
     });
+    _historyPaused = false;
+
+    // Simpan state awal sebagai titik pertama history
+    _historyStack.push({
+        type: 'add',
+        description: 'State awal (dari database)',
+        snapshot: _snapshotWorkspace(),
+        time: new Date(),
+    });
+    _historyIndex = 0;
 
     updateCounter();
     renderTablePreview();
+    _renderHistoryPanel();
+    _updateUndoRedoButtons();
 }
 
+// ============================================================
+// DRAG EVENT PADA CARD
+// ============================================================
 function enableCardDrag(card) {
     card.addEventListener('dragstart', e => {
         draggedCard = card;
         e.dataTransfer.setData('from_workspace', '1');
-        ['start','sks','nama','kelas','dosen','kodeMk','ruangan'].forEach(k =>
+        ['start','sks','nama','kelas','dosen','kodeMk','ruangan','ruanganId'].forEach(k =>
             e.dataTransfer.setData(k, card.dataset[k] || '')
         );
-        e.dataTransfer.setData('kelas_id',     card.dataset.kelasId     || '');
-        e.dataTransfer.setData('kelas_list',   card.dataset.kelasList   || '[]');
-        e.dataTransfer.setData('kelas_id_list',card.dataset.kelasIdList || '[]');
-        e.dataTransfer.setData('jadwal_ids',   card.dataset.jadwalIds   || '[]');
-        e.dataTransfer.setData('jenis',        card.dataset.jenis       || 'Teori');
-        e.dataTransfer.setData('prodi',        card.dataset.prodi       || '-');
+        e.dataTransfer.setData('kelas_id',      card.dataset.kelasId     || '');
+        e.dataTransfer.setData('kelas_list',    card.dataset.kelasList   || '[]');
+        e.dataTransfer.setData('kelas_id_list', card.dataset.kelasIdList || '[]');
+        e.dataTransfer.setData('jadwal_ids',    card.dataset.jadwalIds   || '[]');
+        e.dataTransfer.setData('jenis',         card.dataset.jenis       || 'Teori');
+        e.dataTransfer.setData('prodi',         card.dataset.prodi       || '-');
     });
     card.addEventListener('click', e => {
         if (e.target.closest('button')) return;
@@ -1483,6 +1815,10 @@ function enableMerge(card) {
             alert('Hanya kelas dengan mata kuliah dan dosen yang sama yang bisa digabung.');
             return;
         }
+
+        // Snapshot SEBELUM merge
+        const snapshotBeforeMerge = _snapshotWorkspace();
+
         const merged   = [...new Set([...JSON.parse(src.dataset.kelasList   || '[]'), ...JSON.parse(card.dataset.kelasList   || '[]')])];
         const mergedId = [...new Set([...JSON.parse(src.dataset.kelasIdList || '[]'), ...JSON.parse(card.dataset.kelasIdList || '[]')])];
         card.dataset.kelasList   = JSON.stringify(merged);
@@ -1508,83 +1844,53 @@ function enableMerge(card) {
                 </div>
             </div>`;
         src.remove();
+
+        _historyPushRaw('merge', `Gabung kelas: ${merged.join(' + ')}`, snapshotBeforeMerge);
         renderTablePreview();
         updateBentrokButton();
     });
 }
 
 // ============================================================
-// JALANKAN OPTIMASI — panggil backend OptimizeJadwalService
+// OPTIMASI
 // ============================================================
 async function jalankanOptimasi() {
     tampilStateModal('loading');
-
     const pesanEls = ['Mengambil jadwal otomatis...', 'Mendeteksi bentrok...', 'Memperbaiki slot & ruangan...'];
     let pi = 0;
     const pesanEl  = document.getElementById('loading-pesan');
-    const interval = setInterval(() => {
-        pesanEl.textContent = pesanEls[pi % pesanEls.length];
-        pi++;
-    }, 900);
-
+    const interval = setInterval(() => { pesanEl.textContent = pesanEls[pi++ % pesanEls.length]; }, 900);
     try {
         const resp = await fetch(ROUTE_OPTIMASI, {
             method: 'POST',
-            headers: {
-                'Content-Type' : 'application/json',
-                'X-CSRF-TOKEN' : CSRF_TOKEN,
-                'Accept'       : 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
             body: JSON.stringify({ tahun_akademik_id: TAHUN_AKADEMIK }),
         });
-
         clearInterval(interval);
         const data = await resp.json();
-
-        if (!resp.ok || !data.success) {
-            tutupModalOptimasi();
-            showToast(data.message ?? 'Terjadi kesalahan saat optimasi.', 'red');
-            return;
-        }
-
-        // Simpan jadwal terbaru untuk refresh workspace
+        if (!resp.ok || !data.success) { tutupModalOptimasi(); showToast(data.message ?? 'Terjadi kesalahan saat optimasi.', 'red'); return; }
         _hasilOptimasiJadwal = data.jadwal_terbaru ?? [];
-
         tampilkanHasilOptimasi(data.hasil);
-
     } catch (err) {
         clearInterval(interval);
         tutupModalOptimasi();
         showToast('Koneksi gagal: ' + err.message, 'red');
     }
 }
-/** Render state hasil di dalam modal */
+
 function tampilkanHasilOptimasi(hasil) {
     const { total_jadwal, bentrok_awal, diperbaiki, gagal, detail_bentrok_sisa, pesan } = hasil;
-
     document.getElementById('stat-total').textContent = total_jadwal;
     document.getElementById('stat-awal').textContent  = bentrok_awal;
     document.getElementById('stat-fix').textContent   = diperbaiki;
     document.getElementById('stat-sisa').textContent  = gagal;
-
-    // Header warna sesuai kondisi
-    const header    = document.getElementById('hasil-header');
-    const judul     = document.getElementById('hasil-judul');
-    const subjudul  = document.getElementById('hasil-subjudul');
-    if (gagal === 0) {
-        header.style.background = 'linear-gradient(135deg, #059669, #10b981)';
-        judul.textContent       = '✅ Optimasi Berhasil';
-    } else {
-        header.style.background = 'linear-gradient(135deg, #d97706, #f59e0b)';
-        judul.textContent       = '⚠️ Optimasi Sebagian';
-    }
-    subjudul.textContent = pesan;
-
-    // Daftar sisa bentrok
-    const sisaSection  = document.getElementById('sisa-bentrok-section');
-    const beresSect    = document.getElementById('semua-beres-section');
-    const sisaList     = document.getElementById('sisa-bentrok-list');
-
+    const header = document.getElementById('hasil-header');
+    document.getElementById('hasil-judul').textContent = gagal === 0 ? '✅ Optimasi Berhasil' : '⚠️ Optimasi Sebagian';
+    header.style.background = gagal === 0 ? 'linear-gradient(135deg,#059669,#10b981)' : 'linear-gradient(135deg,#d97706,#f59e0b)';
+    document.getElementById('hasil-subjudul').textContent = pesan;
+    const sisaSection = document.getElementById('sisa-bentrok-section');
+    const beresSect   = document.getElementById('semua-beres-section');
+    const sisaList    = document.getElementById('sisa-bentrok-list');
     if (gagal > 0 && detail_bentrok_sisa.length) {
         sisaSection.style.display = '';
         beresSect.style.display   = 'none';
@@ -1592,110 +1898,66 @@ function tampilkanHasilOptimasi(hasil) {
             <div class="bentrok-sisa-item" onclick="highlightBentrokDariOptimasi(${b.jadwal_id})" style="cursor:pointer;">
                 <div class="kelas-nama">${b.kelas} — ${b.mata_kuliah}</div>
                 <div class="alasan">⚠ ${b.alasan}</div>
-                <div style="color:#9a3412;font-size:11px;margin-top:2px;">
-                    ${b.hari}, Slot ${b.slot_asal} · ${b.ruangan} · ${b.dosen}
-                    <br><span style="color:#6b7280;">Klik untuk sorot di workspace</span>
-                </div>
-            </div>
-        `).join('');
+                <div style="color:#9a3412;font-size:11px;margin-top:2px;">${b.hari}, Slot ${b.slot_asal} · ${b.ruangan} · ${b.dosen}<br><span style="color:#6b7280">Klik untuk sorot di workspace</span></div>
+            </div>`).join('');
     } else {
         sisaSection.style.display = 'none';
         beresSect.style.display   = '';
     }
-
     tampilStateModal('hasil');
 }
-// ============================================================
-// REFRESH WORKSPACE setelah optimasi (reload card dari data baru)
-// ============================================================
+
 function refreshWorkspaceDariOptimasi(jadwalTerbaru) {
-    // Hapus semua card lama dari workspace
+    // Snapshot sebelum refresh
+    _historyPushRaw('add', 'Sebelum hasil optimasi diterapkan', _snapshotWorkspace());
+
     document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
+    document.querySelectorAll('.kelas-item').forEach(el => setSidebarStatus(el.dataset.id, 'belum'));
 
-    // Reset status sidebar ke 'belum'
-    document.querySelectorAll('.kelas-item').forEach(el => {
-        setSidebarStatus(el.dataset.id, 'belum');
-    });
-
-    // Load ulang dari data terbaru (format sama dengan existing-jadwal-data)
+    _historyPaused = true;
     jadwalTerbaru.forEach(j => {
-        const slotIdInt = parseInt(j.slot_id);
-        const sksInt    = parseInt(j.sks);
-        const infoStart = slotElMap[slotIdInt];
-        const infoEnd   = slotElMap[slotIdInt + sksInt - 1];
-
+        const slotIdInt = parseInt(j.slot_id), sksInt = parseInt(j.sks);
+        const infoStart = slotElMap[slotIdInt], infoEnd = slotElMap[slotIdInt + sksInt - 1];
         if (!infoStart) return;
-
         const sidebarEl = document.querySelector(`.kelas-item[data-id="${j.kelas_id}"]`);
-        const prodi     = sidebarEl?.dataset.prodi || '-';
-        const jenis     = sidebarEl?.dataset.jenis || 'Teori';
-
         createCard({
-            sks:        sksInt,
-            nama:       j.nama,
-            kelas:      j.nama_kelas,
-            kelasId:    parseInt(j.kelas_id),
-            dosen:      j.dosen,
-            kodeMk:     j.kode_mk,
-            ruangan:    j.ruangan    || '',
-            ruanganId:  j.ruangan_id || '',
-            slotId:     slotIdInt,
-            day:        j.hari,
-            jamMulai:   infoStart.jamMulai,
-            jamSelesai: infoEnd?.jamSelesai || '-',
-            jadwalIds:  [j.jadwal_id],
-            prodi, jenis,
+            sks: sksInt, nama: j.nama, kelas: j.nama_kelas, kelasId: parseInt(j.kelas_id),
+            dosen: j.dosen, kodeMk: j.kode_mk, ruangan: j.ruangan || '', ruanganId: j.ruangan_id || '',
+            slotId: slotIdInt, day: j.hari, jamMulai: infoStart.jamMulai, jamSelesai: infoEnd?.jamSelesai || '-',
+            jadwalIds: [j.jadwal_id], prodi: sidebarEl?.dataset.prodi || '-', jenis: sidebarEl?.dataset.jenis || 'Teori',
         }, true);
-
         setSidebarStatus(j.kelas_id, 'sudah');
     });
+    _historyPaused = false;
+
+    // Simpan state sesudah optimasi
+    _historyPushRaw('add', 'Hasil optimasi otomatis diterapkan', _snapshotWorkspace());
 
     updateCounter();
     applyFilter();
     filterCardsByDay(Alpine.$data(document.body).selectedDay || 'senin');
     renderTablePreview();
     updateBentrokButton();
-
     showToast('✓ Workspace diperbarui sesuai hasil optimasi.', 'green');
 }
-// ============================================================
-// SOROT CARD BENTROK DARI DAFTAR SISA DI MODAL
-// ============================================================
+
 function highlightBentrokDariOptimasi(jadwalId) {
-    // Cari card berdasarkan jadwal_id di dataset
     const target = [...document.querySelectorAll('.jadwal-card')].find(c => {
         const ids = JSON.parse(c.dataset.jadwalIds || '[]');
         return ids.includes(jadwalId) || ids.includes(String(jadwalId));
     });
-
-    if (!target) {
-        showToast('Card tidak ditemukan. Coba refresh workspace.', 'red');
-        return;
-    }
-
+    if (!target) { showToast('Card tidak ditemukan. Coba refresh workspace.', 'red'); return; }
     tutupModalOptimasi();
-
-    // Pindah ke hari card tersebut
     const targetDay = target.dataset.day;
     Alpine.$data(document.body).selectedDay = targetDay;
     filterCardsByDay(targetDay);
-
-    // Bersihkan highlight lama
-    document.querySelectorAll('.jadwal-card').forEach(c => {
-        c.style.outline = '';
-        c.style.zIndex  = '10';
-    });
-
-    // Sorot
+    document.querySelectorAll('.jadwal-card').forEach(c => { c.style.outline = ''; c.style.zIndex = '10'; });
     target.style.outline = '3px solid #ef4444';
     target.style.zIndex  = '50';
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    setTimeout(() => {
-        target.style.outline = '';
-        target.style.zIndex  = '10';
-    }, 3000);
+    setTimeout(() => { target.style.outline = ''; target.style.zIndex = '10'; }, 3000);
 }
+
 // ============================================================
 // DRAG & DROP DARI SIDEBAR KE SLOT
 // ============================================================
@@ -1714,62 +1976,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('[data-slot-line]').forEach(slot => {
         const id = parseInt(slot.dataset.slotLine);
-        slotElMap[id] = {
-            jamMulai:   slot.dataset.jamMulai,
-            jamSelesai: slot.dataset.jamSelesai,
-        };
+        slotElMap[id] = { jamMulai: slot.dataset.jamMulai, jamSelesai: slot.dataset.jamSelesai };
         SLOT_VALID.push(id);
+
         slot.addEventListener('dragover', e => e.preventDefault());
         slot.addEventListener('drop', e => {
             e.preventDefault();
             const fromWorkspace = e.dataTransfer.getData('from_workspace');
-            const sks     = parseInt(e.dataTransfer.getData('sks'));
-            const nama    = e.dataTransfer.getData('nama');
-            const kelas   = e.dataTransfer.getData('kelas');
-            const kelasId = e.dataTransfer.getData('kelas_id');
-            const dosen   = e.dataTransfer.getData('dosen');
-            const ruangan = e.dataTransfer.getData('ruangan');
-            const kodeMk  = e.dataTransfer.getData('kode_mk') || e.dataTransfer.getData('kodeMk') || '-';
-            const prodi   = e.dataTransfer.getData('prodi') || '-';
-            const jenis   = e.dataTransfer.getData('jenis') || 'Teori';
-            const slotId  = parseInt(slot.dataset.slotLine);
-            const day     = Alpine.$data(document.body).selectedDay;
+            const sks       = parseInt(e.dataTransfer.getData('sks'));
+            const nama      = e.dataTransfer.getData('nama');
+            const kelas     = e.dataTransfer.getData('kelas');
+            const kelasId   = e.dataTransfer.getData('kelas_id');
+            const dosen     = e.dataTransfer.getData('dosen');
+            const ruangan   = e.dataTransfer.getData('ruangan');
+            const ruanganId = e.dataTransfer.getData('ruanganId');
+            const kodeMk    = e.dataTransfer.getData('kode_mk') || e.dataTransfer.getData('kodeMk') || '-';
+            const prodi     = e.dataTransfer.getData('prodi') || '-';
+            const jenis     = e.dataTransfer.getData('jenis') || 'Teori';
+            const slotId    = parseInt(slot.dataset.slotLine);
+            const day       = Alpine.$data(document.body).selectedDay;
 
-            // Ambil data gabungan dari card asal jika dari workspace
-            const kelasList   = fromWorkspace && draggedCard
-                ? JSON.parse(draggedCard.dataset.kelasList   || '[]')
-                : [kelas];
-            const kelasIdList = fromWorkspace && draggedCard
-                ? JSON.parse(draggedCard.dataset.kelasIdList || '[]')
-                : [kelasId];
-            const jadwalIds   = fromWorkspace && draggedCard
-                ? JSON.parse(draggedCard.dataset.jadwalIds   || '[]')
-                : [];
+            const kelasList   = fromWorkspace && draggedCard ? JSON.parse(draggedCard.dataset.kelasList   || '[]') : [kelas];
+            const kelasIdList = fromWorkspace && draggedCard ? JSON.parse(draggedCard.dataset.kelasIdList || '[]') : [kelasId];
+            const jadwalIds   = fromWorkspace && draggedCard ? JSON.parse(draggedCard.dataset.jadwalIds   || '[]') : [];
 
             if (!nama || !kelas || isNaN(sks) || sks < 1) return;
 
-            // ✅ [C8] Cegah drop ke slot istirahat
             if (slot.dataset.isIstirahat === '1') {
                 showToast('⚠ Perhatian: kelas ditempatkan di slot istirahat.', 'red');
-                // Tidak return — tetap lanjut
             }
+
+            const actionType = fromWorkspace ? 'move' : 'add';
+            const actionDesc = fromWorkspace
+                ? `Pindah: ${kelasList[0] || kelas} → ${day.charAt(0).toUpperCase() + day.slice(1)} Slot ${slotId}`
+                : `Tambah: ${kelas} — ${day.charAt(0).toUpperCase() + day.slice(1)} Slot ${slotId}`;
+
+            // ✅ Snapshot SEBELUM hapus card lama / buat card baru
+            const snapshotBefore = _snapshotWorkspace();
 
             if (fromWorkspace && draggedCard) {
                 hapusJadwal(draggedCard);
                 draggedCard.remove();
             }
 
-            const jamMulai    = slot.dataset.jamMulai;
+            const jamMulai     = slot.dataset.jamMulai;
             const jamSelesaiEl = document.querySelector(`[data-slot-line="${slotId + sks - 1}"]`);
             const jamSelesai   = jamSelesaiEl?.dataset.jamSelesai || '-';
 
-            const card = createCard({ sks, nama, kelas, kelasId, dosen, kodeMk, prodi, jenis, ruangan, slotId, day, jamMulai, jamSelesai, jadwalIds });
+            _historyPaused = true;
+            const card = createCard({ sks, nama, kelas, kelasId, dosen, kodeMk, prodi, jenis, ruangan, ruanganId, slotId, day, jamMulai, jamSelesai, jadwalIds });
+            _historyPaused = false;
 
-            // Restore data gabungan jika card berasal dari merge sebelumnya
             if (kelasList.length > 1) {
                 card.dataset.kelasList   = JSON.stringify(kelasList);
                 card.dataset.kelasIdList = JSON.stringify(kelasIdList);
-
                 const color = getCourseColor(nama);
                 card.innerHTML = `
                     <div>
@@ -1792,9 +2052,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>`;
             }
 
+            // ✅ Push history SEKALI dengan snapshot sebelum aksi
+            _historyPushRaw(actionType, actionDesc, snapshotBefore);
 
             simpanJadwal(card);
-
             kelasIdList.forEach(kid => setSidebarStatus(kid, 'sudah'));
             updateCounter();
             applyFilter();
@@ -1802,8 +2063,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateBentrokButton();
         });
     });
-    SLOT_VALID.sort((a, b) => a - b);
 
+    SLOT_VALID.sort((a, b) => a - b);
     setActiveTab('belum');
     updateCounter();
     filterCardsByDay('senin');
@@ -1815,34 +2076,25 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 async function resetWorkspace() {
     const cards = [...document.querySelectorAll('.jadwal-card')];
-    if (!cards.length) {
-        showToast('Workspace sudah kosong.', 'green');
-        return;
-    }
-
+    if (!cards.length) { showToast('Workspace sudah kosong.', 'green'); return; }
     if (!confirm(`Hapus semua ${cards.length} jadwal dari workspace dan database? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+    // Snapshot SEBELUM reset (agar bisa di-undo)
+    _historyPushRaw('reset', `Reset workspace (${cards.length} jadwal)`, _snapshotWorkspace());
 
     const btn = document.querySelector('[onclick="resetWorkspace()"]');
     if (btn) { btn.disabled = true; btn.innerText = 'Mereset...'; }
 
-    // Hapus dari database
     let gagal = 0;
     for (const card of cards) {
-        try {
-            await hapusJadwal(card);
-        } catch(e) {
-            gagal++;
-            console.error('Gagal hapus jadwal:', e);
-        }
+        try { await hapusJadwal(card); }
+        catch(e) { gagal++; console.error('Gagal hapus jadwal:', e); }
     }
 
-    // Hapus semua card dari workspace
+    _historyPaused = true;
     document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
-
-    // Reset semua status sidebar ke "belum"
-    document.querySelectorAll('.kelas-item').forEach(el => {
-        setSidebarStatus(el.dataset.id, 'belum');
-    });
+    document.querySelectorAll('.kelas-item').forEach(el => setSidebarStatus(el.dataset.id, 'belum'));
+    _historyPaused = false;
 
     updateCounter();
     applyFilter();
@@ -1854,11 +2106,10 @@ async function resetWorkspace() {
         btn.disabled = false;
         btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Reset Jadwal`;
     }
+    showToast(gagal === 0 ? '✓ Semua jadwal berhasil direset!' : `Reset selesai, ${gagal} gagal dihapus dari DB.`, gagal === 0 ? 'green' : 'red');
 
-    showToast(
-        gagal === 0 ? '✓ Semua jadwal berhasil direset!' : `Reset selesai, ${gagal} gagal dihapus dari DB.`,
-        gagal === 0 ? 'green' : 'red'
-    );
+    // Simpan state kosong sebagai titik redo
+    _historyPushRaw('reset', 'Workspace kosong (setelah reset)', _snapshotWorkspace());
 }
 
 // ============================================================
@@ -1867,174 +2118,88 @@ async function resetWorkspace() {
 function detectBentrok() {
     const cards = [...document.querySelectorAll('.jadwal-card')];
     const bentrokSet = new Set();
-
-    // Kelompokkan card per hari
     const byHari = {};
     cards.forEach(card => {
-        const hari = card.dataset.day;
-        if (!byHari[hari]) byHari[hari] = [];
-        byHari[hari].push(card);
+        if (!byHari[card.dataset.day]) byHari[card.dataset.day] = [];
+        byHari[card.dataset.day].push(card);
     });
-
     Object.values(byHari).forEach(hariCards => {
         for (let i = 0; i < hariCards.length; i++) {
             for (let j = i + 1; j < hariCards.length; j++) {
-                const a = hariCards[i];
-                const b = hariCards[j];
-
-                const aStart = parseInt(a.dataset.start);
-                const aEnd   = parseInt(a.dataset.end);
-                const bStart = parseInt(b.dataset.start);
-                const bEnd   = parseInt(b.dataset.end);
-
-                // Cek overlap waktu
-                const overlapWaktu = aStart < bEnd && aEnd > bStart;
-                if (!overlapWaktu) continue;
-
-                // [B1] Ruangan sama
-                if (
-                    a.dataset.ruanganId &&
-                    b.dataset.ruanganId &&
-                    a.dataset.ruanganId !== '' &&
-                    b.dataset.ruanganId !== '' &&
-                    String(a.dataset.ruanganId) === String(b.dataset.ruanganId)
-                ) {
-                    bentrokSet.add(a);
-                    bentrokSet.add(b);
-                }
-
-                // [B2] Dosen sama
-                if (
-                    a.dataset.dosen &&
-                    b.dataset.dosen &&
-                    a.dataset.dosen !== '-' &&
-                    a.dataset.dosen === b.dataset.dosen
-                ) {
-                    bentrokSet.add(a);
-                    bentrokSet.add(b);
-                }
-
-                // [B3] Kelas yang sama bentrok di hari berbeda tidak perlu,
-                // tapi kelas sama di slot overlap = bentrok
+                const a = hariCards[i], b = hariCards[j];
+                const aStart = parseInt(a.dataset.start), aEnd = parseInt(a.dataset.end);
+                const bStart = parseInt(b.dataset.start), bEnd = parseInt(b.dataset.end);
+                if (!(aStart < bEnd && aEnd > bStart)) continue;
+                if (a.dataset.ruanganId && b.dataset.ruanganId && a.dataset.ruanganId !== '' && b.dataset.ruanganId !== '' && String(a.dataset.ruanganId) === String(b.dataset.ruanganId)) { bentrokSet.add(a); bentrokSet.add(b); }
+                if (a.dataset.dosen && a.dataset.dosen !== '-' && a.dataset.dosen === b.dataset.dosen) { bentrokSet.add(a); bentrokSet.add(b); }
                 const aKelas = JSON.parse(a.dataset.kelasIdList || '[]');
                 const bKelas = JSON.parse(b.dataset.kelasIdList || '[]');
-                const kelasOverlap = aKelas.some(k => bKelas.includes(k));
-                if (kelasOverlap) {
-                    bentrokSet.add(a);
-                    bentrokSet.add(b);
-                }
+                if (aKelas.some(k => bKelas.includes(k))) { bentrokSet.add(a); bentrokSet.add(b); }
             }
         }
     });
-
     return [...bentrokSet];
 }
 
-// ============================================================
-// UPDATE TOMBOL LIHAT BENTROK
-// ============================================================
 function updateBentrokButton() {
     const bentrokCards = detectBentrok();
     const btn = document.getElementById('btn-lihat-bentrok');
     if (!btn) return;
-
     if (bentrokCards.length > 0) {
         btn.className = 'px-5 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold flex items-center gap-2 transition animate-pulse border-2 border-red-300';
-        btn.innerHTML = `
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            </svg>
-            Bentrok! (${bentrokCards.length} card)`;
+        btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Bentrok! (${bentrokCards.length} card)`;
     } else {
         btn.className = 'px-5 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium flex items-center gap-2 transition';
-        btn.innerHTML = `
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            Lihat Bentrok`;
+        btn.innerHTML = `<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Lihat Bentrok`;
     }
 }
 
 // ============================================================
-// MODAL DETAIL BENTROK
+// MODAL BENTROK
 // ============================================================
 function lihatBentrok() {
     const bentrokCards = detectBentrok();
-
-    if (!bentrokCards.length) {
-        showToast('✓ Tidak ada bentrok ditemukan!', 'green');
-        return;
-    }
-
-    // Buat modal bentrok
+    if (!bentrokCards.length) { showToast('✓ Tidak ada bentrok ditemukan!', 'green'); return; }
     const existing = document.getElementById('modal-bentrok-overlay');
     if (existing) existing.remove();
-
-    // Kelompokkan bentrok per pasangan
     const cards = [...document.querySelectorAll('.jadwal-card')];
     const pasangan = [];
     const byHari = {};
-    cards.forEach(card => {
-        const hari = card.dataset.day;
-        if (!byHari[hari]) byHari[hari] = [];
-        byHari[hari].push(card);
-    });
-
+    cards.forEach(card => { if (!byHari[card.dataset.day]) byHari[card.dataset.day] = []; byHari[card.dataset.day].push(card); });
     Object.values(byHari).forEach(hariCards => {
         for (let i = 0; i < hariCards.length; i++) {
             for (let j = i + 1; j < hariCards.length; j++) {
-                const a = hariCards[i];
-                const b = hariCards[j];
-                const aStart = parseInt(a.dataset.start);
-                const aEnd   = parseInt(a.dataset.end);
-                const bStart = parseInt(b.dataset.start);
-                const bEnd   = parseInt(b.dataset.end);
+                const a = hariCards[i], b = hariCards[j];
+                const aStart = parseInt(a.dataset.start), aEnd = parseInt(a.dataset.end);
+                const bStart = parseInt(b.dataset.start), bEnd = parseInt(b.dataset.end);
                 if (!(aStart < bEnd && aEnd > bStart)) continue;
-
                 const alasan = [];
-                if (
-                    a.dataset.ruanganId && b.dataset.ruanganId &&
-                    a.dataset.ruanganId !== '' && b.dataset.ruanganId !== '' &&
-                    String(a.dataset.ruanganId) === String(b.dataset.ruanganId)
-                ) alasan.push(`Ruangan sama: <strong>${a.dataset.ruangan || '-'}</strong>`);
-
+                if (a.dataset.ruanganId && b.dataset.ruanganId && a.dataset.ruanganId !== '' && b.dataset.ruanganId !== '' && String(a.dataset.ruanganId) === String(b.dataset.ruanganId))
+                    alasan.push(`Ruangan sama: <strong>${a.dataset.ruangan || '-'}</strong>`);
                 if (a.dataset.dosen && a.dataset.dosen !== '-' && a.dataset.dosen === b.dataset.dosen)
                     alasan.push(`Dosen sama: <strong>${a.dataset.dosen}</strong>`);
-
-                const aKelas = JSON.parse(a.dataset.kelasIdList || '[]');
-                const bKelas = JSON.parse(b.dataset.kelasIdList || '[]');
-                if (aKelas.some(k => bKelas.includes(k)))
-                    alasan.push(`Kelas bentrok di slot yang sama`);
-
+                const aKelas = JSON.parse(a.dataset.kelasIdList || '[]'), bKelas = JSON.parse(b.dataset.kelasIdList || '[]');
+                if (aKelas.some(k => bKelas.includes(k))) alasan.push('Kelas bentrok di slot yang sama');
                 if (alasan.length) pasangan.push({ a, b, alasan });
             }
         }
     });
-
     const hariLabel = h => h.charAt(0).toUpperCase() + h.slice(1);
     const rows = pasangan.map((p, idx) => `
-        <div class="bentrok-row rounded-xl border border-red-100 bg-red-50 p-4 cursor-pointer hover:border-red-300 transition"
-             onclick="highlightBentrokPair(${idx})" data-idx="${idx}">
+        <div class="bentrok-row rounded-xl border border-red-100 bg-red-50 p-4 cursor-pointer hover:border-red-300 transition" onclick="highlightBentrokPair(${idx})" data-idx="${idx}">
             <div class="flex items-start gap-3">
-                <span class="mt-0.5 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${idx + 1}</span>
+                <span class="mt-0.5 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${idx+1}</span>
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-sm font-bold text-gray-800">${p.a.dataset.kelas || p.a.dataset.nama}</span>
+                        <span class="text-sm font-bold text-gray-800">${p.a.dataset.kelas||p.a.dataset.nama}</span>
                         <span class="text-gray-400">↔</span>
-                        <span class="text-sm font-bold text-gray-800">${p.b.dataset.kelas || p.b.dataset.nama}</span>
+                        <span class="text-sm font-bold text-gray-800">${p.b.dataset.kelas||p.b.dataset.nama}</span>
                     </div>
-                    <div class="mt-1 text-xs text-gray-500">
-                        ${hariLabel(p.a.dataset.day)} · Slot ${p.a.dataset.start}–${p.a.dataset.end} ↔ Slot ${p.b.dataset.start}–${p.b.dataset.end}
-                    </div>
-                    <div class="mt-2 space-y-1">
-                        ${p.alasan.map(a => `<div class="text-xs text-red-600 flex items-center gap-1">⚠ ${a}</div>`).join('')}
-                    </div>
+                    <div class="mt-1 text-xs text-gray-500">${hariLabel(p.a.dataset.day)} · Slot ${p.a.dataset.start}–${p.a.dataset.end} ↔ Slot ${p.b.dataset.start}–${p.b.dataset.end}</div>
+                    <div class="mt-2 space-y-1">${p.alasan.map(a => `<div class="text-xs text-red-600 flex items-center gap-1">⚠ ${a}</div>`).join('')}</div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        </div>`).join('');
 
     const overlay = document.createElement('div');
     overlay.id = 'modal-bentrok-overlay';
@@ -2048,63 +2213,32 @@ function lihatBentrok() {
                         <p style="color:rgba(255,255,255,0.8);font-size:13px;margin:0;">${pasangan.length} konflik ditemukan · Klik baris untuk sorot di workspace</p>
                     </div>
                     <button onclick="document.getElementById('modal-bentrok-overlay').remove()"
-                            style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+                        style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
                 </div>
             </div>
-            <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px;">
-                ${rows}
-            </div>
+            <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px;">${rows}</div>
             <div style="padding:16px 24px;border-top:1px solid #f3f4f6;">
                 <button onclick="document.getElementById('modal-bentrok-overlay').remove()"
-                        style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;font-weight:600;font-size:14px;color:#6b7280;cursor:pointer;">
-                    Tutup
-                </button>
+                    style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;font-weight:600;font-size:14px;color:#6b7280;cursor:pointer;">Tutup</button>
             </div>
         </div>`;
-
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
-
-    // Simpan pasangan untuk highlight
     window._bentrokPasangan = pasangan;
 }
 
-// ============================================================
-// HIGHLIGHT CARD BENTROK DI WORKSPACE
-// ============================================================
 function highlightBentrokPair(idx) {
     const pair = window._bentrokPasangan?.[idx];
     if (!pair) return;
-
-    // Tutup modal
     document.getElementById('modal-bentrok-overlay')?.remove();
-
-    // Pindah ke hari yang benar
     const targetDay = pair.a.dataset.day;
     Alpine.$data(document.body).selectedDay = targetDay;
     filterCardsByDay(targetDay);
-
-    // Hapus highlight lama
-    document.querySelectorAll('.jadwal-card').forEach(c => {
-        c.style.outline = '';
-        c.style.zIndex  = '10';
-    });
-
-    // Sorot kedua card
-    [pair.a, pair.b].forEach(card => {
-        card.style.outline = '3px solid #ef4444';
-        card.style.zIndex  = '50';
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-
-    // Hilangkan highlight setelah 3 detik
-    setTimeout(() => {
-        [pair.a, pair.b].forEach(card => {
-            card.style.outline = '';
-            card.style.zIndex  = '10';
-        });
-    }, 3000);
+    document.querySelectorAll('.jadwal-card').forEach(c => { c.style.outline = ''; c.style.zIndex = '10'; });
+    [pair.a, pair.b].forEach(card => { card.style.outline = '3px solid #ef4444'; card.style.zIndex = '50'; card.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    setTimeout(() => { [pair.a, pair.b].forEach(card => { card.style.outline = ''; card.style.zIndex = '10'; }); }, 3000);
 }
+
 </script>
 
 </body>
