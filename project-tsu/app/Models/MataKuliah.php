@@ -61,16 +61,19 @@ class MataKuliah extends Model
         );
     }
 
-        public function pengampus()
+    public function pengampus()
     {
-        return $this->hasMany(
-            PengampuMatkul::class,
-            'kode_matkul',
-            'kode_matkul'
+        return $this->hasManyThrough(
+            PengampuKelas::class,
+            Kelas::class,
+            'kode_matkul', // Foreign key on kelas table
+            'id_kelas',    // Foreign key on pengampu_kelas table
+            'kode_matkul', // Local key on mata_kuliah table
+            'id_kelas'     // Local key on kelas table
         );
     }
 
-        protected static function booted()
+    protected static function booted()
     {
         static::deleting(function ($matkul) {
             $matkul->ruangans()->detach();

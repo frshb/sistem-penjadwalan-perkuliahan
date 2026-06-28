@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Models;
-use App\Models\PengampuMatkul;
+use App\Models\PengampuKelas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,22 +24,22 @@ class Dosen extends Model
         return $this->belongsTo(Prodi::class, 'id_prodi', 'id_prodi');
     }
 
-    public function mataKuliahs()
+    public function kelas()
     {
         return $this->belongsToMany(
-            MataKuliah::class,
-            'pengampu_matkul',
+            Kelas::class,
+            'pengampu_kelas',
             'id_dosen',
-            'kode_matkul',
+            'id_kelas',
             'id_dosen',
-            'kode_matkul'
+            'id_kelas'
         );
     }
 
-        public function pengampus()
+    public function pengampus()
     {
         return $this->hasMany(
-            PengampuMatkul::class,
+            PengampuKelas::class,
             'id_dosen'
         );
     }
@@ -48,7 +48,7 @@ class Dosen extends Model
     {
         static::deleting(function ($dosen) {
 
-            $dosen->mataKuliahs()->detach();
+            $dosen->kelas()->detach();
 
         });
     }

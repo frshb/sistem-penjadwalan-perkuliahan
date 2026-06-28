@@ -17,10 +17,10 @@
             
             <div>
                 <div class="flex items-center mb-8">
-                    <div class="flex flex-col mr-3">
+                    <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col mr-3 hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                         <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
                         <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                    </div>
+                    </button>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
                 </div>
 
@@ -386,7 +386,7 @@
                     </div>
 
 
-                    <div class="bg-[#facc15] rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all cursor-pointer group text-white relative overflow-hidden" onclick="window.location='{{ route('jadwal.index') }}'">
+                    <div class="bg-[#facc15] rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all cursor-pointer group text-white relative overflow-hidden" onclick="window.location='{{ route('jadwal.otomatis.index') }}'">
                         <div class="relative z-10">
                             <h3 class="text-lg font-bold mb-2 text-gray-900 group-hover:text-black transition-colors">Modul Penjadwalan</h3>
                             <p class="text-sm text-gray-800 font-medium">Buat & atur jadwal otomatis dan manual</p>

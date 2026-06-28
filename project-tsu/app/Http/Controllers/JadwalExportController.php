@@ -84,7 +84,10 @@ class JadwalExportController extends Controller
             })
             ->sortBy([
                 fn ($a, $b) => $this->hariOrder($a['hari']) <=> $this->hariOrder($b['hari']),
-                fn ($a, $b) => $a['jam_mulai'] <=> $b['jam_mulai'],
+                fn ($a, $b) => strcasecmp($a['nama_mk'], $b['nama_mk']),
+                fn ($a, $b) => strcasecmp($a['dosen'], $b['dosen']),
+                fn ($a, $b) => strcasecmp($a['kelas'], $b['kelas']),
+                fn ($a, $b) => strcasecmp($a['jam_mulai'], $b['jam_mulai']),
             ])
             ->values();
     }

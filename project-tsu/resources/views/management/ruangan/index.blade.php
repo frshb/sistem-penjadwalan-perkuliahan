@@ -33,12 +33,12 @@
             <div>
             <div class="flex justify-between items-center">
             <div class="flex items-center">
-                <div class="flex flex-col">
+                <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                     <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
                     <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                </div>
+                </button>
                 <h1 class="text-2xl font-bold text-gray-800 ml-3">
-                    Management Data
+                    Manajemen Ruangan
                 </h1>
             </div>
             @include('components.header-profile')
@@ -84,7 +84,7 @@
         </div>
 
         <div class="mb-6">
-            <form action="{{ route('ruangan.index') }}" method="GET">
+            <form onsubmit="event.preventDefault();">
                 <div class="relative">
                     <input type="text" name="search" value="{{ $searchTerm ?? '' }}" placeholder="Cari nama ruangan..." class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                     <button type="submit" class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700">
@@ -93,77 +93,70 @@
                 </div>
             </form>
         </div>
-        @if ($searchTerm)
 
-            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md border border-transparent">
-                <h3 class="text-xl font-bold text-gray-700 mb-6">
-                    Hasil Pencarian untuk: "{{ $searchTerm }}"
-                </h3>
+        <!-- Block 1: Search Results (Visible only when searching) -->
+        <div id="search-results-section" class="bg-white p-6 sm:p-8 rounded-lg shadow-md border border-transparent hidden mb-6">
+            <h3 class="text-xl font-bold text-gray-700 mb-6">
+                Hasil Pencarian untuk: "<span id="search-query-display"></span>"
+            </h3>
 
-                <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                    <div class="overflow-x-auto w-full">
-                        <table class="min-w-full bg-white">
-                            <thead class="bg-teal-700 text-white">
-                                <tr>
-                                <tr>
-                                    <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Nama Ruangan</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Gedung</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Lokasi</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Fasilitas</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Status</th>
-                                    <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
-                                </tr>
-                                </tr>
-                            </thead>
-                            <tbody class="text-gray-700">
-                                @forelse ($ruangans as $ruangan)
-                                <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-                                    <td class="text-left py-2 px-3 text-sm">{{ $loop->iteration }}</td>
-                                    <td class="text-left py-2 px-3 text-sm">{{ $ruangan->nama_ruang }}</td>
-                                    <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->nama_gedung }}</td>
-                                    <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->lokasi }}</td>
-                                    <td class="text-left py-2 px-3 text-sm">{{ $ruangan->fasilitas }}</td>
-                                    <td class="text-left py-2 px-3 text-sm">{{ $ruangan->kapasitas }}</td>
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        @php $isAvailable = rand(0, 1); @endphp
-                                        @if($isAvailable)
-                                            <span class="px-2 py-1 text-xs font-semibold leading-tight text-green-700 bg-green-100 rounded-full">Tersedia</span>
-                                        @else
-                                            <span class="px-2 py-1 text-xs font-semibold leading-tight text-red-700 bg-red-100 rounded-full">Tidak Tersedia</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        <div class="flex space-x-2">
-                                            <button @click='openEdit(@json($ruangan))'
-                                                    class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                                Edit
-                                            </button>
-                                            <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')"
-                                                    class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                Hapus
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="7" class="text-center py-4 text-gray-500">
-                                        Data ruangan tidak ditemukan.
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+            <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
+                <div class="overflow-x-auto w-full">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-teal-700 text-white">
+                            <tr>
+                                <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Nama Ruangan</th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Gedung</th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Lokasi</th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Fasilitas</th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Status</th>
+                                <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                            @forelse ($ruangans as $ruangan)
+                            <tr class="ruangan-search-row border-b border-[#DBDBDB] hover:bg-gray-50" data-nama="{{ strtolower($ruangan->nama_ruang) }}">
+                                <td class="text-left py-2 px-3 text-sm row-number">{{ $loop->iteration }}</td>
+                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->nama_ruang }}</td>
+                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->nama_gedung }}</td>
+                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->lokasi }}</td>
+                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->fasilitas }}</td>
+                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->kapasitas }}</td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    <span class="px-2 py-1 text-xs font-semibold leading-tight text-green-700 bg-green-100 rounded-full">Tersedia</span>
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    <div class="flex space-x-2">
+                                        <button @click='openEdit(@json($ruangan))'
+                                                class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                            Edit
+                                        </button>
+                                        <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')"
+                                                class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            Hapus
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr class="search-no-data-row">
+                                <td colspan="8" class="text-center py-4 text-gray-500">
+                                    Data ruangan tidak ditemukan.
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
+        </div>
 
-        @else
-
+        <!-- Block 2: Grouped Building Tabs (Visible only when NOT searching) -->
+        <div id="grouped-gedung-section">
             <div class="flex space-x-2 mb-6 border-b border-gray-300 overflow-x-auto">
                 <button
                     @click="activeTab = 'all'"
@@ -253,8 +246,7 @@
                     </p>
                 </div>
             @endforelse
-
-        @endif
+        </div>
             </div>
         </main>
 

@@ -12,6 +12,7 @@ use App\Models\Slot_waktu;
 use App\Models\Hari;
 use App\Models\TahunAkademik;
 use App\Models\MataKuliah;
+use App\Models\PengampuKelas;
 use App\Services\GeneticAlgorithm\OptimizeJadwal;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -26,9 +27,28 @@ class JadwalController extends Controller
      */
     public function pilihTahun()
     {
-        $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')
-            ->withCount(['kelas', 'jadwals'])
-            ->get();
+        $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
+        $prodiId = ProdiFilter::getProdiId();
+
+        foreach ($tahunAkademiks as $ta) {
+            // Hitung kelas unik dari pengampu_kelas
+            $kelasQuery = PengampuKelas::where('id_tahunakademik', $ta->id_tahunakademik);
+            if ($prodiId) {
+                $kelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
+                    $q->where('id_prodi', $prodiId);
+                });
+            }
+            $ta->kelas_count = $kelasQuery->distinct('id_kelas')->count('id_kelas');
+
+            // Hitung jadwal dari tahun akademik ini
+            $jadwalQuery = Jadwal::where('id_tahunakademik', $ta->id_tahunakademik);
+            if ($prodiId) {
+                $jadwalQuery->whereHas('kelas', function ($q) use ($prodiId) {
+                    $q->where('id_prodi', $prodiId);
+                });
+            }
+            $ta->jadwals_count = $jadwalQuery->count();
+        }
 
         return view('penjadwalan.pilih-tahun', compact('tahunAkademiks'));
     }
@@ -47,10 +67,13 @@ class JadwalController extends Controller
         $tahunAkademik = TahunAkademik::findOrFail($idTahun);
         $prodiId       = ProdiFilter::getProdiId(); // ✅ Satu baris ganti logika panjang
 
-        $kelasQuery = Kelas::with([
-            'matakuliah.ruangans', 'prodi', 'dosen', 'matakuliah',
-            'jadwals' => fn($q) => $q->where('id_tahunakademik', $idTahun),
-        ])->where('id_tahunakademik', $idTahun);
+        $kelasQuery = Kelas::whereHas('pengampus', function ($q) use ($idTahun) {
+                $q->where('id_tahunakademik', $idTahun);
+            })
+            ->with([
+                'matakuliah.ruangans', 'prodi', 'dosen', 'matakuliah',
+                'jadwals' => fn($q) => $q->where('id_tahunakademik', $idTahun),
+            ])->where('id_tahunakademik', $idTahun);
 
         if ($prodiId) {
             $kelasQuery->where('id_prodi', $prodiId);

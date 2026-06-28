@@ -16,6 +16,7 @@ class Ruangan extends Model
         'kapasitas',
         'fasilitas',
         'id_gedung',
+        'tipe_ruangan',
     ];
     public $timestamps = false;
     public function gedung()

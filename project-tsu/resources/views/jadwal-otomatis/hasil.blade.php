@@ -14,10 +14,10 @@
 <main :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300">
 
     <div class="flex items-center mb-8">
-        <div class="flex flex-col">
-            <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
-            <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-        </div>
+        <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
+                        <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
+                        <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+                    </button>
         <h1 class="text-3xl font-bold text-gray-800 ml-3">Hasil Penjadwalan Otomatis</h1>
     </div>
 
@@ -167,15 +167,81 @@
                class="px-6 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-semibold flex items-center gap-2 transition">
                 ← Ulangi Generate
             </a>
-            <button type="submit"
-                    class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow flex items-center gap-2 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Simpan & Buka di Workspace Manual
-            </button>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="openTrialModal()"
+                        class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow flex items-center gap-2 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                    </svg>
+                    Simpan Sementara (Trial Run)
+                </button>
+                <button type="submit"
+                        class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow flex items-center gap-2 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Simpan & Buka di Workspace Manual
+                </button>
+            </div>
         </div>
     </form>
+
+    <!-- Modal Simpan Sementara -->
+    <div id="trial-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTrialModal()"></div>
+        <!-- Content -->
+        <div class="relative bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 m-4 transform scale-95 transition-all duration-300">
+            <h3 class="text-lg font-bold text-slate-800 mb-2">Simpan Sementara (Trial Run)</h3>
+            <p class="text-xs text-slate-500 mb-4">
+                Simpan hasil uji coba ini untuk dibandingkan dengan hasil lainnya. Jadwal ini tidak akan menimpa worksheet utama sampai Anda menerapkannya secara eksplisit.
+            </p>
+            
+            <form id="form-simpan-trial" method="POST" action="{{ route('jadwal.otomatis.simpan_trial') }}">
+                @csrf
+                <input type="hidden" name="jadwal_json" value="{{ $jadwalJson }}">
+                <input type="hidden" name="tahun_akademik_id" value="{{ $tahunAkademik->id_tahunakademik }}">
+                <input type="hidden" name="fitness" value="{{ $fitness }}">
+                <input type="hidden" name="generasi" value="{{ $generasi }}">
+                <input type="hidden" name="total_kelas" value="{{ $totalKelas }}">
+                <input type="hidden" name="dosen_conflicts" value="{{ $dosenConflicts }}">
+                <input type="hidden" name="ruangan_conflicts" value="{{ $ruanganConflicts }}">
+                <input type="hidden" name="soft_violations" value="{{ $softViolations }}">
+
+                <div class="mb-5">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Label Uji Coba</label>
+                    <input type="text" name="label" id="inp-trial-label" placeholder="Contoh: Uji Coba #1 (Pop 100, Gen 200)"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-400 outline-none text-sm font-medium text-slate-700">
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeTrialModal()"
+                        class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-100 transition">
+                        Batal
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold rounded-lg shadow-md transition">
+                        Simpan Uji Coba
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openTrialModal() {
+            const modal = document.getElementById('trial-modal');
+            modal.classList.remove('hidden');
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('inp-trial-label').value = `Uji Coba ${timestamp} (Fit: {{ $fitness }}%)`;
+            document.getElementById('inp-trial-label').focus();
+        }
+
+        function closeTrialModal() {
+            document.getElementById('trial-modal').classList.add('hidden');
+        }
+    </script>
 
 </main>
 </body>

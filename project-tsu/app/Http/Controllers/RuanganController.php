@@ -15,37 +15,18 @@ class RuanganController extends Controller
      */
     public function index(Request $request) 
     {
-        // 1. Ambil kata kunci pencarian
+        // Always retrieve all rooms for client-side search/filtering
+        $ruangans = Ruangan::with('gedung')->orderBy('nama_ruang', 'asc')->get();
+        $ruangansByGedung = $ruangans->groupBy('gedung.nama_gedung')->sortKeys();
+
+        $gedungs = Gedung::orderBy('nama_gedung', 'asc')->get();
         $searchTerm = $request->input('search');
 
-        // 2. Mulai query builder
-        $query = Ruangan::with('gedung');
-
-        // 3. Terapkan filter pencarian HANYA jika searchTerm ada
-        if ($searchTerm) {
-            $query->where('nama_ruang', 'like', '%' . $searchTerm . '%');
-        }
-
-        // 4. Ambil semua data (yang sudah difilter atau belum)
-        $ruangans = $query->orderBy('nama_ruang', 'asc')->get();
-
-        // 5. Buat koleksi untuk pengelompokan
-        $ruangansByGedung = collect();
-
-        // 6. HANYA lakukan pengelompokan jika TIDAK ADA PENCARIAN
-        if (!$searchTerm) {
-            $ruangansByGedung = $ruangans->groupBy('gedung.nama_gedung')->sortKeys();
-        }
-
-        // 6.b Ambil data gedung untuk dropdown filter/modal
-        $gedungs = Gedung::orderBy('nama_gedung', 'asc')->get();
-
-        // 7. Kirim SEMUA data ke view
         return view('management.ruangan.index', [
-            'ruangans' => $ruangans, // Untuk hasil pencarian
-            'ruangansByGedung' => $ruangansByGedung, // Untuk tampilan tab
-            'searchTerm' => $searchTerm, // Untuk menampilkan value di input search
-            'gedungs' => $gedungs, // Data gedung untuk modal
+            'ruangans' => $ruangans,
+            'ruangansByGedung' => $ruangansByGedung,
+            'gedungs' => $gedungs,
+            'searchTerm' => $searchTerm
         ]);
     }
 

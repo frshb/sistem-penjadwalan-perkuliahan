@@ -164,6 +164,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/jadwal-otomatis/proses', [JadwalOtomatisController::class, 'proses'])->name('jadwal.otomatis.proses');
         Route::post('/jadwal-otomatis/simpan', [JadwalOtomatisController::class, 'simpan'])->name('jadwal.otomatis.simpan');
         Route::get('/jadwal-otomatis/stream', [JadwalOtomatisController::class, 'stream'])->name('jadwal.otomatis.stream');
+        Route::get('/jadwal-otomatis/audit', [JadwalOtomatisController::class, 'audit'])->name('jadwal.otomatis.audit');
+
+    // Trials & Comparison
+        Route::post('/jadwal-otomatis/trial/simpan', [JadwalOtomatisController::class, 'simpanTrial'])->name('jadwal.otomatis.simpan_trial');
+        Route::get('/jadwal-otomatis/trial/perbandingan', [JadwalOtomatisController::class, 'compareTrials'])->name('jadwal.otomatis.compare_trials');
+        Route::post('/jadwal-otomatis/trial/{id}/apply', [JadwalOtomatisController::class, 'applyTrial'])->name('jadwal.otomatis.apply_trial');
+        Route::delete('/jadwal-otomatis/trial/{id}', [JadwalOtomatisController::class, 'deleteTrial'])->name('jadwal.otomatis.delete_trial');
     });
 
     // Penyesuaian Jadwal (Manual)

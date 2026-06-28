@@ -34,10 +34,10 @@
     {{-- ── Top Header ── --}}
     <div class="bg-white border-b border-slate-200 px-6 sm:px-10 py-5 sticky top-0 z-10">
         <div class="flex items-center gap-3">
-            <div class="flex flex-col">
+            <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                 <div class="w-1.5 h-4 bg-teal-700 rounded-t"></div>
                 <div class="w-1.5 h-2.5 bg-amber-400 rounded-b"></div>
-            </div>
+            </button>
             <div>
                 <h1 class="text-2xl font-bold text-slate-800 leading-tight">Buat Jadwal Otomatis</h1>
                 <p class="text-sm text-slate-500 mt-1">Sistem Cerdas Penyusun Jadwal Perkuliahan</p>
@@ -73,11 +73,11 @@
                             Pilih semester mana yang ingin dibuatkan jadwalnya. Data dosen dan mata kuliah akan otomatis diambil dari semester ini.
                         </p>
                         <div class="relative">
-                            <select id="inp-tahun"
+                            <select id="inp-tahun" onchange="updateEstimator()"
                                 class="w-full pl-4 pr-10 py-3.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-base font-medium text-slate-700 appearance-none shadow-sm cursor-pointer">
                                 <option value="">— Silakan Pilih Tahun Akademik —</option>
                                 @foreach ($tahunAkademikList as $ta)
-                                    <option value="{{ $ta->id_tahunakademik }}" {{ $tahunAkademikAktif && $ta->id_tahunakademik === $tahunAkademikAktif->id_tahunakademik ? 'selected' : '' }}>{{ $ta->nama_tahunakademik }} (Tahun Ajaran {{ $ta->tahun_ajaran }})</option>
+                                    <option value="{{ $ta->id_tahunakademik }}" data-kelas-count="{{ $ta->kelas_count ?? 0 }}" {{ $tahunAkademikAktif && $ta->id_tahunakademik === $tahunAkademikAktif->id_tahunakademik ? 'selected' : '' }}>{{ $ta->nama_tahunakademik }} (Tahun Ajaran {{ $ta->tahun_ajaran }}) — [{{ $ta->kelas_count ?? 0 }} Kelas]</option>
                                 @endforeach
                             </select>
                             <svg class="absolute right-4 top-4 w-5 h-5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -295,6 +295,25 @@
                         </div>
 
                     </div>
+                </div>
+            </div>
+
+            {{-- Estimasi Waktu Proses --}}
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm" id="estimator-card" style="display: none">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl bg-teal-50 text-teal-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Estimasi Durasi</p>
+                        <p class="text-xs font-black text-slate-700 mt-1 leading-none" id="val-estimasi">~10 detik</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-none">Total Beban</p>
+                    <p class="text-xs font-bold text-slate-600 mt-1 leading-none" id="val-estimasi-kelas">0 kelas</p>
                 </div>
             </div>
 
@@ -634,6 +653,26 @@
             </div>
         </div>
 
+        {{-- Diagnosa Masalah (Bahasa Manusia) --}}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" id="diagnosa-card" style="display:none">
+            <div class="px-6 py-4 bg-rose-50/50 border-b border-slate-100 flex items-center gap-3">
+                <div class="p-2 bg-rose-100 rounded-xl text-rose-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-black text-slate-800 text-sm">Diagnosis Masalah Penjadwalan</h3>
+                    <p class="text-xs text-slate-500 font-medium">Beberapa aturan bentrok fisik/jenis kelas masih belum terpenuhi secara otomatis</p>
+                </div>
+            </div>
+            <div class="p-6">
+                <div id="diagnosa-list" class="space-y-2.5 max-h-80 overflow-y-auto pr-2">
+                    <!-- list item didiagnosa -->
+                </div>
+            </div>
+        </div>
+
         {{-- Filter + Tabel --}}
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -696,17 +735,26 @@
             @csrf
             <input type="hidden" name="jadwal_json" id="inp-jadwal-json">
             <input type="hidden" name="tahun_akademik_id" id="inp-tahun-hidden">
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button type="button" onclick="resetForm()"
-                    class="flex-1 sm:flex-none px-6 py-3 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
+                    class="px-6 py-3 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     Ulangi Generate
                 </button>
-                <button type="submit"
-                    class="flex-1 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-600/25 flex items-center justify-center gap-2 transition-all active:scale-[.98]">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    Simpan & Buka di Workspace Manual
-                </button>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 sm:flex-none">
+                    <button type="button" onclick="openTrialModal()"
+                        class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow flex items-center justify-center gap-2 transition active:scale-[.98]">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                        </svg>
+                        Simpan Sementara (Trial Run)
+                    </button>
+                    <button type="submit"
+                        class="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-600/25 flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Simpan & Buka di Workspace Manual
+                    </button>
+                </div>
             </div>
         </form>
 
@@ -714,6 +762,48 @@
 
     </div>{{-- end max-w --}}
     </div>{{-- end px padding --}}
+
+    <!-- Modal Simpan Sementara -->
+    <div id="trial-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTrialModal()"></div>
+        <!-- Content -->
+        <div class="relative bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 m-4 transform scale-95 transition-all duration-300">
+            <h3 class="text-lg font-bold text-slate-800 mb-2">Simpan Sementara (Trial Run)</h3>
+            <p class="text-xs text-slate-500 mb-4">
+                Simpan hasil uji coba ini untuk dibandingkan dengan hasil lainnya. Jadwal ini tidak akan menimpa worksheet utama sampai Anda menerapkannya secara eksplisit.
+            </p>
+            
+            <form id="form-simpan-trial" method="POST" action="{{ route('jadwal.otomatis.simpan_trial') }}">
+                @csrf
+                <input type="hidden" name="jadwal_json" id="inp-trial-jadwal-json">
+                <input type="hidden" name="tahun_akademik_id" id="inp-trial-tahun-id">
+                <input type="hidden" name="fitness" id="inp-trial-fitness">
+                <input type="hidden" name="generasi" id="inp-trial-generasi">
+                <input type="hidden" name="total_kelas" id="inp-trial-total-kelas">
+                <input type="hidden" name="dosen_conflicts" id="inp-trial-dosen-conflicts">
+                <input type="hidden" name="ruangan_conflicts" id="inp-trial-ruangan-conflicts">
+                <input type="hidden" name="soft_violations" id="inp-trial-soft-violations">
+
+                <div class="mb-5">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Label Uji Coba</label>
+                    <input type="text" name="label" id="inp-trial-label" placeholder="Contoh: Uji Coba #1 (Pop 100, Gen 200)"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-400 outline-none text-sm font-medium text-slate-700">
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeTrialModal()"
+                        class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-100 transition">
+                        Batal
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold rounded-lg shadow-md transition">
+                        Simpan Uji Coba
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </main>
 
 <script>
@@ -732,10 +822,12 @@ let allRows = [];
 function syncNumber(id, v) {
     document.getElementById('num-' + id).value = v;
     updateTip(id, parseInt(v));
+    updateEstimator();
 }
 function syncSlider(id, v) {
     document.getElementById('range-' + id).value = v;
     updateTip(id, parseInt(v));
+    updateEstimator();
 }
 function updateTip(id, n) {
     const el = document.getElementById('tip-' + id);
@@ -791,6 +883,7 @@ function applyPreset(key) {
         if (key==='optimal'  && isActive) b.classList.add('border-purple-400','bg-purple-50','text-purple-700');
         if (!isActive) b.classList.add('border-slate-200','bg-slate-50','text-slate-600');
     });
+    updateEstimator();
 }
 function resetAdvanced() { applyPreset('seimbang'); }
 
@@ -880,6 +973,133 @@ function startGA() {
         return;
     }
 
+    // Ubah status tombol untuk menunjukkan sedang audit data
+    const btn = document.getElementById('btn-generate');
+    btn.disabled = true;
+    document.getElementById('btn-label').textContent = 'Menganalisis kelayakan data…';
+
+    // Panggil Pre-run Feasibility Audit
+    fetch(`{{ url('/jadwal-otomatis/audit') }}?tahun_akademik_id=${tahun}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.feasible && data.issues && data.issues.some(i => i.type === 'fatal')) {
+                // Ada isu fatal, blokir jalannya GA
+                let msg = '<div class="text-left space-y-2 text-sm mt-2">';
+                data.issues.forEach(i => {
+                    if (i.type === 'fatal') {
+                        msg += `<div class="p-3 rounded-xl bg-rose-50 text-rose-800 border border-rose-200/60 font-medium">❌ ${i.message}</div>`;
+                    }
+                });
+                msg += '</div>';
+
+                showAuditModal('Gagal Audit Kelayakan', msg, false);
+                resetGenerateButton();
+                return;
+            }
+
+            if (data.issues && data.issues.some(i => i.type === 'warning')) {
+                // Ada isu warning, tanyakan persetujuan user
+                let msg = '<div class="text-left space-y-2 text-sm mt-2">';
+                data.issues.forEach(i => {
+                    if (i.type === 'warning') {
+                        msg += `<div class="p-3 rounded-xl bg-amber-50 text-amber-800 border border-amber-200/60 font-medium">⚠️ ${i.message}</div>`;
+                    }
+                });
+                msg += '</div>';
+                
+                showAuditModal('Peringatan Audit Kelayakan', msg, true, () => {
+                    runGAProcess(tahun, populasi, generasi);
+                });
+                resetGenerateButton();
+                return;
+            }
+
+            // Layak & tanpa issue, jalankan GA langsung
+            runGAProcess(tahun, populasi, generasi);
+        })
+        .catch(err => {
+            console.error('Audit error:', err);
+            // Fallback: jalankan saja GA jika audit endpoint gagal demi toleransi kesalahan
+            runGAProcess(tahun, populasi, generasi);
+        });
+}
+
+function resetGenerateButton() {
+    const btn = document.getElementById('btn-generate');
+    btn.disabled = false;
+    document.getElementById('btn-label').textContent = 'Jalankan Algoritma Genetika';
+}
+
+function showAuditModal(title, contentHtml, showConfirm = false, onConfirm = null) {
+    // Hapus modal lama jika ada
+    const existing = document.getElementById('audit-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'audit-modal';
+    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300';
+    
+    const confirmButtonHtml = showConfirm 
+        ? `<button type="button" id="btn-modal-confirm" class="flex-1 px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-2xl transition shadow-lg shadow-teal-600/20">Tetap Lanjutkan</button>`
+        : '';
+        
+    const closeButtonLabel = showConfirm ? 'Batal' : 'Tutup';
+    const closeButtonClass = showConfirm 
+        ? 'flex-1 px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition border border-slate-200'
+        : 'w-full px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl transition';
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden transform scale-95 transition-all duration-300">
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    ${showConfirm ? '⚠️' : '❌'} ${title}
+                </h3>
+                <button type="button" id="btn-modal-x" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <p class="text-sm text-slate-600 leading-relaxed">
+                    ${showConfirm 
+                        ? 'Sistem mendeteksi beberapa potensi masalah pada data masukan Anda. Meskipun penjadwalan masih dapat dilanjutkan, hasil akhirnya berpotensi tidak 100% optimal:' 
+                        : 'Sistem mendeteksi masalah kelayakan yang bersifat fatal pada data masukan Anda. Secara matematis, jadwal **tidak mungkin dapat disusun** tanpa pelanggaran berikut:'}
+                </p>
+                ${contentHtml}
+            </div>
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
+                <button type="button" id="btn-modal-close" class="${closeButtonClass}">${closeButtonLabel}</button>
+                ${confirmButtonHtml}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Animasi fade in & scale
+    setTimeout(() => {
+        modal.firstElementChild.classList.remove('scale-95');
+        modal.firstElementChild.classList.add('scale-100');
+    }, 10);
+
+    const closeModal = () => {
+        modal.firstElementChild.classList.remove('scale-100');
+        modal.firstElementChild.classList.add('scale-95');
+        modal.classList.add('opacity-0');
+        setTimeout(() => modal.remove(), 300);
+    };
+
+    document.getElementById('btn-modal-x').onclick = closeModal;
+    document.getElementById('btn-modal-close').onclick = closeModal;
+    
+    if (showConfirm && onConfirm) {
+        document.getElementById('btn-modal-confirm').onclick = () => {
+            closeModal();
+            onConfirm();
+        };
+    }
+}
+
+function runGAProcess(tahun, populasi, generasi) {
     maxGen = parseInt(generasi);
     bestFitnessPrev = 0; prevFitness = 0;
     fitnessHistory = [];
@@ -1144,6 +1364,22 @@ function onSelesai(data) {
     allRows = data.jadwal_rows || [];
     renderTable(allRows);
 
+    // Diagnosa Masalah (Bahasa Manusia)
+    const diagnosaCard = document.getElementById('diagnosa-card');
+    const diagnosaList = document.getElementById('diagnosa-list');
+    if (data.diagnosa && data.diagnosa.length > 0) {
+        diagnosaCard.style.display = 'block';
+        diagnosaList.innerHTML = data.diagnosa.map(msg => `
+            <div class="flex items-start gap-3 p-3.5 rounded-2xl bg-rose-50/30 border border-rose-100/50 text-slate-700 text-xs leading-relaxed font-medium">
+                <span class="flex-shrink-0 text-rose-500 font-bold text-sm">⚠️</span>
+                <span>${msg}</span>
+            </div>
+        `).join('');
+    } else {
+        diagnosaCard.style.display = 'none';
+        diagnosaList.innerHTML = '';
+    }
+
     // Problem log
     if (data.problem_log && data.problem_log.length > 0) {
         const card = document.getElementById('problem-log-card');
@@ -1157,6 +1393,16 @@ function onSelesai(data) {
     // Hidden inputs
     document.getElementById('inp-jadwal-json').value  = JSON.stringify(allRows);
     document.getElementById('inp-tahun-hidden').value = document.getElementById('inp-tahun').value;
+
+    // Populate hidden trial inputs
+    document.getElementById('inp-trial-jadwal-json').value = JSON.stringify(allRows);
+    document.getElementById('inp-trial-tahun-id').value = document.getElementById('inp-tahun').value;
+    document.getElementById('inp-trial-fitness').value = fit;
+    document.getElementById('inp-trial-generasi').value = data.generasi;
+    document.getElementById('inp-trial-total-kelas').value = data.total_kelas;
+    document.getElementById('inp-trial-dosen-conflicts').value = dc;
+    document.getElementById('inp-trial-ruangan-conflicts').value = rc;
+    document.getElementById('inp-trial-soft-violations').value = sv;
 
     document.getElementById('section-hasil').classList.remove('hidden');
     document.getElementById('section-hasil').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1266,6 +1512,9 @@ function resetForm() {
     // Reset problem log
     const pcard = document.getElementById('problem-log-card');
     if (pcard) pcard.style.display = 'none';
+    // Reset diagnosa card
+    const dcard = document.getElementById('diagnosa-card');
+    if (dcard) dcard.style.display = 'none';
     // Re-enable form
     document.getElementById('section-form').classList.remove('opacity-60','pointer-events-none');
     document.getElementById('btn-label').textContent = 'Jalankan Algoritma Genetika';
@@ -1284,6 +1533,60 @@ function shakeEl(id) {
 
 // Resize chart on window resize
 window.addEventListener('resize', drawChart);
+
+function updateEstimator() {
+    const select = document.getElementById('inp-tahun');
+    if (!select) return;
+    const selectedOpt = select.options[select.selectedIndex];
+    const card = document.getElementById('estimator-card');
+    if (!card) return;
+    
+    if (!selectedOpt || !selectedOpt.value) {
+        card.style.display = 'none';
+        return;
+    }
+    
+    const kelasCount = parseInt(selectedOpt.getAttribute('data-kelas-count')) || 0;
+    const pop = parseInt(document.getElementById('num-populasi').value) || 100;
+    const gen = parseInt(document.getElementById('num-generasi').value) || 200;
+    
+    // Rumus estimasi durasi proses: N * P * G / 80000
+    let estimasiDetik = Math.ceil((kelasCount * pop * gen) / 80000);
+    if (estimasiDetik < 1) estimasiDetik = 1;
+    
+    let labelWaktu = `~${estimasiDetik} detik`;
+    if (estimasiDetik >= 60) {
+        const menit = Math.floor(estimasiDetik / 60);
+        const sisaDetik = estimasiDetik % 60;
+        labelWaktu = `~${menit} menit` + (sisaDetik > 0 ? ` ${sisaDetik} detik` : '');
+    }
+    
+    if (kelasCount > 0) {
+        card.style.display = 'flex';
+        document.getElementById('val-estimasi').innerHTML = `${labelWaktu} <span class="text-[9px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded ml-1 font-semibold">Bisa lebih cepat (Early Exit)</span>`;
+        document.getElementById('val-estimasi-kelas').textContent = `${kelasCount} kelas`;
+    } else {
+        card.style.display = 'none';
+    }
+}
+
+function openTrialModal() {
+    const modal = document.getElementById('trial-modal');
+    modal.classList.remove('hidden');
+    const now = new Date();
+    const timestamp = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const fitnessText = document.getElementById('inp-trial-fitness').value || '0';
+    document.getElementById('inp-trial-label').value = `Uji Coba ${timestamp} (Fit: ${fitnessText}%)`;
+    document.getElementById('inp-trial-label').focus();
+}
+
+function closeTrialModal() {
+    document.getElementById('trial-modal').classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateEstimator();
+});
 </script>
 
 </body>

@@ -17,10 +17,10 @@
 
             <div>
                 <div class="flex items-center mb-8">
-                    <div class="flex flex-col mr-3">
+                    <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col mr-3 hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                         <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
                         <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                    </div>
+                    </button>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

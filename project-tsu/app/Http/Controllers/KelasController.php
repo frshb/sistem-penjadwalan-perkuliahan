@@ -87,8 +87,8 @@ class KelasController extends Controller
         //    sesuai prodi yang dipilih user di form, supaya matkul prodi lain
         //    tetap tersedia saat tab "Semua Prodi" aktif.
         // =====================================================================
-        $mataKuliahs = MataKuliah::with(['pengampus' => function ($query) use ($idTahun) {
-            $query->where('id_tahunakademik', $idTahun)->with('dosen');
+         $mataKuliahs = MataKuliah::with(['pengampus' => function ($query) use ($idTahun) {
+            $query->where('pengampu_kelas.id_tahunakademik', $idTahun)->with('dosen');
         }])
             ->orderBy('nama_matkul')
             ->get()
@@ -160,7 +160,7 @@ class KelasController extends Controller
     {
         $request->validate([
             'nama_kelas'       => 'required|string|max:50',
-            'id_prodi'         => 'required|integer|exists:program_studi,id_prodi',
+            'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
             'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
             'kode_matkul'      => 'required|exists:mata_kuliah,kode_matkul',
             'id_dosen'         => 'nullable|integer|exists:dosen,id_dosen',
@@ -212,7 +212,7 @@ class KelasController extends Controller
     {
         $request->validate([
             'nama_kelas'       => 'required|string|max:50',
-            'id_prodi'         => 'required|integer|exists:program_studi,id_prodi',
+            'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
             'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
             'kode_matkul'      => 'required|exists:mata_kuliah,kode_matkul',
             'id_dosen'         => 'nullable|integer|exists:dosen,id_dosen',

@@ -292,7 +292,7 @@ class GeneticScheduler
 
             // ── Inisialisasi populasi ────────────────────────────────────────
             $this->initializePopulation();
-            $this->evaluatePopulation();
+            $this->evaluatePopulation(0);
 
             $bestChromosome = $this->getBestChromosome()->copy();
             $this->updateElites($bestChromosome);
@@ -319,7 +319,7 @@ class GeneticScheduler
                 }
 
                 // [Bug1-fix] Evaluasi populasi setelah kemungkinan dimodifikasi oleh stagnasi/niche pressure/deadlock breaker
-                $this->evaluatePopulation();
+                $this->evaluatePopulation($generation);
 
                 // Seleksi
                 $parents  = $this->selection();
@@ -335,7 +335,7 @@ class GeneticScheduler
 
                 // [M5] Ganti populasi + inject elites
                 $this->replacePopulation($offspring);
-                $this->evaluatePopulation();
+                $this->evaluatePopulation($generation);
 
                 // Update best
                 $currentBest = $this->getBestChromosome();
@@ -501,13 +501,19 @@ class GeneticScheduler
                 }
             }
 
+            // [NEW] Ambil id_dosen dari relasi pengampuMatkul (bukan kolom id_dosen lama)
+            $idDosen = 0;
+            if (!empty($k->pengampuMatkul) && $k->pengampuMatkul->count() > 0) {
+                $idDosen = (int) $k->pengampuMatkul->first()->id_dosen;
+            }
+
             $this->kelasData[(int) $k->id_kelas] = [
                 'id'              => (int) $k->id_kelas,
                 'nama'            => (string) ($k->nama_kelas ?? "Kelas-{$k->id_kelas}"),
                 'sks'             => $sks,
                 'jenis'           => strtolower(trim($mk->jenis ?? Gene::JENIS_TEORI)),
                 'kategori'        => strtolower(trim($mk->kategori ?? Gene::KATEGORI_SEDANG)),
-                'id_dosen'        => (int) ($k->id_dosen ?? 0),
+                'id_dosen'        => $idDosen,
                 'kapasitas'       => (int) ($k->kapasitas ?? 0),
                 'ruangan_options' => $ruanganOptions,
                 'kode_matkul'     => (string) ($mk->kode_matkul ?? ''),
@@ -969,8 +975,9 @@ class GeneticScheduler
     // MEDIUM-LEVEL: Evaluasi & Seleksi
     // ═══════════════════════════════════════════════════════════════════════
 
-    private function evaluatePopulation(): void
+    private function evaluatePopulation(int $generation = 0): void
     {
+        $progress = $this->maxGenerations > 0 ? ($generation / $this->maxGenerations) : 1.0;
         foreach ($this->population as $chromosome) {
             $chromosome->setConstraintParams(
                 $this->eveningStartSlot,
@@ -980,7 +987,7 @@ class GeneticScheduler
                 8,  // maxSksDayDosen HC14
                 $this->parallelPairs
             );
-            $chromosome->calculateFitness();
+            $chromosome->calculateFitness($progress);
         }
     }
 
@@ -1020,11 +1027,11 @@ class GeneticScheduler
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * [M1] Crossover dua-titik selang-seling dengan single-point.
+     * [M1] Crossover dua-titik selang-seling dengan Conflict-Aware Uniform Crossover.
      *
      * Pasangan genap → two-point crossover.
-     * Pasangan ganjil → single-point crossover.
-     * Ini memastikan kedua operator berperan dalam setiap generasi.
+     * Pasangan ganjil → conflict-aware uniform crossover.
+     * Ini memastikan kombinasi optimal tingkat makro (blok) dan mikro (gen bebas konflik) bekerja bersama.
      *
      * @param  Chromosome[] $parents
      * @return Chromosome[]
@@ -1039,11 +1046,11 @@ class GeneticScheduler
             $p2 = $parents[$i + 1];
 
             if ((mt_rand() / mt_getrandmax()) <= $this->crossoverRate) {
-                // Selang-seling: pasangan ke-0 dua-titik, ke-1 satu-titik, dst.
+                // Selang-seling: pasangan ke-0 dua-titik, ke-1 Conflict-Aware Uniform Crossover, dst.
                 if (($i / 2) % 2 === 0) {
                     [$c1, $c2] = $this->twoPointCrossover($p1, $p2);
                 } else {
-                    [$c1, $c2] = $this->singlePointCrossover($p1, $p2);
+                    [$c1, $c2] = $this->conflictAwareUniformCrossover($p1, $p2);
                 }
             } else {
                 $c1 = $p1->copy();
@@ -1062,29 +1069,132 @@ class GeneticScheduler
         return $offspring;
     }
 
-    private function singlePointCrossover(Chromosome $p1, Chromosome $p2): array
+    /**
+     * Conflict-Aware Uniform Crossover
+     *
+     * Membangun keturunan dengan memprioritaskan gen yang bebas dari konflik pada masing-masing parent.
+     * Pasangan kelas paralel (HC15) diproses bersamaan agar gap-1 tidak terputus secara struktural.
+     */
+    private function conflictAwareUniformCrossover(Chromosome $p1, Chromosome $p2): array
     {
-        $g1    = $p1->getGenes();
-        $g2    = $p2->getGenes();
-        $len   = min(count($g1), count($g2));
+        $g1  = $p1->getGenes();
+        $g2  = $p2->getGenes();
+        $len = min(count($g1), count($g2));
 
         if ($len === 0) {
-            // Jika kedua chromosome kosong, kembali copy dari parents
             return [$p1->copy(), $p2->copy()];
         }
 
-        $point = random_int(1, max(1, $len - 1));
+        // Dapatkan index/posisi gen yang terlibat konflik pada masing-masing parent
+        $p1Conflicts = array_flip($this->buildConflictingIndices($g1));
+        $p2Conflicts = array_flip($this->buildConflictingIndices($g2));
 
-        $child1Genes = array_merge(
-            array_map(fn($g) => $g->copy(), array_slice($g1, 0, $point)),
-            array_map(fn($g) => $g->copy(), array_slice($g2, $point))
-        );
-        $child2Genes = array_merge(
-            array_map(fn($g) => $g->copy(), array_slice($g2, 0, $point)),
-            array_map(fn($g) => $g->copy(), array_slice($g1, $point))
-        );
+        // Mapping kelasId ke index gen untuk mempermudah pencarian pasangan paralel (HC15)
+        $kelasIndexMap = [];
+        foreach ($g1 as $idx => $gene) {
+            $kelasIndexMap[$gene->kelasId] = $idx;
+        }
 
-        return [$this->makeChromosome($child1Genes), $this->makeChromosome($child2Genes)];
+        $child1Genes = [];
+        $child2Genes = [];
+        $processed   = array_fill(0, $len, false);
+
+        for ($j = 0; $j < $len; $j++) {
+            if ($processed[$j]) {
+                continue;
+            }
+
+            $kelasId    = $g1[$j]->kelasId;
+            $partnerId  = $this->pairPartnerOf[$kelasId] ?? null;
+            $partnerIdx = $partnerId !== null ? ($kelasIndexMap[$partnerId] ?? null) : null;
+
+            if ($partnerIdx !== null && $partnerIdx < $len && !$processed[$partnerIdx]) {
+                // Tipe A: Pasangan kelas paralel (HC15) - diproses berpasangan agar tidak terpisah
+                $p1PairValid = ($g1[$j]->validatePairSequencing($g1[$partnerIdx], true) === 0);
+                $p2PairValid = ($g2[$j]->validatePairSequencing($g2[$partnerIdx], true) === 0);
+
+                $p1HasOtherConflict = isset($p1Conflicts[$j]) || isset($p1Conflicts[$partnerIdx]);
+                $p2HasOtherConflict = isset($p2Conflicts[$j]) || isset($p2Conflicts[$partnerIdx]);
+
+                $p1Good = $p1PairValid && !$p1HasOtherConflict;
+                $p2Good = $p2PairValid && !$p2HasOtherConflict;
+
+                if ($p1Good && !$p2Good) {
+                    // Parent 1 bagus (valid dan aman), Parent 2 jelek
+                    $child1Genes[$j]          = $g1[$j]->copy();
+                    $child1Genes[$partnerIdx] = $g1[$partnerIdx]->copy();
+
+                    if ((mt_rand() / mt_getrandmax()) < 0.8) {
+                        $child2Genes[$j]          = $g1[$j]->copy();
+                        $child2Genes[$partnerIdx] = $g1[$partnerIdx]->copy();
+                    } else {
+                        $child2Genes[$j]          = $g2[$j]->copy();
+                        $child2Genes[$partnerIdx] = $g2[$partnerIdx]->copy();
+                    }
+                } elseif (!$p1Good && $p2Good) {
+                    // Parent 1 jelek, Parent 2 bagus
+                    $child1Genes[$j]          = $g2[$j]->copy();
+                    $child1Genes[$partnerIdx] = $g2[$partnerIdx]->copy();
+
+                    if ((mt_rand() / mt_getrandmax()) < 0.8) {
+                        $child2Genes[$j]          = $g2[$j]->copy();
+                        $child2Genes[$partnerIdx] = $g2[$partnerIdx]->copy();
+                    } else {
+                        $child2Genes[$j]          = $g1[$j]->copy();
+                        $child2Genes[$partnerIdx] = $g1[$partnerIdx]->copy();
+                    }
+                } else {
+                    // Keduanya sama-sama bagus atau sama-sama jelek
+                    if (mt_rand(0, 1) === 0) {
+                        $child1Genes[$j]          = $g1[$j]->copy();
+                        $child1Genes[$partnerIdx] = $g1[$partnerIdx]->copy();
+
+                        $child2Genes[$j]          = $g2[$j]->copy();
+                        $child2Genes[$partnerIdx] = $g2[$partnerIdx]->copy();
+                    } else {
+                        $child1Genes[$j]          = $g2[$j]->copy();
+                        $child1Genes[$partnerIdx] = $g2[$partnerIdx]->copy();
+
+                        $child2Genes[$j]          = $g1[$j]->copy();
+                        $child2Genes[$partnerIdx] = $g1[$partnerIdx]->copy();
+                    }
+                }
+
+                $processed[$j]          = true;
+                $processed[$partnerIdx] = true;
+            } else {
+                // Tipe B: Gen tunggal biasa
+                $p1Conf = isset($p1Conflicts[$j]);
+                $p2Conf = isset($p2Conflicts[$j]);
+
+                if (!$p1Conf && $p2Conf) {
+                    // Parent 1 aman, Parent 2 bentrok
+                    $child1Genes[$j] = $g1[$j]->copy();
+                    $child2Genes[$j] = ((mt_rand() / mt_getrandmax()) < 0.8) ? $g1[$j]->copy() : $g2[$j]->copy();
+                } elseif ($p1Conf && !$p2Conf) {
+                    // Parent 1 bentrok, Parent 2 aman
+                    $child1Genes[$j] = $g2[$j]->copy();
+                    $child2Genes[$j] = ((mt_rand() / mt_getrandmax()) < 0.8) ? $g2[$j]->copy() : $g1[$j]->copy();
+                } else {
+                    // Keduanya sama-sama aman / bentrok
+                    if (mt_rand(0, 1) === 0) {
+                        $child1Genes[$j] = $g1[$j]->copy();
+                        $child2Genes[$j] = $g2[$j]->copy();
+                    } else {
+                        $child1Genes[$j] = $g2[$j]->copy();
+                        $child2Genes[$j] = $g1[$j]->copy();
+                    }
+                }
+
+                $processed[$j] = true;
+            }
+        }
+
+        // Urutkan kembali berdasarkan index gen agar susunan gen tidak berubah
+        ksort($child1Genes);
+        ksort($child2Genes);
+
+        return [$this->makeChromosome(array_values($child1Genes)), $this->makeChromosome(array_values($child2Genes))];
     }
 
     private function twoPointCrossover(Chromosome $p1, Chromosome $p2): array
@@ -1094,7 +1204,7 @@ class GeneticScheduler
         $len = min(count($g1), count($g2));
 
         if ($len < 3) {
-            return $this->singlePointCrossover($p1, $p2);
+            return $this->conflictAwareUniformCrossover($p1, $p2);
         }
 
         $pt1 = random_int(1, $len - 2);

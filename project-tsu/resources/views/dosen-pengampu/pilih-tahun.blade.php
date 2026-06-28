@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pilih Tahun Akademik | Portal Dosen Pengampu</title>
+    <title>Pilih Tahun Akademik | Penugasan Dosen</title>
 
-    <meta name="description" content="Pilih Tahun Akademik untuk Portal Dosen Pengampu">
+    <meta name="description" content="Pilih Tahun Akademik untuk Penugasan Dosen">
 
     <link rel="icon" href="{{ asset('favicon_square.png') }}" type="image/png">
 
@@ -15,6 +15,8 @@
 <body
     x-data="{
         sidebarOpen: true,
+        showModeModal: false,
+        selectedTahunId: null,
         statusFilter: 'aktif',
         activeCount: {{ $tahunAkademiks->where('status_aktif', 1)->count() }},
         inactiveCount: {{ $tahunAkademiks->where('status_aktif', 0)->count() }},
@@ -37,13 +39,13 @@
 
             <div class="flex items-center">
 
-                <div class="flex flex-col">
+                <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                     <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
                     <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                </div>
+                </button>
 
                 <h1 class="text-2xl font-bold text-gray-800 ml-3">
-                    Portal Dosen Pengampu
+                    Manajemen Pengampu
                 </h1>
 
             </div>
@@ -60,7 +62,7 @@
                     Pilih Tahun Akademik
                 </h2>
                 <p class="text-gray-500 mt-1">
-                    Silakan pilih tahun akademik untuk mengatur dosen pengampu.
+                    Silakan pilih tahun akademik untuk melakukan penugasan dosen pengampu.
                 </p>
             </div>
 
@@ -177,10 +179,11 @@
                                 Tidak Aktif (Akses Terbatas)
                             </button>
                         @else
-                            <a href="{{ route('dosen-pengampu.index', ['tahun' => $tahun->id_tahunakademik]) }}"
-                               class="w-full inline-flex items-center justify-center px-4 py-3 bg-teal-500 text-white font-semibold rounded-xl shadow-md hover:bg-teal-600 transition duration-200">
+                            <button
+                                @click="selectedTahunId = {{ $tahun->id_tahunakademik }}; showModeModal = true"
+                                class="w-full inline-flex items-center justify-center px-4 py-3 bg-teal-600 text-white font-semibold rounded-xl shadow-sm hover:bg-teal-700 transition duration-200">
 
-                                Atur Dosen Pengampu
+                                Atur Penugasan Dosen
 
                                 <svg class="w-5 h-5 ml-2"
                                      fill="none"
@@ -193,7 +196,7 @@
                                     </path>
                                 </svg>
 
-                            </a>
+                            </button>
                         @endif
 
                     </div>
@@ -244,6 +247,154 @@
     </div>
 
 </main>
+
+{{-- ================================================ --}}
+{{-- MODAL PILIH MODE PENUGASAN                         --}}
+{{-- ================================================ --}}
+<div
+    x-show="showModeModal"
+    x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    style="display: none;"
+>
+    {{-- Backdrop --}}
+    <div x-show="showModeModal"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="showModeModal = false"
+         class="absolute inset-0 bg-slate-900/60 backdrop-blur-md">
+    </div>
+
+    {{-- Modal Panel --}}
+    <div x-show="showModeModal"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+         @click.away="showModeModal = false"
+         class="relative bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-3xl overflow-hidden ring-1 ring-black/5">
+
+        {{-- Header --}}
+        <div class="px-8 pt-8 pb-6 border-b border-gray-100 text-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-b from-teal-50/50 to-transparent pointer-events-none"></div>
+            <div class="relative">
+                <div class="w-16 h-16 bg-teal-100/50 text-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
+                    <svg class="w-8 h-8 -rotate-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <h2 class="text-2xl font-extrabold text-gray-900 tracking-tight">Pilih Mode Penugasan</h2>
+                <p class="text-gray-500 mt-2 font-medium">
+                    Pilih antarmuka kerja yang paling sesuai dengan kebutuhan Anda saat ini.
+                </p>
+            </div>
+        </div>
+
+        {{-- Body — 2 Pilihan --}}
+        <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50">
+
+            {{-- Workspace Mode --}}
+            <a @click.prevent="
+                   const url = '{{ route('dosen-pengampu.index', ['tahun' => 'ID_PLACEHOLDER', 'mode' => 'workspace']) }}'.replace('ID_PLACEHOLDER', selectedTahunId);
+                   window.location.href = url;
+               "
+               class="group relative flex flex-col p-8 rounded-3xl bg-white border border-gray-200 hover:border-teal-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-teal-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                
+                <div class="relative flex items-center gap-4 mb-6">
+                    <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-teal-100 transition-all duration-300">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 group-hover:text-teal-700 transition-colors">Workspace</h3>
+                        <p class="text-sm text-teal-600 font-medium">Visual & Interaktif</p>
+                    </div>
+                </div>
+                
+                <ul class="relative text-sm text-gray-500 space-y-3 mb-8 w-full flex-grow">
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-teal-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Sistem <strong>Drag & Drop</strong> intuitif</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-teal-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Visualisasi distribusi beban dosen</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-teal-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Sempurna untuk proses plotting awal</span>
+                    </li>
+                </ul>
+                
+                <div class="relative mt-auto">
+                    <div class="flex items-center justify-center w-full py-3.5 bg-slate-50 border border-slate-100 text-teal-700 font-bold rounded-2xl group-hover:bg-teal-600 group-hover:border-teal-600 group-hover:text-white transition-all duration-300">
+                        Masuk Workspace
+                        <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </div>
+                </div>
+            </a>
+
+            {{-- Table Mode --}}
+            <a @click.prevent="
+                   const url = '{{ route('dosen-pengampu.index', ['tahun' => 'ID_PLACEHOLDER2', 'mode' => 'table']) }}'.replace('ID_PLACEHOLDER2', selectedTahunId);
+                   window.location.href = url;
+               "
+               class="group relative flex flex-col p-8 rounded-3xl bg-white border border-gray-200 hover:border-slate-800 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-slate-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                
+                <div class="relative flex items-center gap-4 mb-6">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 group-hover:bg-slate-200 transition-all duration-300">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 group-hover:text-slate-900 transition-colors">Tabel Data</h3>
+                        <p class="text-sm text-slate-500 font-medium">Spreadsheet Klasik</p>
+                    </div>
+                </div>
+                
+                <ul class="relative text-sm text-gray-500 space-y-3 mb-8 w-full flex-grow">
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Tampilan mirip <strong>Excel / Spreadsheet</strong></span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Sangat cepat untuk edit massal</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Efisien bagi operator administrasi</span>
+                    </li>
+                </ul>
+                
+                <div class="relative mt-auto">
+                    <div class="flex items-center justify-center w-full py-3.5 bg-slate-50 border border-slate-100 text-slate-700 font-bold rounded-2xl group-hover:bg-slate-800 group-hover:border-slate-800 group-hover:text-white transition-all duration-300">
+                        Masuk Tabel Data
+                        <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+
+        {{-- Footer --}}
+        <div class="px-8 py-5 bg-white border-t border-gray-100 flex justify-end items-center">
+            <button @click="showModeModal = false"
+                    class="px-6 py-2.5 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl font-bold transition-colors">
+                Batal
+            </button>
+        </div>
+
+    </div>
+</div>
 
 </body>
 </html>

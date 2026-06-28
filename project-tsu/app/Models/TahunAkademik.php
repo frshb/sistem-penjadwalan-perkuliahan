@@ -9,6 +9,7 @@ class TahunAkademik extends Model
     protected $table = 'tahun_akademik';
 
     protected $primaryKey = 'id_tahunakademik';
+    public $incrementing = false;
 
     public $timestamps = false;
 

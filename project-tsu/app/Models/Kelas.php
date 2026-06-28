@@ -18,7 +18,6 @@ class Kelas extends Model
         'kapasitas',
         'semester',
         'kode_matkul',
-        'id_dosen',
         'jumlah_mahasiswa',
     ];
 
@@ -59,14 +58,35 @@ class Kelas extends Model
     }
 
     /**
-     * Relasi ke Dosen
+     * Relasi ke Dosen melalui pengampu_kelas
      */
     public function dosen()
     {
-        return $this->belongsTo(
+        return $this->hasOneThrough(
             Dosen::class,
+            PengampuKelas::class,
+            'id_kelas',
             'id_dosen',
+            'id_kelas',
             'id_dosen'
+        );
+    }
+
+    public function pengampus()
+    {
+        return $this->hasMany(
+            PengampuKelas::class,
+            'id_kelas',
+            'id_kelas'
+        );
+    }
+
+    public function pengampuMatkul()
+    {
+        return $this->hasMany(
+            PengampuKelas::class,
+            'id_kelas',
+            'id_kelas'
         );
     }
 

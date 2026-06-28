@@ -22,7 +22,16 @@
     showAddModal: false,
     showEditModal: false,
     showExportMenu: false,
-    activeTab: 'all',
+    searchTerm: '',
+    selectedProdiFilter: 'all',
+    selectedNamaKelasFilter: 'all',
+    selectedSemesterFilter: 'all',
+
+    filterKelasList() {
+        if (typeof window.applyAllFilters === 'function') {
+            window.applyAllFilters(this);
+        }
+    },
     currentEditMatkul: '',
     editData: {
         id_kelas: null,
@@ -34,8 +43,6 @@
         kode_matkul: '',
         id_kurikulum: '',
         sks: '',
-        id_dosen: '',
-        dosen: null
     },
     selectedKelas: [],
     selectedProdi: '',
@@ -43,8 +50,6 @@
     selectedKurikulum: '',
     selectedSks: '',
     mataKuliahs: @js($mataKuliahs),
-
-    filteredDosens: [],
 
     /**
      * Bandingkan dua nilai secara longgar sebagai string.
@@ -65,16 +70,10 @@
 
         if (matkul) {
             this.selectedSks = matkul.sks ?? '';
-            this.filteredDosens = (matkul.pengampus || [])
-                .map(item => item.dosen)
-                .filter(Boolean);
         } else {
             this.selectedSks = '';
-            this.filteredDosens = [];
         }
     },
-
-    filteredEditDosens: [],
 
     selectEditMatkul(kode) {
         let matkul = this.mataKuliahs.find(item =>
@@ -83,22 +82,9 @@
 
         if (matkul) {
             this.editData.sks = matkul.sks ?? '';
-
-            let list = (matkul.pengampus || [])
-                .map(item => item.dosen)
-                .filter(Boolean);
-
-            // Pastikan dosen yang sedang terpasang di kelas tetap muncul,
-            // walau dia bukan termasuk daftar pengampu resmi matkul tersebut
-            // (misal data lama / penugasan manual sebelumnya).
-            if (this.editData.dosen && !list.some(d => this.eq(this.editData.id_dosen, d.id_dosen))) {
-                list.push(this.editData.dosen);
-            }
-
-            this.filteredEditDosens = list;
+            this.editData.kurikulum = matkul.id_kurikulum ?? '';
         } else {
             this.editData.sks = '';
-            this.filteredEditDosens = [];
         }
     },
 
@@ -109,15 +95,10 @@
             ...kelas,
             id_kurikulum: kelas.matakuliah?.id_kurikulum ?? '',
             sks: kelas.matakuliah?.sks ?? '',
-            id_dosen: kelas.id_dosen ?? '',
-            dosen: kelas.dosen ?? null,
         };
 
         this.showEditModal = true;
 
-        // Isi dropdown Dosen SETELAH editData lengkap terisi (termasuk id_prodi
-        // dan id_dosen asli), supaya filter langsung benar tanpa perlu
-        // beberapa lapis $nextTick seperti versi sebelumnya.
         this.$nextTick(() => {
             this.selectEditMatkul(kelas.kode_matkul);
         });
@@ -143,10 +124,10 @@
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div class="flex items-center">
-            <div class="flex flex-col">
-                <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
-                <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-            </div>
+            <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
+                    <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
+                    <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+                </button>
 
             <div class="ml-3 flex items-center space-x-2 text-2xl font-bold">
 
@@ -218,234 +199,243 @@
         </div>
     </div>
 
-    <!-- Search -->
-    <div class="mb-6">
+    <!-- Search & Filter -->
+    <div class="mb-6 space-y-3">
+        <!-- Search Bar -->
+        <div class="flex items-center gap-3">
+            <div class="flex-1 w-full">
+                <div class="relative w-full">
+                    <input type="text"
+                        x-model="searchTerm"
+                        @input="filterKelasList()"
+                        placeholder="Cari nama kelas, kode MK, atau mata kuliah..."
+                        class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
+                    <div class="absolute right-0 top-0 h-full px-3.5 text-gray-500 flex items-center justify-center pointer-events-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <form action="{{ route('kelas.index') }}" method="GET">
-
-            <input type="hidden"
-                name="tahun"
-                value="{{ $tahunAkademik->id_tahunakademik }}">
-
-            <div class="relative">
-
-                <input type="text"
-                    name="search"
-                    value="{{ $searchTerm ?? '' }}"
-                    placeholder="Cari kelas, kode MK, mata kuliah, atau dosen..."
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-
-                <button type="submit"
-                        class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </button>
-
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+            <!-- Filter Program Studi -->
+            <div class="w-full sm:w-1/3">
+                <div class="relative">
+                    <select x-model="selectedProdiFilter" @change="filterKelasList()"
+                        class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none bg-white">
+                        <option value="all">Semua Program Studi</option>
+                        @foreach($prodis as $p)
+                            <option value="{{ $p->nama_prodi }}">{{ $p->nama_prodi }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute left-0 top-0 h-full px-3 text-gray-500 flex items-center justify-center pointer-events-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                    <div class="absolute right-0 top-0 h-full px-3 text-gray-500 flex items-center justify-center pointer-events-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </div>
             </div>
 
-        </form>
+            <!-- Filter Nama Kelas -->
+            <div class="w-full sm:w-1/3">
+                <div class="relative">
+                    <select x-model="selectedNamaKelasFilter" @change="filterKelasList()"
+                        class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none bg-white">
+                        <option value="all">Semua Nama Kelas</option>
+                        @php
+                            $namaKelasList = $kelas->pluck('nama_kelas')->unique()->sort()->values();
+                        @endphp
+                        @foreach($namaKelasList as $nk)
+                            <option value="{{ $nk }}">{{ $nk }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute right-0 top-0 h-full px-3 text-gray-500 flex items-center justify-center pointer-events-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </div>
+            </div>
 
-    </div>
-
-    <!-- TAB PRODI -->
-    <div class="flex space-x-2 mb-6 border-b border-gray-300 overflow-x-auto">
-        <button
-            @click="activeTab = 'all'"
-            class="prodi-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
-            :class="activeTab === 'all'
-                ? 'border-teal-600 text-teal-700 font-bold'
-                : 'border-transparent text-gray-600 hover:text-teal-700'">
-            Semua Prodi
-        </button>
-
-        @foreach ($kelasByProdi as $namaProdi => $kelasGroup)
-            <button
-                @click="activeTab = '{{ Str::slug($namaProdi) }}'"
-                class="prodi-tab px-4 py-2 border-b-2 whitespace-nowrap transition-colors duration-200"
-                :class="activeTab === '{{ Str::slug($namaProdi) }}'
-                    ? 'border-teal-600 text-teal-700 font-bold'
-                    : 'border-transparent text-gray-600 hover:text-teal-700'">
-                {{ $namaProdi }}
-            </button>
-        @endforeach
+            <!-- Filter Semester -->
+            <div class="w-full sm:w-1/3">
+                <div class="relative">
+                    <select x-model="selectedSemesterFilter" @change="filterKelasList()"
+                        class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none bg-white">
+                        <option value="all">Semua Semester</option>
+                        <template x-for="sem in semesterOptions" :key="sem">
+                            <option :value="String(sem)" x-text="'Semester ' + sem"></option>
+                        </template>
+                    </select>
+                    <div class="absolute right-0 top-0 h-full px-3 text-gray-500 flex items-center justify-center pointer-events-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- DATA -->
-    @foreach ($prodis as $prodi)
-
-    @php
-        $kelasGroup = $kelasByProdi[$prodi->nama_prodi] ?? collect();
-        $namaProdi = $prodi->nama_prodi;
-    @endphp
-
-        <div class="mb-8"
-             x-show="activeTab === 'all' || activeTab === '{{ Str::slug($namaProdi) }}'">
-
-            <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
-
-                <div class="flex justify-between items-center mb-6">
-
-                    <h3 class="text-xl font-bold text-gray-700">
-                        {{ $namaProdi }}
-                    </h3>
-
-                    <button
-                        @click="
-                            showGenerateModal = true;
-                            selectedGenerateProdi = '{{ $prodi->id_prodi }}';
-                            selectedGenerateProdiName = '{{ $namaProdi }}';
-                        "
-                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-
-                        Generate Kelas
-                    </button>
-
-                </div>
-
-                <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-
-                    <div class="overflow-x-auto w-full">
-
-                        <table class="min-w-full bg-white">
-
-                            <thead class="bg-teal-700 text-white">
-                                <tr>
-                                    <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Nama Kelas</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Semester</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kode MK</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Mata Kuliah</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">SKS</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Dosen</th>
-                                    <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
-                                    <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
-                                </tr>
-                            </thead>
-
-                            <tbody class="text-gray-700">
-
-                                @php
-                                    $kelasSorted = $kelasGroup->sortBy(function ($kelas) {
-                                        $semester = $kelas->semester ?? 999;
-                                        $namaMatkul = $kelas->matakuliah->nama_matkul ?? '';
-                                        preg_match('/-([A-Z])$/', $kelas->nama_kelas, $match);
-                                        $suffix = $match[1] ?? 'Z';
-
-                                        return sprintf('%02d-%s-%s', $semester, $namaMatkul, $suffix);
-                                    });
-                                @endphp
-
-                                @forelse ($kelasSorted as $kelas)
-
-                                <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        <div class="flex items-center space-x-3">
-                                            <input
-                                                type="checkbox"
-                                                value="{{ $kelas->id_kelas }}"
-                                                class="checkbox-kelas-{{ $prodi->id_prodi }} rounded border-gray-300 text-red-600 focus:ring-red-500">
-                                            <span>{{ $loop->iteration }}</span>
-                                        </div>
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm font-medium">
-                                        {{ $kelas->nama_kelas }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        {{ $kelas->semester ?? '-' }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        {{ $kelas->kode_matkul ?? '-' }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        {{ $kelas->matakuliah->nama_matkul ?? '-' }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        {{ $kelas->matakuliah->sks ?? '-' }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm font-medium">
-                                        {{ $kelas->dosen->nama_dosen ?? '-' }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        {{ $kelas->kapasitas }}
-                                    </td>
-
-                                    <td class="text-left py-2 px-3 text-sm">
-                                        <div class="flex space-x-2">
-                                            <button
-                                                @click="openEdit(@js($kelas))"
-                                                class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
-                                                Edit
-                                            </button>
-
-                                            <button
-                                                onclick="confirmDelete('{{ route('kelas.destroy', $kelas->id_kelas) }}')"
-                                                class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                                Hapus
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                @empty
-
-                                <tr>
-                                    <td colspan="10" class="text-center py-4 text-gray-500">
-                                        Data kelas belum tersedia.
-                                    </td>
-                                </tr>
-
-                                @endforelse
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-                <!-- BULK ACTION -->
-                <div class="flex items-center justify-between mt-4">
-
-                    <div class="flex items-center space-x-2">
-
-                        <button
-                            type="button"
-                            @click="
-                                let checkboxes = document.querySelectorAll('.checkbox-kelas-{{ $prodi->id_prodi }}');
-                                let allChecked = [...checkboxes].every(cb => cb.checked);
-                                checkboxes.forEach(cb => { cb.checked = !allChecked; });
-                            "
-                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-                            Pilih Semua
-                        </button>
-
-                        <button
-                            type="button"
-                            onclick="deleteSelected('{{ $prodi->id_prodi }}')"
-                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                            Hapus Semua
-                        </button>
-
-                    </div>
-
-                    <span class="text-sm text-gray-500">
-                        Centang data yang ingin dihapus
-                    </span>
-
-                </div>
-
+    <div class="mb-8">
+        <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-700">Daftar Kelas</h3>
+                <button
+                    @click="
+                        showGenerateModal = true;
+                        selectedGenerateProdi = '';
+                        selectedGenerateProdiName = 'Semua Prodi';
+                    "
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    Generate Kelas
+                </button>
             </div>
 
-        </div>
+            <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
+                <div class="overflow-x-auto w-full">
+                    <table class="min-w-full bg-white">
+                         <thead class="bg-teal-700 text-white">
+                            <tr>
+                                <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs cursor-pointer hover:bg-teal-800 select-none group relative" onclick="sortTable(this, 1, 'string')">
+                                    <div class="flex items-center justify-between">
+                                        <span>Prodi</span>
+                                        <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                    </div>
+                                </th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs cursor-pointer hover:bg-teal-800 select-none group" onclick="sortTable(this, 2, 'string')">
+                                    <div class="flex items-center justify-between">
+                                        <span>Nama Kelas</span>
+                                        <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                    </div>
+                                </th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs cursor-pointer hover:bg-teal-800 select-none group" onclick="sortTable(this, 3, 'number')">
+                                    <div class="flex items-center justify-between">
+                                        <span>Semester</span>
+                                        <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                    </div>
+                                </th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs cursor-pointer hover:bg-teal-800 select-none group" onclick="sortTable(this, 4, 'string')">
+                                    <div class="flex items-center justify-between">
+                                        <span>Kode MK</span>
+                                        <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                    </div>
+                                </th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs cursor-pointer hover:bg-teal-800 select-none group" onclick="sortTable(this, 5, 'string')">
+                                    <div class="flex items-center justify-between">
+                                        <span>Mata Kuliah</span>
+                                        <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                    </div>
+                                </th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs cursor-pointer hover:bg-teal-800 select-none group" onclick="sortTable(this, 6, 'number')">
+                                    <div class="flex items-center justify-between">
+                                        <span>SKS</span>
+                                        <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                    </div>
+                                </th>
+                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs cursor-pointer hover:bg-teal-800 select-none group" onclick="sortTable(this, 7, 'number')">
+                                    <div class="flex items-center justify-between">
+                                        <span>Kapasitas</span>
+                                        <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                    </div>
+                                </th>
+                                <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
+                            </tr>
+                        </thead>
 
-    @endforeach
+                        <tbody class="text-gray-700" id="kelasTableBody">
+
+                            @forelse ($kelas as $k)
+                            <tr class="kelas-row border-b border-[#DBDBDB] hover:bg-gray-50" 
+                                data-prodi="{{ $k->prodi->nama_prodi ?? 'Tanpa Prodi' }}" 
+                                data-nama-kelas-asli="{{ $k->nama_kelas }}"
+                                data-nama-kelas="{{ strtolower($k->nama_kelas) }}" 
+                                data-semester="{{ $k->semester ?? '' }}"
+                                data-kode-mk="{{ strtolower($k->kode_matkul ?? '') }}" 
+                                data-nama-mk="{{ strtolower($k->matakuliah->nama_matkul ?? '') }}">
+                                <td class="text-left py-2 px-3 text-sm">
+                                    <div class="flex items-center space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            value="{{ $k->id_kelas }}"
+                                            class="checkbox-kelas rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                        <span class="row-number-span">{{ $loop->iteration }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm font-medium">
+                                    {{ $k->prodi->nama_prodi ?? 'Tanpa Prodi' }}
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm font-medium">
+                                    {{ $k->nama_kelas }}
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    {{ $k->semester ?? '-' }}
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    {{ $k->kode_matkul ?? '-' }}
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    {{ $k->matakuliah->nama_matkul ?? '-' }}
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    {{ $k->matakuliah->sks ?? '-' }}
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    {{ $k->kapasitas }}
+                                </td>
+                                <td class="text-left py-2 px-3 text-sm">
+                                    <div class="flex space-x-2">
+                                        <button
+                                            @click="openEdit(@js($k))"
+                                            class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
+                                            Edit
+                                        </button>
+                                        <button
+                                            onclick="confirmDelete('{{ route('kelas.destroy', $k->id_kelas) }}')"
+                                            class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+                                            Hapus
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-gray-500">
+                                    Data kelas belum tersedia.
+                                </td>
+                            </tr>
+                            @endforelse
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- BULK ACTION -->
+            <div class="flex items-center justify-between mt-4">
+                <div class="flex items-center space-x-2">
+                    <button
+                        type="button"
+                        @click="
+                            let checkboxes = document.querySelectorAll('.checkbox-kelas');
+                            let allChecked = [...checkboxes].every(cb => cb.checked);
+                            checkboxes.forEach(cb => { cb.checked = !allChecked; });
+                        "
+                        class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                        Pilih Semua
+                    </button>
+                    <button
+                        type="button"
+                        onclick="deleteSelectedAll()"
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                        Hapus Semua
+                    </button>
+                </div>
+                <span class="text-sm text-gray-500">
+                    Centang data yang ingin dihapus
+                </span>
+            </div>
+        </div>
+    </div>
 
 </main>
 
@@ -505,9 +495,8 @@
                             name="id_prodi"
                             x-model="selectedProdi"
                             @change="selectMatkul(document.querySelector('select[name=kode_matkul]')?.value || '')"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                            required>
-                            <option value="">-- Pilih Prodi --</option>
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">Semua Program Studi (Umum)</option>
                             @foreach ($prodis as $prodi)
                                 <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
                             @endforeach
@@ -559,22 +548,6 @@
                             x-model="selectedSks"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
                             readonly>
-                    </div>
-
-                    <!-- Dosen Pengampu -->
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Dosen Pengampu</label>
-                        <select
-                            name="id_dosen"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                            <option value="">-- Pilih Dosen Pengampu --</option>
-                            <template x-for="dosen in filteredDosens" :key="dosen.id_dosen">
-                                <option :value="dosen.id_dosen" x-text="dosen.nama_dosen"></option>
-                            </template>
-                        </select>
-                        <p x-show="filteredDosens.length === 0" class="text-xs text-gray-400 mt-1">
-                            Pilih mata kuliah terlebih dahulu, atau mata kuliah ini belum memiliki dosen pengampu.
-                        </p>
                     </div>
 
                     <!-- Kapasitas -->
@@ -667,9 +640,9 @@
                         <select
                             name="id_prodi"
                             x-model="editData.id_prodi"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                            required>
-                            <option value="">-- Pilih Prodi --</option>
+                            @change="selectEditMatkul(document.querySelector('select[name=edit_kode_matkul]')?.value || '')"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">Semua Program Studi (Umum)</option>
                             @foreach ($prodis as $prodi)
                                 <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
                             @endforeach
@@ -723,23 +696,6 @@
                                x-model="editData.sks"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
                                readonly>
-                    </div>
-
-                    <!-- Dosen Pengampu -->
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Dosen Pengampu</label>
-                        <select
-                            name="id_dosen"
-                            x-model="editData.id_dosen"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                            <option value="">-- Pilih Dosen Pengampu --</option>
-                            <template x-for="dosen in filteredEditDosens" :key="dosen.id_dosen">
-                                <option :value="dosen.id_dosen" x-text="dosen.nama_dosen"></option>
-                            </template>
-                        </select>
-                        <p x-show="filteredEditDosens.length === 0" class="text-xs text-gray-400 mt-1">
-                            Mata kuliah ini belum memiliki dosen pengampu yang terdaftar.
-                        </p>
                     </div>
 
                     <!-- Kapasitas -->
@@ -856,9 +812,9 @@
 
 <script>
 
-function deleteSelected(prodiId)
+function deleteSelectedAll()
 {
-    let checked = document.querySelectorAll(`.checkbox-kelas-${prodiId}:checked`);
+    let checked = document.querySelectorAll(`.checkbox-kelas:checked`);
 
     if (checked.length === 0) {
         alert('Pilih minimal 1 kelas.');
@@ -886,5 +842,182 @@ function deleteSelected(prodiId)
     <input type="hidden" name="ids" id="bulkDeleteIds">
 </form>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const table = document.querySelector('table');
+            if (table) {
+                const headers = table.querySelectorAll('thead th');
+                const tbody = table.querySelector('tbody');
+                const originalRows = Array.from(tbody.querySelectorAll('tr'));
+
+                if (originalRows.length > 0 && originalRows[0].cells.length > 1) {
+                    let currentSortColumn = -1;
+                    let isAscending = true;
+                    let activeFilters = {
+                        prodi: 'all',
+                        namaKelas: 'all',
+                        semester: 'all'
+                    };
+
+                    // Function to apply filters
+                    window.applyAllFilters = function(alpineState = null) {
+                        const state = alpineState || (document.querySelector('[x-data]') ? document.querySelector('[x-data]').__x.$data : null);
+                        const search = (state && state.searchTerm) ? state.searchTerm.toLowerCase() : '';
+                        
+                        // Sync filter states if called from Alpine
+                        if (state) {
+                            if (state.selectedProdiFilter) activeFilters.prodi = state.selectedProdiFilter;
+                            if (state.selectedNamaKelasFilter) activeFilters.namaKelas = state.selectedNamaKelasFilter;
+                            if (state.selectedSemesterFilter) activeFilters.semester = state.selectedSemesterFilter;
+                        }
+
+                        const rows = Array.from(tbody.querySelectorAll('tr.kelas-row'));
+                        let visibleIndex = 1;
+                        const pageOffset = 0;
+                        
+                        rows.forEach(row => {
+                            const rowProdi = row.dataset.prodi || '';
+                            const matchesProdi = activeFilters.prodi === 'all' || rowProdi === activeFilters.prodi;
+                            
+                            const rowNamaKelas = row.dataset.namaKelasAsli || '';
+                            const matchesNamaKelas = activeFilters.namaKelas === 'all' || rowNamaKelas === activeFilters.namaKelas;
+                            
+                            const rowSemester = row.dataset.semester || '';
+                            const matchesSemester = activeFilters.semester === 'all' || rowSemester === activeFilters.semester;
+                            
+                            const namaKelas = row.dataset.namaKelas || '';
+                            const kodeMk = row.dataset.kodeMk || '';
+                            const namaMk = row.dataset.namaMk || '';
+                            
+                            const matchesSearch = search === '' || 
+                                                  namaKelas.includes(search) || 
+                                                  kodeMk.includes(search) ||
+                                                  namaMk.includes(search);
+                            
+                            const matches = matchesProdi && matchesNamaKelas && matchesSemester && matchesSearch;
+                            
+                            row.style.display = matches ? '' : 'none';
+                            
+                            if (matches) {
+                                const noCell = row.cells[0].querySelector('.row-number-span');
+                                if (noCell) {
+                                    noCell.textContent = pageOffset + visibleIndex;
+                                    visibleIndex++;
+                                }
+                            }
+                        });
+                    };
+
+                    // Helper to close all popups
+                    function closeAllPopups() {
+                        const popups = document.querySelectorAll('.header-popup-menu');
+                        popups.forEach(p => p.remove());
+                    }
+
+                    // Reset sorting to original order
+                    function resetTableSort() {
+                        currentSortColumn = -1;
+                        isAscending = true;
+                        
+                        // Remove all sort classes and text bolding from headers
+                        headers.forEach((h, index) => {
+                            if (index === 0 || index === headers.length - 1) return; // skip No, Aksi
+                            const icon = h.querySelector('.sort-icon');
+                            if (icon) {
+                                icon.innerHTML = '⇅';
+                                icon.classList.remove('text-amber-400');
+                                icon.classList.add('text-teal-300');
+                            }
+                        });
+
+                        // Empty tbody and append original rows
+                        tbody.innerHTML = '';
+                        originalRows.forEach(row => tbody.appendChild(row));
+                        
+                        // Re-apply filters to update numbering
+                        window.applyAllFilters();
+                    }
+
+                    // Main Sort Function
+                    window.sortTable = function(headerElement, columnIndex, type = 'string') {
+                        // Close any open popups
+                        closeAllPopups();
+                        
+                        // Determine if we are changing columns or just toggling direction
+                        if (currentSortColumn === columnIndex) {
+                            if (isAscending) {
+                                isAscending = false; // Second click: Descending
+                            } else {
+                                // Third click: Reset
+                                resetTableSort();
+                                return;
+                            }
+                        } else {
+                            currentSortColumn = columnIndex;
+                            isAscending = true; // First click: Ascending
+                        }
+
+                        // Update styling for all headers
+                        headers.forEach((h, index) => {
+                            if (index === 0 || index === headers.length - 1) return; // skip No, Aksi
+                            if (index === columnIndex) {
+                                const icon = h.querySelector('.sort-icon');
+                                if (icon) {
+                                    icon.innerHTML = isAscending ? '▲' : '▼';
+                                    icon.classList.remove('text-teal-300');
+                                    icon.classList.add('text-amber-400');
+                                }
+                            } else {
+                                const icon = h.querySelector('.sort-icon');
+                                if (icon) {
+                                    icon.innerHTML = '⇅';
+                                    icon.classList.remove('text-amber-400');
+                                    icon.classList.add('text-teal-300');
+                                }
+                            }
+                        });
+
+                        const rows = Array.from(tbody.querySelectorAll('tr.kelas-row'));
+
+                        rows.sort((a, b) => {
+                            let valA = a.cells[columnIndex].textContent.trim();
+                            let valB = b.cells[columnIndex].textContent.trim();
+
+                            if (type === 'number') {
+                                valA = parseFloat(valA) || 0;
+                                valB = parseFloat(valB) || 0;
+                                return isAscending ? valA - valB : valB - valA;
+                            }
+
+                            // String sorting
+                            return isAscending 
+                                ? valA.localeCompare(valB, 'id', { sensitivity: 'base' })
+                                : valB.localeCompare(valA, 'id', { sensitivity: 'base' });
+                        });
+
+                        // Reorder the DOM
+                        tbody.innerHTML = '';
+                        rows.forEach(row => tbody.appendChild(row));
+
+                        // Re-apply filters to update row numbering based on current visibility
+                        window.applyAllFilters();
+                    };
+
+                    // Close popups on click outside
+                    document.addEventListener('click', function(event) {
+                        const popups = document.querySelectorAll('.header-popup-menu');
+                        popups.forEach(popup => {
+                            if (!popup.contains(event.target)) {
+                                popup.remove();
+                            }
+                        });
+                    });
+
+                    // Initial application of numbering and filters
+                    window.applyAllFilters();
+                }
+            }
+        });
+    </script>
 </body>
 </html>

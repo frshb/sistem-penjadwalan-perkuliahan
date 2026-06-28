@@ -18,6 +18,15 @@
     showEditModal: false,
     showExportMenu: false,
 
+    searchTerm: '',
+    selectedProdi: 'all',
+
+    filterDosens() {
+        if (typeof window.applyAllFilters === 'function') {
+            window.applyAllFilters(this);
+        }
+    },
+
     // =========================
     // EDIT DOSEN
     // =========================
@@ -80,11 +89,11 @@
         <div>
         <div class="flex justify-between items-center">
             <div class="flex items-center">
-                <div class="flex flex-col">
+                <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                     <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
                     <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                </div>
-                <h1 class="text-2xl font-bold text-gray-800 ml-3">Management Data{{ !empty($userProdiName) ? ' (' . $userProdiName . ')' : '' }}</h1>
+                </button>
+                <h1 class="text-2xl font-bold text-gray-800 ml-3">Manajemen Dosen</h1>
             </div>
             @include('components.header-profile')
         </div>
@@ -131,56 +140,40 @@
 
                 <!-- Search & Filter -->
                 <div class="mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
-                    <form action="{{ route('dosen.index') }}" method="GET" class="flex flex-col md:flex-row items-center gap-3">
+                    <div class="flex flex-col md:flex-row items-center gap-3">
 
                         <!-- Search Bar -->
                         <div class="flex-1 w-full relative">
                             <input
                                 type="text"
-                                name="search"
-                                value="{{ $searchTerm ?? '' }}"
-                                placeholder="Cari nama dosen..."
+                                x-model="searchTerm"
+                                @input="filterDosens()"
+                                placeholder="Cari nama dosen, NUPTK, atau NIDN..."
                                 class="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm h-10"
                             >
-                            <button
-                                type="submit"
-                                class="absolute right-0 top-0 h-full px-3.5 text-gray-500 hover:text-teal-700 transition-colors"
-                            >
+                            <div class="absolute right-0 top-0 h-full px-3.5 text-gray-500 flex items-center justify-center pointer-events-none">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
-                            </button>
+                            </div>
                         </div>
 
                         <!-- Filter Prodi -->
-                        @if (!Auth::user() || !Auth::user()->isKaprodi())
-                            <div class="relative w-full md:w-auto md:min-w-[240px]">
-                                <select
-                                    name="prodi"
-                                    onchange="this.form.submit()"
-                                    class="w-full pl-3.5 pr-8 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer h-10"
-                                >
-                                    <option value="">Semua Program Studi</option>
-                                    @foreach ($prodis as $prodi)
-                                        <option value="{{ $prodi->id_prodi }}" {{ request('prodi') == $prodi->id_prodi ? 'selected' : '' }}>
-                                            {{ $prodi->nama_prodi }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                </div>
-                            </div>
-                        @endif
+                        <div class="w-full md:w-64">
+                            <select 
+                                x-model="selectedProdi" 
+                                @change="filterDosens()" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm h-10 bg-white"
+                            >
+                                <option value="all">Semua Program Studi</option>
+                                @foreach ($prodis as $prodi)
+                                    <option value="{{ $prodi->nama_prodi }}">{{ $prodi->nama_prodi }}</option>
+                                @endforeach
+                                <option value="Dosen Eksternal">Dosen Eksternal</option>
+                            </select>
+                        </div>
 
-                        <!-- Reset Button -->
-                        @if(request()->anyFilled(['search', 'prodi']))
-                            <a href="{{ route('dosen.index') }}" class="w-full md:w-auto inline-flex items-center justify-center px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors text-sm h-10">
-                                Reset
-                            </a>
-                        @endif
-
-                    </form>
+                    </div>
                 </div>
 
                 @if ($searchTerm)
@@ -196,18 +189,38 @@
                         <table class="w-full min-w-[1100px] bg-white">
                             <thead class="bg-teal-800 text-white">
                                 <tr>
-                                    <th class="w-16 text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">No</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Prodi</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Nama Dosen</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">NUPTK</th>
-                                    <th class="text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">NIDN</th>
-                                    <th class="w-48 text-left py-3 px-4 uppercase font-semibold text-xs whitespace-nowrap">Aksi</th>
+                                    <th class="w-16 text-left py-2 px-4 uppercase font-semibold text-xs whitespace-nowrap">No</th>
+                                    <th class="text-left py-2 px-4 uppercase font-semibold text-xs whitespace-nowrap cursor-pointer hover:bg-teal-700 select-none group relative" onclick="sortTable(this, 1, 'string')">
+                                        <div class="flex items-center justify-between">
+                                            <span>Prodi</span>
+                                            <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                        </div>
+                                    </th>
+                                    <th class="text-left py-2 px-4 uppercase font-semibold text-xs whitespace-nowrap cursor-pointer hover:bg-teal-700 select-none group" onclick="sortTable(this, 2, 'string')">
+                                        <div class="flex items-center justify-between">
+                                            <span>Nama Dosen</span>
+                                            <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                        </div>
+                                    </th>
+                                    <th class="text-left py-2 px-4 uppercase font-semibold text-xs whitespace-nowrap cursor-pointer hover:bg-teal-700 select-none group" onclick="sortTable(this, 3, 'string')">
+                                        <div class="flex items-center justify-between">
+                                            <span>NUPTK</span>
+                                            <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                        </div>
+                                    </th>
+                                    <th class="text-left py-2 px-4 uppercase font-semibold text-xs whitespace-nowrap cursor-pointer hover:bg-teal-700 select-none group" onclick="sortTable(this, 4, 'string')">
+                                        <div class="flex items-center justify-between">
+                                            <span>NIDN</span>
+                                            <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
+                                        </div>
+                                    </th>
+                                    <th class="w-48 text-left py-2 px-4 uppercase font-semibold text-xs whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="text-gray-700">
-                                @forelse ($dosens as $dosen)
-                                    <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
-                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ ($dosens->currentPage() - 1) * $dosens->perPage() + $loop->iteration }}</td>
+                            <tbody class="text-gray-700" id="dosenTableBody">
+                                 @forelse ($dosens as $dosen)
+                                    <tr class="dosen-row border-b border-[#DBDBDB] hover:bg-gray-50" data-nama="{{ strtolower($dosen->nama_dosen) }}" data-nuptk="{{ strtolower($dosen->nuptk) }}" data-nidn="{{ strtolower($dosen->nidn) }}" data-prodi="{{ $dosen->prodi->nama_prodi ?? 'Belum Dipilih' }}">
+                                        <td class="text-left py-3 px-4 text-sm whitespace-nowrap row-number">{{ $loop->iteration }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->prodi->nama_prodi ?? 'Belum Dipilih' }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap font-medium text-gray-900">{{ $dosen->nama_dosen }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nuptk }}</td>
@@ -225,11 +238,10 @@
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                                     Edit
                                                 </button>
-
+ 
                                                 <button
                                                     @click="confirmDelete('{{ route('dosen.destroy',[
-                                                        $dosen->nuptk,
-                                                        'page' => request('page', 1)
+                                                        $dosen->nuptk
                                                     ]) }}')"
                                                     class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -248,10 +260,6 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
-
-                <div class="mt-4 flex justify-center">
-                    {{ $dosens->links() }}
                 </div>
 
             </div>
@@ -543,5 +551,180 @@
     <!-- Include Popup Delete Confirm -->
     @include('components.delete-confirm-popup')
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const table = document.querySelector('table');
+            if (table) {
+                const headers = table.querySelectorAll('thead th');
+                const tbody = table.querySelector('tbody');
+                const originalRows = Array.from(tbody.querySelectorAll('tr'));
+
+                if (originalRows.length > 0 && originalRows[0].cells.length > 1) {
+                    let currentSortColumn = -1;
+                    let isAscending = true;
+                    let activeProdiFilter = 'all';
+
+                    // Function to apply filters
+                    window.applyAllFilters = function(alpineState = null) {
+                        const state = alpineState || (document.querySelector('[x-data]') ? document.querySelector('[x-data]').__x.$data : null);
+                        const search = (state && state.searchTerm) ? state.searchTerm.toLowerCase() : '';
+                        const prodi = (state && state.selectedProdi) ? String(state.selectedProdi) : 'all';
+                        
+                        // Sync prodi state with our local variable if called from Alpine
+                        if (state && state.selectedProdi) {
+                            activeProdiFilter = prodi;
+                        }
+
+                        const rows = Array.from(tbody.querySelectorAll('tr.dosen-row'));
+                        let visibleIndex = 1;
+                        const pageOffset = 0;
+                        
+                        rows.forEach(row => {
+                            const rowProdi = row.dataset.prodi || '';
+                            let matchesProdi = false;
+                            
+                            if (activeProdiFilter === 'all') {
+                                matchesProdi = true;
+                            } else if (activeProdiFilter === 'Dosen Eksternal') {
+                                matchesProdi = (rowProdi === 'Belum Dipilih' || rowProdi.toLowerCase().includes('eksternal'));
+                            } else {
+                                matchesProdi = rowProdi.toLowerCase().includes(activeProdiFilter.toLowerCase());
+                            }
+                            
+                            const name = row.dataset.nama || '';
+                            const nuptk = row.dataset.nuptk || '';
+                            const nidn = row.dataset.nidn || '';
+                            
+                            const matchesSearch = search === '' || 
+                                                  name.includes(search) || 
+                                                  nuptk.includes(search) ||
+                                                  nidn.includes(search);
+                            
+                            const matches = matchesProdi && matchesSearch;
+                            
+                            row.style.display = matches ? '' : 'none';
+                            
+                            if (matches) {
+                                const noCell = row.cells[0];
+                                if (noCell) {
+                                    noCell.textContent = pageOffset + visibleIndex;
+                                    visibleIndex++;
+                                }
+                            }
+                        });
+                    };
+                    const applyProdiFilter = window.applyAllFilters;
+
+                    // Helper to close all popups
+                    function closeAllPopups() {
+                        const popups = document.querySelectorAll('.header-popup-menu');
+                        popups.forEach(p => p.remove());
+                    }
+
+                    // Reset sorting to original order
+                    function resetTableSort() {
+                        currentSortColumn = -1;
+                        isAscending = true;
+                        
+                        // Remove all sort classes and text bolding from headers
+                        headers.forEach((h, index) => {
+                            if (index === 0 || index === headers.length - 1) return; // skip No, Aksi
+                            const icon = h.querySelector('.sort-icon');
+                            if (icon) {
+                                icon.innerHTML = '⇅';
+                                icon.classList.remove('text-amber-400');
+                                icon.classList.add('text-teal-300');
+                            }
+                        });
+
+                        // Empty tbody and append original rows
+                        tbody.innerHTML = '';
+                        originalRows.forEach(row => tbody.appendChild(row));
+                        
+                        // Re-apply filters to update numbering
+                        window.applyAllFilters();
+                    }
+
+                    // Main Sort Function
+                    window.sortTable = function(headerElement, columnIndex, type = 'string') {
+                        // Close any open popups
+                        closeAllPopups();
+                        
+                        // Determine if we are changing columns or just toggling direction
+                        if (currentSortColumn === columnIndex) {
+                            if (isAscending) {
+                                isAscending = false; // Second click: Descending
+                            } else {
+                                // Third click: Reset
+                                resetTableSort();
+                                return;
+                            }
+                        } else {
+                            currentSortColumn = columnIndex;
+                            isAscending = true; // First click: Ascending
+                        }
+
+                        // Update styling for all headers
+                        headers.forEach((h, index) => {
+                            if (index === 0 || index === headers.length - 1) return; // skip No, Aksi
+                            if (index === columnIndex) {
+                                const icon = h.querySelector('.sort-icon');
+                                if (icon) {
+                                    icon.innerHTML = isAscending ? '▲' : '▼';
+                                    icon.classList.remove('text-teal-300');
+                                    icon.classList.add('text-amber-400');
+                                }
+                            } else {
+                                const icon = h.querySelector('.sort-icon');
+                                if (icon) {
+                                    icon.innerHTML = '⇅';
+                                    icon.classList.remove('text-amber-400');
+                                    icon.classList.add('text-teal-300');
+                                }
+                            }
+                        });
+
+                        const rows = Array.from(tbody.querySelectorAll('tr.dosen-row'));
+
+                        rows.sort((a, b) => {
+                            let valA = a.cells[columnIndex].textContent.trim();
+                            let valB = b.cells[columnIndex].textContent.trim();
+
+                            if (type === 'number') {
+                                valA = parseFloat(valA) || 0;
+                                valB = parseFloat(valB) || 0;
+                                return isAscending ? valA - valB : valB - valA;
+                            }
+
+                            // String sorting
+                            return isAscending 
+                                ? valA.localeCompare(valB, 'id', { sensitivity: 'base' })
+                                : valB.localeCompare(valA, 'id', { sensitivity: 'base' });
+                        });
+
+                        // Reorder the DOM
+                        tbody.innerHTML = '';
+                        rows.forEach(row => tbody.appendChild(row));
+
+                        // Re-apply filters to update row numbering based on current visibility
+                        window.applyAllFilters();
+                    };
+
+                    // Close popups on click outside
+                    document.addEventListener('click', function(event) {
+                        const popups = document.querySelectorAll('.header-popup-menu');
+                        popups.forEach(popup => {
+                            if (!popup.contains(event.target)) {
+                                popup.remove();
+                            }
+                        });
+                    });
+
+                    // Initial application of numbering and filters
+                    window.applyAllFilters();
+                }
+            }
+        });
+    </script>
 </body>
 </html>

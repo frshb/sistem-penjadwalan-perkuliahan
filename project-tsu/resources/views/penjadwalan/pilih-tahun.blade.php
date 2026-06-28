@@ -37,13 +37,10 @@
 
             <div class="flex items-center">
 
-                <div class="flex flex-col">
-
+                <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                     <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
-
                     <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-
-                </div>
+                </button>
 
                 <h1 class="text-2xl font-bold text-gray-800 ml-3">
                     Modul Penjadwalan

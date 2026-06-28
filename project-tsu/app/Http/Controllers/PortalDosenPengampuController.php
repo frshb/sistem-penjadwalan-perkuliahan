@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Dosen;
 use App\Models\TahunAkademik;
 use App\Models\MataKuliah;
-use App\Models\PengampuMatkul;
+use App\Models\PengampuKelas;
 use App\Models\Kurikulum;
 use App\Models\Prodi;
 use App\Helpers\ProdiFilter;
@@ -35,36 +35,118 @@ class PortalDosenPengampuController extends Controller
             abort(403, 'Anda tidak memiliki akses ke tahun akademik yang dinonaktifkan.');
         }
 
-        $prodiId       = ProdiFilter::getProdiId(); // ✅ Ganti logika panjang jadi satu baris
+        $prodiId = ProdiFilter::getProdiId();
+        $selectedProdi = $request->input('prodi');
+        if (!$prodiId && $selectedProdi) {
+            $prodiId = $selectedProdi;
+        }
 
-        // Mata kuliah
+        // Mata kuliah lookup (for filters / JS, restricted by prodi if kaprodi)
         $matkulQuery = MataKuliah::with(['program_studi']);
-        if ($prodiId) {
-            $matkulQuery->where('id_prodi', $prodiId);
+        if (ProdiFilter::getProdiId()) {
+            $matkulQuery->where('id_prodi', ProdiFilter::getProdiId());
         }
         $matkuls = $matkulQuery->orderBy('semester')->orderBy('nama_matkul')->get();
 
-        // Pengampu — filter by kode matkul yang sudah difilter prodi & by tahun akademik
-        $pengampuQuery = PengampuMatkul::with(['mataKuliah.program_studi'])
+        // Request filters
+        $semester = $request->input('semester');
+        $kurikulumId = $request->input('kurikulum');
+        $search = $request->input('search');
+
+        // Pengampu Query
+        $pengampuQuery = PengampuKelas::with(['kelas.matakuliah.program_studi'])
             ->where('id_tahunakademik', $idTahun);
+        
         if ($prodiId) {
-            $kodeMatkuls = $matkuls->pluck('kode_matkul');
-            $pengampuQuery->whereIn('kode_matkul', $kodeMatkuls);
+            $pengampuQuery->whereHas('kelas', function($q) use ($prodiId) {
+                $q->where('id_prodi', $prodiId);
+            });
+        }
+        if ($semester) {
+            if ($semester === 'ganjil') {
+                $pengampuQuery->whereHas('kelas.matakuliah', function($q) {
+                    $q->whereIn('semester', [1, 3, 5, 7]);
+                });
+            } elseif ($semester === 'genap') {
+                $pengampuQuery->whereHas('kelas.matakuliah', function($q) {
+                    $q->whereIn('semester', [2, 4, 6, 8]);
+                });
+            } else {
+                $pengampuQuery->whereHas('kelas.matakuliah', function($q) use ($semester) {
+                    $q->where('semester', $semester);
+                });
+            }
+        }
+        if ($kurikulumId) {
+            $pengampuQuery->whereHas('kelas.matakuliah', function($q) use ($kurikulumId) {
+                $q->where('id_kurikulum', $kurikulumId);
+            });
+        }
+        if ($search) {
+            $pengampuQuery->whereHas('kelas', function($q) use ($search) {
+                $q->where(function($sq) use ($search) {
+                    $sq->where('nama_kelas', 'like', "%{$search}%")
+                      ->orWhere('kode_matkul', 'like', "%{$search}%")
+                      ->orWhereHas('matakuliah', function($mq) use ($search) {
+                          $mq->where('nama_matkul', 'like', "%{$search}%");
+                      });
+                });
+            });
         }
         $pengampus = $pengampuQuery->get();
 
-        // Dosen
-        $dosenQuery = Dosen::with(['prodi'])->orderBy('nama_dosen');
-        if ($prodiId) {
-            $dosenQuery->whereIn('id_prodi', [$prodiId, 99]);
-        }
+        // Dosen Query (Prodi restricted if Kaprodi, sembunyikan dosen eksternal id_prodi = 99)
+        $dosenQuery = Dosen::with(['prodi'])
+            ->where(function($q) {
+                $q->where('id_prodi', '!=', 99)
+                  ->orWhereNull('id_prodi');
+            })
+            ->orderBy('nama_dosen');
+        // No prodi-specific filtering – show all dosen across program studi
         $dosens = $dosenQuery->get();
 
-        // Kurikulum & Prodi untuk filter dropdown
+        // Kelas Paralel Query
+        $kelasQuery = \App\Models\Kelas::with(['matakuliah', 'prodi'])
+            ->where('id_tahunakademik', $idTahun);
+        if ($prodiId) {
+            $kelasQuery->where('id_prodi', $prodiId);
+        }
+        if ($semester) {
+            if ($semester === 'ganjil') {
+                $kelasQuery->whereHas('matakuliah', function($q) {
+                    $q->whereIn('semester', [1, 3, 5, 7]);
+                });
+            } elseif ($semester === 'genap') {
+                $kelasQuery->whereHas('matakuliah', function($q) {
+                    $q->whereIn('semester', [2, 4, 6, 8]);
+                });
+            } else {
+                $kelasQuery->whereHas('matakuliah', function($q) use ($semester) {
+                    $q->where('semester', $semester);
+                });
+            }
+        }
+        if ($kurikulumId) {
+            $kelasQuery->whereHas('matakuliah', function($q) use ($kurikulumId) {
+                $q->where('id_kurikulum', $kurikulumId);
+            });
+        }
+        if ($search) {
+            $kelasQuery->where(function($q) use ($search) {
+                $q->where('nama_kelas', 'like', "%{$search}%")
+                  ->orWhere('kode_matkul', 'like', "%{$search}%")
+                  ->orWhereHas('matakuliah', function($mq) use ($search) {
+                      $mq->where('nama_matkul', 'like', "%{$search}%");
+                  });
+            });
+        }
+        $kelasList = $kelasQuery->orderBy('kode_matkul')->orderBy('nama_kelas')->get();
+
+        // Kurikulum & Prodi lookup
         $kurikulums = \App\Models\Kurikulum::orderBy('nama_kurikulum')->get();
-        $prodis     = $prodiId
-            ? Prodi::where('id_prodi', $prodiId)->get()  // ✅ Kaprodi hanya lihat prodinya
-            : Prodi::orderBy('nama_prodi')->get();
+        $prodis     = ProdiFilter::getProdiId()
+            ? Prodi::where('id_prodi', ProdiFilter::getProdiId())->get()
+            : Prodi::whereIn('id_prodi', [1, 2, 3])->orderBy('nama_prodi')->get();
 
         // Pre-mapped untuk JS
         $matkulsJs = $matkuls->map(fn($m) => [
@@ -77,25 +159,35 @@ class PortalDosenPengampuController extends Controller
             'nama_prodi'   => $m->program_studi->nama_prodi ?? '-',
         ])->values();
 
+        $kelasJs = $kelasList->map(fn($k) => [
+            'id_kelas'    => $k->id_kelas,
+            'nama_kelas'  => $k->nama_kelas,
+            'kode_matkul' => $k->kode_matkul,
+            'id_prodi'    => $k->id_prodi,
+            'nama_prodi'  => $k->prodi->nama_prodi ?? '-',
+        ])->values();
+
         $pengampusJs = $pengampus->map(function ($p) {
-            $mk = \App\Models\MataKuliah::where('kode_matkul', $p->kode_matkul)
-                ->where('id_prodi', $p->id_prodi)
-                ->first() ?? $p->mataKuliah;
+            $mk = $p->kelas?->matakuliah;
 
             return [
                 'id'          => $p->id,
                 'id_dosen'    => $p->id_dosen,
-                'kode_matkul' => $p->kode_matkul,
-                'id_prodi'    => $p->id_prodi,
+                'id_kelas'    => $p->id_kelas,
+                'kode_matkul' => $mk->kode_matkul ?? '',
+                'id_prodi'    => $p->kelas->id_prodi ?? null,
                 'nama_matkul' => $mk->nama_matkul ?? '',
+                'nama_kelas'  => $p->kelas?->nama_kelas ?? '-',
                 'sks'         => $mk->sks ?? 0,
                 'semester'    => $mk->semester ?? 0,
-                'nama_prodi'  => $mk->program_studi->nama_prodi ?? '-',
+                'nama_prodi'  => $p->kelas?->prodi?->nama_prodi ?? '-',
+                'jumlah_mahasiswa' => $p->kelas?->jumlah_mahasiswa ?? 0,
             ];
         })->values();
 
         return view('dosen-pengampu.index', compact(
             'tahunAkademik', 'matkuls', 'pengampus', 'dosens',
+            'kelasList', 'kelasJs',
             'kurikulums', 'prodis', 'matkulsJs', 'pengampusJs'
         ));
     }
@@ -103,48 +195,42 @@ class PortalDosenPengampuController extends Controller
     public function simpan(Request $request)
     {
         $request->validate([
-            'kode_matkul'      => 'required|string|exists:mata_kuliah,kode_matkul',
             'id_dosen'         => 'required|exists:dosen,id_dosen',
-            'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
+            'id_kelas'         => 'required|integer|exists:kelas,id_kelas',
             'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
         ]);
 
-        // Boleh dosen berbeda mengajar matkul yang sama — cek duplikat dosen+matkul+prodi+tahunakademik
-        $exists = PengampuMatkul::where('kode_matkul', $request->kode_matkul)
-            ->where('id_dosen', $request->id_dosen)
-            ->where('id_prodi', $request->id_prodi)
+        $exists = PengampuKelas::where('id_kelas', $request->id_kelas)
             ->where('id_tahunakademik', $request->id_tahunakademik)
             ->exists();
 
         if ($exists) {
-            return response()->json(['success' => false, 'message' => 'Dosen ini sudah mengampu mata kuliah tersebut pada tahun akademik ini.']);
+            // Update dosen jika sudah ada
+            $pk = PengampuKelas::where('id_kelas', $request->id_kelas)
+                ->where('id_tahunakademik', $request->id_tahunakademik)
+                ->first();
+            $pk->update(['id_dosen' => $request->id_dosen]);
+            
+            return response()->json(['success' => true, 'message' => 'Dosen pengampu berhasil diupdate.', 'id' => $pk->id]);
         }
 
-        PengampuMatkul::create([
-            'kode_matkul'      => $request->kode_matkul,
+        $pk = PengampuKelas::create([
             'id_dosen'         => $request->id_dosen,
-            'id_prodi'         => $request->id_prodi,
+            'id_kelas'         => $request->id_kelas,
             'id_tahunakademik' => $request->id_tahunakademik,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Dosen pengampu berhasil ditugaskan.']);
+        return response()->json(['success' => true, 'message' => 'Dosen pengampu berhasil ditugaskan ke kelas.', 'id' => $pk->id]);
     }
 
     public function hapus(Request $request)
     {
         $request->validate([
-            'kode_matkul'      => 'required|string|exists:mata_kuliah,kode_matkul',
-            'id_dosen'         => 'required|exists:dosen,id_dosen',
-            'id_prodi'         => 'nullable|integer',
-            'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
+            'id' => 'required|integer|exists:pengampu_kelas,id'
         ]);
 
-        PengampuMatkul::where('kode_matkul', $request->kode_matkul)
-            ->where('id_dosen', $request->id_dosen)
-            ->where('id_prodi', $request->id_prodi)
-            ->where('id_tahunakademik', $request->id_tahunakademik)
-            ->delete();
+        PengampuKelas::where('id', $request->id)->delete();
 
-        return response()->json(['success' => true, 'message' => 'Dosen pengampu berhasil dilepaskan.']);
+        return response()->json(['success' => true, 'message' => 'Dosen pengampu berhasil dilepaskan dari kelas.']);
     }
 }

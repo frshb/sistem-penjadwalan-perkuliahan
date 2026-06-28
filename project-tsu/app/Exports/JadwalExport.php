@@ -71,7 +71,10 @@ class JadwalExport implements FromCollection, WithHeadings, WithStyles, WithTitl
                     'senin'  => 1, 'selasa' => 2, 'rabu'  => 3,
                     'kamis'  => 4, 'jumat'  => 5, default => 6,
                 },
-                $r[11],
+                $r[6],  // Mata Kuliah name
+                $r[9],  // Dosen name
+                $r[4],  // Kelas name
+                $r[11], // Jam Mulai
             ])
             ->values();
     }

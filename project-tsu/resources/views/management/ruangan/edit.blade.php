@@ -51,6 +51,17 @@
                     </div>
 
                     <div>
+                        <label for="tipe_ruangan" class="block text-sm font-medium text-gray-700">Tipe Ruangan</label>
+                        <select name="tipe_ruangan" id="tipe_ruangan"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm" required>
+                            <option value="reguler" {{ old('tipe_ruangan', $ruangan->tipe_ruangan) == 'reguler' ? 'selected' : '' }}>Reguler (Teori)</option>
+                            <option value="lab" {{ old('tipe_ruangan', $ruangan->tipe_ruangan) == 'lab' ? 'selected' : '' }}>Lab (Praktikum)</option>
+                            <option value="studio" {{ old('tipe_ruangan', $ruangan->tipe_ruangan) == 'studio' ? 'selected' : '' }}>Studio</option>
+                            <option value="hybrid" {{ old('tipe_ruangan', $ruangan->tipe_ruangan) == 'hybrid' ? 'selected' : '' }}>Hybrid</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label for="fasilitas" class="block text-sm font-medium text-gray-700">Fasilitas (pisahkan dengan koma)</label>
                         <textarea name="fasilitas" id="fasilitas" rows="3"
                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm">{{ old('fasilitas', $ruangan->fasilitas) }}</textarea>

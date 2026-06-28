@@ -6,15 +6,29 @@ use Illuminate\Http\Request;
 use App\Models\Kelas;
 use App\Models\TahunAkademik;
 use App\Models\Slot_waktu;
+use App\Models\JadwalTrial;
+use App\Models\PengampuKelas;
 use App\Services\GeneticAlgorithm\GeneticScheduler;
 
 class JadwalOtomatisController extends Controller
 {
-    // ── Tampilkan form parameter GA ─────────────────────────
     public function index()
     {
-        $tahunAkademikList = TahunAkademik::orderByDesc('id_tahunakademik')->get();
+        $tahunAkademikList = TahunAkademik::where('status_aktif', 1)->orderByDesc('id_tahunakademik')->get();
         $tahunAkademikAktif = TahunAkademik::where('status_aktif', 1)->first();
+
+        $user = auth()->user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+
+        foreach ($tahunAkademikList as $ta) {
+            $query = PengampuKelas::where('id_tahunakademik', $ta->id_tahunakademik);
+            if ($prodiId) {
+                $query->whereHas('kelas', function ($q) use ($prodiId) {
+                    $q->where('id_prodi', $prodiId);
+                });
+            }
+            $ta->kelas_count = $query->distinct('id_kelas')->count('id_kelas');
+        }
 
         return view('jadwal-otomatis.index', compact('tahunAkademikList', 'tahunAkademikAktif'));
     }
@@ -33,22 +47,34 @@ class JadwalOtomatisController extends Controller
         $user = auth()->user();
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
-        // Ambil semua kelas untuk tahun akademik ini beserta relasi yang dibutuhkan
-        $kelasQuery = Kelas::with([
-                'matakuliah.ruangans',
+        // Ambil data pengampu kelas untuk tahun akademik ini (sumber utama dari pengampu_kelas)
+        $pengampuKelasQuery = PengampuKelas::with([
+                'kelas.matakuliah.ruangans',
+                'kelas.prodi',
                 'dosen',
-                'prodi',
             ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $kelasQuery->where('id_prodi', $prodiId);
+            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
+                $q->where('id_prodi', $prodiId);
+            });
         }
 
-        $kelas = $kelasQuery->get();
+        $pengampus = $pengampuKelasQuery->get();
+
+        // Transformasikan pengampu_kelas menjadi koleksi Kelas
+        $kelas = $pengampus->map(function ($pk) {
+            $k = $pk->kelas;
+            if ($k) {
+                $k->setRelation('pengampus', collect([$pk]));
+                $k->setRelation('pengampuMatkul', collect([$pk]));
+            }
+            return $k;
+        })->filter()->values();
 
         if ($kelas->isEmpty()) {
-            return back()->withErrors(['kelas' => 'Tidak ada data kelas untuk tahun akademik ini.']);
+            return back()->withErrors(['kelas' => 'Tidak ada data kelas dengan dosen pengampu untuk tahun akademik ini.']);
         }
 
 
@@ -83,6 +109,7 @@ class JadwalOtomatisController extends Controller
         $hariNama   = [1=>'Senin',2=>'Selasa',3=>'Rabu',4=>'Kamis',5=>'Jumat'];
         $slotMap    = collect($slots)->keyBy('id');
         $kelasMap   = $kelas->keyBy('id_kelas');
+        $ruangansAll = \App\Models\Ruangan::all()->keyBy('id_ruang');
 
         $jadwalRows = [];
         foreach ($hasil['genes'] as $gene) {
@@ -94,11 +121,7 @@ class JadwalOtomatisController extends Controller
             $idSlotAkhir = $gene->slotMulai + $gene->durasi - 1;
             $slotAkhir   = $slotMap[$idSlotAkhir] ?? null;
 
-            // Guard untuk matakuliah null
-            $ruangan = null;
-            if ($k->matakuliah && isset($k->matakuliah->ruangans)) {
-                $ruangan = $k->matakuliah->ruangans->firstWhere('id_ruang', $gene->ruangId);
-            }
+            $ruangan = $ruangansAll[$gene->ruangId] ?? null;
 
            $jadwalRows[] = [
                 'kelas_id'    => $gene->kelasId,
@@ -107,8 +130,8 @@ class JadwalOtomatisController extends Controller
                 'nama_mk'     => $k->matakuliah->nama_matkul ?? '-',
                 'jenis'       => $k->matakuliah->jenis       ?? 'Teori',
                 'sks'         => $gene->durasi,
-                'dosen'       => $k->dosen->nama_dosen       ?? '-',
-                'prodi'       => $k->prodi->nama_prodi       ?? '-',
+                'dosen'       => $k->pengampuMatkul->first()?->dosen?->nama_dosen ?? '-',
+                'prodi'       => $k->prodi->nama_prodi ?? '-',
                 'semester'    => $k->semester,
                 'hari'        => $hariNama[$gene->hariId]    ?? '-',
                 'hari_id'     => $gene->hariId,
@@ -117,6 +140,7 @@ class JadwalOtomatisController extends Controller
                 'jam_selesai' => $slotAkhir  ? \Carbon\Carbon::parse($slotAkhir['waktu_selesai'])->format('H:i') : '-',
                 'ruangan'     => $ruangan?->nama_ruang ?? '-',
                 'ruangan_id'  => $gene->ruangId,
+                'tipe_ruangan'=> $ruangan?->tipe_ruangan ?? 'Reguler',
                 'dosen_id'    => $gene->dosenId,
             ];
         }
@@ -142,6 +166,7 @@ class JadwalOtomatisController extends Controller
             'ruanganConflicts'   => $hasil['ruangan_conflicts']    ?? 0,
             'softViolations'     => $hasil['constraint_violations'] ?? 0,
             'problemLog'         => $hasil['problem_log']          ?? [],
+            'diagnosa'           => $this->diagnoseConflicts($jadwalRows),
         ]);
     }
 
@@ -179,6 +204,105 @@ class JadwalOtomatisController extends Controller
             ->with('success', 'Jadwal hasil GA berhasil disimpan! Silakan review di workspace.');
     }
 
+    // ── Simpan hasil GA sebagai Uji Coba (Trial Run) ────
+    public function simpanTrial(Request $request)
+    {
+        $request->validate([
+            'tahun_akademik_id' => 'required|exists:tahun_akademik,id_tahunakademik',
+            'label'             => 'required|string|max:255',
+            'fitness'           => 'required|numeric',
+            'generasi'          => 'required|integer',
+            'total_kelas'       => 'required|integer',
+            'dosen_conflicts'   => 'required|integer',
+            'ruangan_conflicts' => 'required|integer',
+            'soft_violations'   => 'required|integer',
+            'jadwal_json'       => 'required|string',
+        ]);
+
+        JadwalTrial::create([
+            'id_tahunakademik'  => $request->tahun_akademik_id,
+            'label'             => $request->label,
+            'fitness'           => $request->fitness,
+            'generasi'          => $request->generasi,
+            'total_kelas'       => $request->total_kelas,
+            'dosen_conflicts'   => $request->dosen_conflicts,
+            'ruangan_conflicts' => $request->ruangan_conflicts,
+            'soft_violations'   => $request->soft_violations,
+            'jadwal_json'       => $request->jadwal_json,
+        ]);
+
+        return redirect()
+            ->route('jadwal.otomatis.compare_trials', ['tahun_akademik_id' => $request->tahun_akademik_id])
+            ->with('success', 'Uji coba berhasil disimpan sementara!');
+    }
+
+    // ── Halaman Perbandingan Hasil Uji Coba (Trial Run) ────
+    public function compareTrials(Request $request)
+    {
+        $tahunAkademikList = TahunAkademik::where('status_aktif', 1)->orderByDesc('id_tahunakademik')->get();
+        
+        $tahunAkademikId = $request->tahun_akademik_id;
+        $selectedTahun = null;
+        if ($tahunAkademikId) {
+            $selectedTahun = TahunAkademik::find($tahunAkademikId);
+        }
+        
+        if (!$selectedTahun) {
+            $selectedTahun = TahunAkademik::where('status_aktif', 1)->first() 
+                ?? TahunAkademik::orderByDesc('id_tahunakademik')->first();
+        }
+
+        $trials = collect();
+        if ($selectedTahun) {
+            $trials = JadwalTrial::where('id_tahunakademik', $selectedTahun->id_tahunakademik)
+                ->orderByDesc('created_at')
+                ->get();
+        }
+
+        return view('jadwal-otomatis.compare', compact('tahunAkademikList', 'selectedTahun', 'trials'));
+    }
+
+    // ── Terapkan hasil Uji Coba (Trial Run) ke Jadwal Utama ────
+    public function applyTrial(Request $request, $id)
+    {
+        $trial = JadwalTrial::findOrFail($id);
+        $jadwals = json_decode($trial->jadwal_json, true);
+        $tahunAkademikId = $trial->id_tahunakademik;
+
+        // Hapus jadwal lama untuk tahun akademik ini dulu
+        \App\Models\Jadwal::where('id_tahunakademik', $tahunAkademikId)->delete();
+
+        foreach ($jadwals as $row) {
+            \App\Models\Jadwal::create([
+                'id_kelas'         => $row['kelas_id'],
+                'kode_matkul'      => $row['kode_mk'],
+                'id_dosen'         => $row['dosen_id'] ?: null,
+                'id_hari'          => $row['hari_id'],
+                'id_slot_mulai'    => $row['slot_id'],
+                'id_ruang'         => $row['ruangan_id'] ?: null,
+                'durasi_sks'       => $row['sks'],
+                'id_tahunakademik' => $tahunAkademikId,
+                'is_manual'        => 0,
+            ]);
+        }
+
+        return redirect()
+            ->route('jadwal.manual', ['tahun' => $tahunAkademikId])
+            ->with('success', "Jadwal dari uji coba '{$trial->label}' berhasil diterapkan ke workspace!");
+    }
+
+    // ── Hapus data Uji Coba (Trial Run) ────
+    public function deleteTrial(Request $request, $id)
+    {
+        $trial = JadwalTrial::findOrFail($id);
+        $tahunAkademikId = $trial->id_tahunakademik;
+        $trial->delete();
+
+        return redirect()
+            ->route('jadwal.otomatis.compare_trials', ['tahun_akademik_id' => $tahunAkademikId])
+            ->with('success', 'Uji coba berhasil dihapus!');
+    }
+
         public function stream(Request $request)
     {
         $request->validate([
@@ -192,14 +316,30 @@ class JadwalOtomatisController extends Controller
         $user = auth()->user();
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
-        $kelasQuery = Kelas::with(['matakuliah.ruangans', 'dosen', 'prodi'])
+        $pengampuKelasQuery = PengampuKelas::with([
+                'kelas.matakuliah.ruangans',
+                'kelas.prodi',
+                'dosen',
+            ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $kelasQuery->where('id_prodi', $prodiId);
+            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
+                $q->where('id_prodi', $prodiId);
+            });
         }
 
-        $kelas = $kelasQuery->get();
+        $pengampus = $pengampuKelasQuery->get();
+
+        // Transformasikan pengampu_kelas menjadi koleksi Kelas
+        $kelas = $pengampus->map(function ($pk) {
+            $k = $pk->kelas;
+            if ($k) {
+                $k->setRelation('pengampus', collect([$pk]));
+                $k->setRelation('pengampuMatkul', collect([$pk]));
+            }
+            return $k;
+        })->filter()->values();
 
         $slots = Slot_waktu::orderBy('id_slot')->get()
             ->map(fn($s) => [
@@ -223,7 +363,9 @@ class JadwalOtomatisController extends Controller
         );
         $scheduler->setTimeLimit((float) $timeLimitSek);
 
-        return response()->stream(function () use ($scheduler, $kelas, $slots, $tahunAkademikId, $timeLimitSek) {
+        $ruangansAll = \App\Models\Ruangan::all()->keyBy('id_ruang');
+
+        return response()->stream(function () use ($scheduler, $kelas, $slots, $tahunAkademikId, $timeLimitSek, $ruangansAll) {
             // Set PHP execution limit = timeLimit + 60 detik buffer
             set_time_limit($timeLimitSek + 60);
 
@@ -235,7 +377,7 @@ class JadwalOtomatisController extends Controller
             };
 
             // Fungsi build jadwalRows dari hasil genes — dipakai di beberapa titik
-            $buildJadwalRows = function (array $genes) use ($kelas, $slots) {
+            $buildJadwalRows = function (array $genes) use ($kelas, $slots, $ruangansAll) {
                 $hariNama  = [1=>'Senin',2=>'Selasa',3=>'Rabu',4=>'Kamis',5=>'Jumat'];
                 $slotMap   = collect($slots)->keyBy('id');
                 $kelasMap  = $kelas->keyBy('id_kelas');
@@ -247,11 +389,8 @@ class JadwalOtomatisController extends Controller
                     $idSlotAkhir = $gene->slotMulai + $gene->durasi - 1;
                     $slotAkhir   = $slotMap[$idSlotAkhir] ?? null;
 
-                    // Guard untuk matakuliah null
-                    $ruangan = null;
-                    if ($k->matakuliah && isset($k->matakuliah->ruangans)) {
-                        $ruangan = $k->matakuliah->ruangans->firstWhere('id_ruang', $gene->ruangId);
-                    }
+                    $ruangan = $ruangansAll[$gene->ruangId] ?? null;
+
                     $rows[] = [
                         'kelas_id'    => $gene->kelasId,
                         'nama_kelas'  => $k->nama_kelas,
@@ -259,8 +398,8 @@ class JadwalOtomatisController extends Controller
                         'nama_mk'     => $k->matakuliah->nama_matkul ?? '-',
                         'jenis'       => $k->matakuliah->jenis       ?? 'Teori',
                         'sks'         => $gene->durasi,
-                        'dosen'       => $k->dosen->nama_dosen       ?? '-',
-                        'prodi'       => $k->prodi->nama_prodi       ?? '-',
+                        'dosen'       => $k->pengampuMatkul->first()?->dosen?->nama_dosen ?? '-',
+                        'prodi'       => $k->prodi->nama_prodi ?? '-',
                         'semester'    => $k->semester,
                         'hari'        => $hariNama[$gene->hariId]    ?? '-',
                         'hari_id'     => $gene->hariId,
@@ -269,6 +408,7 @@ class JadwalOtomatisController extends Controller
                         'jam_selesai' => $slotAkhir ? \Carbon\Carbon::parse($slotAkhir['waktu_selesai'])->format('H:i') : '-',
                         'ruangan'     => $ruangan?->nama_ruang ?? '-',
                         'ruangan_id'  => $gene->ruangId,
+                        'tipe_ruangan'=> $ruangan?->tipe_ruangan ?? 'Reguler',
                         'dosen_id'    => $gene->dosenId,
                     ];
                 }
@@ -312,6 +452,7 @@ class JadwalOtomatisController extends Controller
                                     'ruangan_conflicts' => $progress['ruangan_konflik'] ?? 0,
                                     'soft_violations'   => $progress['soft_violations'] ?? 0,
                                     'problem_log'       => $bestNow['problem_log']      ?? [],
+                                    'diagnosa'          => $this->diagnoseConflicts($rows),
                                 ]);
                             }
                         }
@@ -337,6 +478,7 @@ class JadwalOtomatisController extends Controller
                     'ruangan_conflicts' => $hasil['ruangan_conflicts']     ?? 0,
                     'soft_violations'   => $hasil['constraint_violations'] ?? 0,
                     'problem_log'       => $hasil['problem_log']           ?? [],
+                    'diagnosa'          => $this->diagnoseConflicts($jadwalRows),
                 ]);
 
             } catch (\Throwable $e) {
@@ -358,6 +500,7 @@ class JadwalOtomatisController extends Controller
                         'total_kelas'  => count($hasilInterim['genes']),
                         'jadwal_rows'  => $rows,
                         'error'        => $e->getMessage(),
+                        'diagnosa'     => $this->diagnoseConflicts($rows),
                     ]);
                 } else {
                     // Tidak ada hasil sama sekali — kirim error event
@@ -370,6 +513,7 @@ class JadwalOtomatisController extends Controller
                         'generasi'     => 0,
                         'total_kelas'  => 0,
                         'jadwal_rows'  => [],
+                        'diagnosa'     => [],
                     ]);
                 }
             }
@@ -378,6 +522,331 @@ class JadwalOtomatisController extends Controller
             'Cache-Control'     => 'no-cache',
             'X-Accel-Buffering' => 'no',
         ]);
+    }
+
+    public function audit(Request $request)
+    {
+        $request->validate([
+            'tahun_akademik_id' => 'required|exists:tahun_akademik,id_tahunakademik',
+        ]);
+
+        $tahunAkademikId = $request->tahun_akademik_id;
+        $user = auth()->user();
+        $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
+
+        $pengampuKelasQuery = PengampuKelas::with([
+                'kelas.matakuliah.ruangans',
+                'kelas.prodi',
+                'dosen',
+            ])
+            ->where('id_tahunakademik', $tahunAkademikId);
+
+        if ($prodiId) {
+            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
+                $q->where('id_prodi', $prodiId);
+            });
+        }
+
+        $pengampus = $pengampuKelasQuery->get();
+
+        // Transformasikan pengampu_kelas menjadi koleksi Kelas
+        $kelas = $pengampus->map(function ($pk) {
+            $k = $pk->kelas;
+            if ($k) {
+                $k->setRelation('pengampus', collect([$pk]));
+                $k->setRelation('pengampuMatkul', collect([$pk]));
+            }
+            return $k;
+        })->filter()->values();
+
+        if ($kelas->isEmpty()) {
+            return response()->json([
+                'feasible' => false,
+                'issues' => [
+                    ['type' => 'fatal', 'message' => 'Tidak ada data kelas dengan dosen pengampu untuk tahun akademik ini.']
+                ]
+            ]);
+        }
+
+        $slots = Slot_waktu::orderBy('id_slot')->get()
+            ->map(fn($s) => [
+                'id'            => $s->id_slot,
+                'waktu_mulai'   => $s->waktu_mulai,
+                'waktu_selesai' => $s->waktu_selesai,
+            ])->all();
+
+        $hariList = [1, 2, 3, 4, 5];
+
+        $issues = $this->runFeasibilityAudit($kelas, $slots, $hariList);
+
+        $hasFatal = collect($issues)->contains('type', 'fatal');
+
+        return response()->json([
+            'feasible' => !$hasFatal,
+            'issues' => $issues
+        ]);
+    }
+
+    private function runFeasibilityAudit($kelas, array $slots, array $hariList): array
+    {
+        $issues = [];
+
+        // 1. Ambil data ruang unik dari kelas yang dijadwalkan
+        $ruanganList = [];
+        foreach ($kelas as $k) {
+            $mk = $k->matakuliah ?? null;
+            if (!$mk) continue;
+            foreach ($mk->ruangans ?? [] as $r) {
+                $ruanganList[$r->id_ruang] = $r;
+            }
+        }
+
+        // Jika tidak ada ruangan sama sekali di pivot, ambil fallback dari tabel Ruangan langsung
+        if (empty($ruanganList)) {
+            $ruanganList = \App\Models\Ruangan::all()->keyBy('id_ruang')->all();
+        }
+
+        $totalRuangan = count($ruanganList);
+        if ($totalRuangan === 0) {
+            $issues[] = [
+                'type' => 'fatal',
+                'message' => 'Tidak ada data ruangan kelas yang tersedia dalam sistem.'
+            ];
+            return $issues;
+        }
+
+        // 2. Hitung total kapasitas slot ruangan dalam seminggu
+        $maxSlots = Slot_waktu::max('id_slot') ?: 14;
+        $slotsPerWeek = count($hariList) * $maxSlots - 1; // jumat slot 6 dikecualikan
+        $totalAvailableCapacity = $slotsPerWeek * $totalRuangan;
+
+        // 3. Hitung total kebutuhan SKS dan detail dosen/praktikum
+        $totalSks = 0;
+        $totalLabSks = 0;
+        $dosenSks = [];
+        $dosenNames = [];
+        $kelasDosenKosong = [];
+        $kelasTanpaRuang = [];
+
+        foreach ($kelas as $k) {
+            $mk = $k->matakuliah ?? null;
+            if (!$mk) continue;
+
+            $sks = (int) ($mk->sks ?? 0);
+            $totalSks += $sks;
+
+            if (strtolower(trim($mk->jenis ?? '')) === 'praktikum') {
+                $totalLabSks += $sks;
+            }
+
+            // Dosen — ambil dari relasi pengampuMatkul (kolom id_dosen di tabel kelas sudah dihapus)
+            $pengampu = $k->pengampuMatkul->first();
+            $dId = $pengampu?->id_dosen ?? 0;
+            $dName = $pengampu?->dosen?->nama_dosen ?? null;
+            if (!$dId) {
+                $kelasDosenKosong[] = $k->nama_kelas . ' (' . ($mk->nama_matakuliah ?? '-') . ')';
+            } else {
+                $dosenSks[$dId] = ($dosenSks[$dId] ?? 0) + $sks;
+                $dosenNames[$dId] = $dName ?: 'Dosen ID: ' . $dId;
+            }
+
+            // Cek ruangan options
+            $ruangOptions = $mk->ruangans ? $mk->ruangans->pluck('id_ruang')->toArray() : [];
+            if (empty($ruangOptions)) {
+                // cek fallback global
+                $hasFallback = false;
+                $kap = (int) ($k->kapasitas ?? 0);
+                foreach ($ruanganList as $r) {
+                    if (($r->kapasitas ?? 0) >= $kap) {
+                        $hasFallback = true;
+                        break;
+                    }
+                }
+                if (!$hasFallback) {
+                    $kelasTanpaRuang[] = $k->nama_kelas . ' (' . ($mk->nama_matakuliah ?? '-') . ')';
+                }
+            }
+        }
+
+        // A. Total kapasitas ruangan vs total SKS (HC2)
+        if ($totalSks > $totalAvailableCapacity) {
+            $issues[] = [
+                'type' => 'fatal',
+                'message' => "Kapasitas ruangan tidak mencukupi! Total kebutuhan adalah $totalSks SKS, namun total slot semua ruangan hanya $totalAvailableCapacity SKS per minggu."
+            ];
+        }
+
+        // B. Kapasitas Lab vs SKS Praktikum (HC13)
+        $totalLabRuangan = collect($ruanganList)->filter(fn($r) => strtolower(trim($r->tipe_ruangan ?? '')) === 'lab')->count();
+        $totalLabAvailableCapacity = $slotsPerWeek * $totalLabRuangan;
+        if ($totalLabSks > $totalLabAvailableCapacity) {
+            $issues[] = [
+                'type' => 'fatal',
+                'message' => "Kapasitas Lab tidak mencukupi! Total SKS Praktikum adalah $totalLabSks SKS, namun total slot Lab yang tersedia hanya $totalLabAvailableCapacity SKS per minggu (Jumlah Lab: $totalLabRuangan)."
+            ];
+        }
+
+        // C. Dosen Overload (HC14)
+        foreach ($dosenSks as $dId => $sks) {
+            $dName = $dosenNames[$dId];
+            if ($sks > 40) {
+                $issues[] = [
+                    'type' => 'fatal',
+                    'message' => "Dosen '$dName' ditugaskan mengajar $sks SKS dalam seminggu. Secara matematis mustahil dijadwalkan karena batas maksimal mengajar dosen adalah 40 SKS per minggu (maks 8 SKS/hari)."
+                ];
+            } elseif ($sks > 30) {
+                $issues[] = [
+                    'type' => 'warning',
+                    'message' => "Dosen '$dName' memiliki beban mengajar sangat tinggi ($sks SKS). Algoritma mungkin akan kesulitan mencarikan slot kosong bebas bentrok."
+                ];
+            }
+        }
+
+        // D. Kelas Dosen Kosong (HC6)
+        if (!empty($kelasDosenKosong)) {
+            $count = count($kelasDosenKosong);
+            $list = implode(', ', array_slice($kelasDosenKosong, 0, 3));
+            if ($count > 3) $list .= '... dan ' . ($count - 3) . ' kelas lainnya';
+            $issues[] = [
+                'type' => 'warning',
+                'message' => "Terdapat $count kelas yang belum memiliki dosen pengampu (misal: $list). Kelas-kelas ini akan masuk dalam daftar bentrok sisa."
+            ];
+        }
+
+        // E. Kelas Tanpa Ruang Valid (HC10)
+        if (!empty($kelasTanpaRuang)) {
+            $count = count($kelasTanpaRuang);
+            $list = implode(', ', array_slice($kelasTanpaRuang, 0, 3));
+            if ($count > 3) $list .= '... dan ' . ($count - 3) . ' kelas lainnya';
+            $issues[] = [
+                'type' => 'warning',
+                'message' => "Terdapat $count kelas yang matakuliahnya tidak terhubung ke ruangan valid mana pun dan kapasitasnya tidak muat di ruangan global (misal: $list)."
+            ];
+        }
+
+        return $issues;
+    }
+
+    private function diagnoseConflicts(array $jadwalRows): array
+    {
+        $diagnoses = [];
+        $n = count($jadwalRows);
+
+        // 1. Dosen Bentrok & Ruangan Bentrok
+        $dosenBentrokPairs = [];
+        $ruangBentrokPairs = [];
+
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                $rowA = $jadwalRows[$i];
+                $rowB = $jadwalRows[$j];
+
+                // Cek overlap hari
+                if ($rowA['hari_id'] !== $rowB['hari_id']) {
+                    continue;
+                }
+
+                // Cek overlap waktu
+                $startA = (int) $rowA['slot_id'];
+                $endA = $startA + (int) $rowA['sks'] - 1;
+                $startB = (int) $rowB['slot_id'];
+                $endB = $startB + (int) $rowB['sks'] - 1;
+
+                if ($startA <= $endB && $startB <= $endA) {
+                    // Overlap!
+                    // A. Dosen Bentrok
+                    if ($rowA['dosen_id'] > 0 && $rowA['dosen_id'] === $rowB['dosen_id']) {
+                        $pairKey = min($rowA['kelas_id'], $rowB['kelas_id']) . '-' . max($rowA['kelas_id'], $rowB['kelas_id']);
+                        if (!isset($dosenBentrokPairs[$pairKey])) {
+                            $dosenBentrokPairs[$pairKey] = true;
+                            $diagnoses[] = "Dosen '{$rowA['dosen']}' bentrok mengajar pada hari {$rowA['hari']} di jam {$rowA['jam_mulai']}-{$rowA['jam_selesai']} (Kelas {$rowA['nama_kelas']}, {$rowA['nama_mk']}) dan jam {$rowB['jam_mulai']}-{$rowB['jam_selesai']} (Kelas {$rowB['nama_kelas']}, {$rowB['nama_mk']}).";
+                        }
+                    }
+
+                    // B. Ruangan Bentrok
+                    if ($rowA['ruangan_id'] > 0 && $rowA['ruangan_id'] === $rowB['ruangan_id']) {
+                        $pairKey = min($rowA['kelas_id'], $rowB['kelas_id']) . '-' . max($rowA['kelas_id'], $rowB['kelas_id']);
+                        if (!isset($ruangBentrokPairs[$pairKey])) {
+                            $ruangBentrokPairs[$pairKey] = true;
+                            $diagnoses[] = "Ruangan '{$rowA['ruangan']}' bentrok digunakan pada hari {$rowA['hari']} di jam {$rowA['jam_mulai']}-{$rowA['jam_selesai']} (Kelas {$rowA['nama_kelas']}, {$rowA['nama_mk']}) dan jam {$rowB['jam_mulai']}-{$rowB['jam_selesai']} (Kelas {$rowB['nama_kelas']}, {$rowB['nama_mk']}).";
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Dosen Overload Harian (> 8 SKS/hari)
+        $dosenDaySks = []; // [dosen_id][hari] = SKS
+        $dosenNames = [];
+        $hariNames = [];
+        foreach ($jadwalRows as $row) {
+            $did = $row['dosen_id'];
+            $hariId = $row['hari_id'];
+            if ($did > 0) {
+                $dosenDaySks[$did][$hariId] = ($dosenDaySks[$did][$hariId] ?? 0) + $row['sks'];
+                $dosenNames[$did] = $row['dosen'];
+                $hariNames[$hariId] = $row['hari'];
+            }
+        }
+        foreach ($dosenDaySks as $did => $hariSks) {
+            foreach ($hariSks as $hariId => $sks) {
+                if ($sks > 8) {
+                    $dName = $dosenNames[$did];
+                    $hName = $hariNames[$hariId] ?? "Hari $hariId";
+                    $diagnoses[] = "Dosen '{$dName}' memiliki beban mengajar melebihi batas pada hari {$hName} yaitu {$sks} SKS (maksimal 8 SKS per hari).";
+                }
+            }
+        }
+
+        // 3. Sholat Jumat Bentrok (hari 5, slot 6)
+        foreach ($jadwalRows as $row) {
+            if ($row['hari_id'] === 5) {
+                $start = (int) $row['slot_id'];
+                $end = $start + (int) $row['sks'] - 1;
+                if ($start <= 6 && $end >= 6) {
+                    $diagnoses[] = "Kelas '{$row['nama_kelas']}' ({$row['nama_mk']}) melanggar jam Sholat Jumat (menempati slot jam 12:00 pada hari Jumat).";
+                }
+            }
+        }
+
+        // 4. Kelas Sore/Reguler Salah Slot
+        foreach ($jadwalRows as $row) {
+            $namaNorm = strtolower(trim($row['nama_kelas']));
+            $isKelasS = (bool) preg_match('/-\d*s[i\d]*$/i', $namaNorm)
+                || (bool) preg_match('/\bsore\b|\bmalam\b/', $namaNorm);
+
+            $start = (int) $row['slot_id'];
+            $end = $start + (int) $row['sks'] - 1;
+
+            if ($isKelasS) {
+                if ($start < 12) {
+                    $diagnoses[] = "Kelas Sore/Malam '{$row['nama_kelas']}' ({$row['nama_mk']}) dijadwalkan terlalu pagi di jam {$row['jam_mulai']} (seharusnya mulai slot sore/malam, minimal slot 12).";
+                }
+            } else {
+                if ($end >= 12) {
+                    $diagnoses[] = "Kelas Reguler '{$row['nama_kelas']}' ({$row['nama_mk']}) menjangkau jam sore/malam di jam {$row['jam_selesai']} (seharusnya selesai sebelum slot 12).";
+                }
+            }
+        }
+
+        // 5. Tipe Ruangan Mismatch
+        foreach ($jadwalRows as $row) {
+            $jenis = strtolower(trim($row['jenis']));
+            $tipe = strtolower(trim($row['tipe_ruangan'] ?? ''));
+            $ruanganName = $row['ruangan'];
+
+            if ($jenis === 'praktikum') {
+                if (!in_array($tipe, ['lab', 'hybrid'], true)) {
+                    $diagnoses[] = "Mata kuliah Praktikum '{$row['nama_mk']}' (Kelas {$row['nama_kelas']}) dijadwalkan di ruangan tipe '" . ($row['tipe_ruangan'] ?? 'Reguler') . "' yaitu '{$ruanganName}' (seharusnya di Lab atau Hybrid).";
+                }
+            } else if ($jenis === 'teori') {
+                if ($tipe === 'lab') {
+                    $diagnoses[] = "Mata kuliah Teori '{$row['nama_mk']}' (Kelas {$row['nama_kelas']}) dijadwalkan di ruangan Lab '{$ruanganName}' (seharusnya di ruangan Reguler atau Hybrid).";
+                }
+            }
+        }
+
+        return $diagnoses;
     }
 
 }

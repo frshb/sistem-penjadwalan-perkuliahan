@@ -330,10 +330,10 @@
     <div class="flex items-center justify-between" x-show="!focusMode" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-2">
         <div>
             <div class="flex items-center gap-3">
-                <div class="flex flex-col">
+                <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
                     <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
                     <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                </div>
+                </button>
                 <h1 class="text-3xl font-bold text-gray-800">Penjadwalan Manual</h1>
             </div>
             <div class="flex items-center gap-2 text-sm text-gray-500 mt-2">
@@ -530,7 +530,7 @@
             x-transition:leave="transition ease-in duration-250"
             x-transition:leave-start="opacity-100 translate-x-0"
             x-transition:leave-end="opacity-0 -translate-x-10"
-            class="col-span-12 xl:col-span-3 min-h-0 flex relative z-30"
+            class="col-span-12 lg:col-span-3 min-h-0 flex relative z-10"
         >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col w-full overflow-visible">
 
@@ -671,7 +671,7 @@
 
         {{-- WORKSPACE --}}
         <div
-            :class="classSidebarOpen ? 'xl:col-span-9' : 'xl:col-span-12'"
+            :class="classSidebarOpen ? 'lg:col-span-9' : 'lg:col-span-12'"
             class="col-span-12 flex flex-col lg:flex-row gap-4 min-h-0 transition-all duration-300 relative z-10"
         >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 w-full flex flex-col overflow-hidden">
@@ -1260,7 +1260,7 @@ async function simpanJadwal(card) {
     try {
         const results = await Promise.all(kelasIdList.map(kelasId => {
             const sidebarEl = document.querySelector(`.kelas-item[data-id="${kelasId}"]`);
-            return fetch('{{ route("jadwal.simpan-slot") }}', {
+            return fetch('{{ route("jadwal.simpan-slot", [], false) }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
                 body: JSON.stringify({
@@ -1607,7 +1607,24 @@ function renderTablePreview() {
     const days  = ['senin', 'selasa', 'rabu', 'kamis', 'jumat'];
     const cards = [...document.querySelectorAll('.jadwal-card')].sort((a, b) => {
         const dDiff = days.indexOf(a.dataset.day) - days.indexOf(b.dataset.day);
-        return dDiff || parseInt(a.dataset.start) - parseInt(b.dataset.start);
+        if (dDiff !== 0) return dDiff;
+
+        const nameA = (a.dataset.nama || '').toLowerCase();
+        const nameB = (b.dataset.nama || '').toLowerCase();
+        const nDiff = nameA.localeCompare(nameB, 'id');
+        if (nDiff !== 0) return nDiff;
+
+        const dosenA = (a.dataset.dosen || '').toLowerCase();
+        const dosenB = (b.dataset.dosen || '').toLowerCase();
+        const doDiff = dosenA.localeCompare(dosenB, 'id');
+        if (doDiff !== 0) return doDiff;
+
+        const kelasA = (a.dataset.kelas || '').toLowerCase();
+        const kelasB = (b.dataset.kelas || '').toLowerCase();
+        const kDiff = kelasA.localeCompare(kelasB, 'id');
+        if (kDiff !== 0) return kDiff;
+
+        return parseInt(a.dataset.start) - parseInt(b.dataset.start);
     });
     if (!cards.length) {
         tbody.innerHTML = `<tr><td colspan="13" class="px-4 py-6 text-center text-gray-400">Belum ada jadwal yang disusun.</td></tr>`;

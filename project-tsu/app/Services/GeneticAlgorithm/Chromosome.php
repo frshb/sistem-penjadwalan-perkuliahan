@@ -109,6 +109,7 @@ class Chromosome
     // ── Fitness cache ─────────────────────────────────────────────────
     private bool   $fitnessIsDirty = true;
     private string $genesHash      = '';
+    private float  $lastProgress   = -1.0;
 
     public function __construct(array $genes = [])
     {
@@ -157,7 +158,7 @@ class Chromosome
     // Fitness Calculation
     // ────────────────────────────────────────────────────────────────────
 
-    public function calculateFitness(): void
+    public function calculateFitness(float $generationProgress = 1.0): void
     {
         $n = count($this->genes);
         if ($n === 0) {
@@ -167,12 +168,13 @@ class Chromosome
             return;
         }
 
-        // Cache check
+        // Cache check - pastikan re-kalkulasi jika progress generasi berubah
         $hash = $this->buildGenesHash();
-        if (!$this->fitnessIsDirty && $hash === $this->genesHash) {
+        if (!$this->fitnessIsDirty && $hash === $this->genesHash && abs($this->lastProgress - $generationProgress) < 0.001) {
             return;
         }
-        $this->genesHash = $hash;
+        $this->genesHash    = $hash;
+        $this->lastProgress = $generationProgress;
 
         // ── HC1/HC2: Konflik antar-gene — O(n) via slot index ────────────────
         //
@@ -490,7 +492,10 @@ class Chromosome
         // Formula: fitness = Max / (1 + Penalty)
         // Ini memastikan kurva gradien tetap ada bahkan untuk kromosom terburuk.
         $hardPenaltyPerGene = $hardPenalty / $n;
-        $softPenaltyPerGene = $softPenalty / $n;
+        
+        // Self-Adaptive Penalty: SC dinonaktifkan di awal, aktif bertahap hingga generasi 50%
+        $softScale = min(1.0, $this->lastProgress * 2.0);
+        $softPenaltyPerGene = ($softPenalty / $n) * $softScale;
 
         // Hard dan soft dikombinasi dengan bobot berbeda
         // Hard mendominasi; soft hanya berperan setelah hard = 0

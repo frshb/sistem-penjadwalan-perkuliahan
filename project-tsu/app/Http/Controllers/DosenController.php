@@ -23,24 +23,13 @@ class DosenController extends Controller
         $prodiId     = ProdiFilter::getProdiId();
         $searchTerm  = $request->search;
 
-        $query = Dosen::with(['prodi', 'mataKuliahs']);
+        $query = Dosen::with(['prodi']);
 
-        // ✅ Filter by prodi (otomatis untuk kaprodi/dosen, tampilkan juga dosen eksternal)
         if ($prodiId) {
             $query->whereIn('id_prodi', [$prodiId, 99]);
         }
 
-        // Filter manual by prodi (hanya untuk admin/dekan yang bisa pilih)
-        if (!$prodiId && $request->filled('prodi')) {
-            $query->where('id_prodi', $request->prodi);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $query->where('nama_dosen', 'like', '%' . $searchTerm . '%');
-        }
-
-        $dosens = $query->paginate(10)->appends($request->query())->onEachSide(1);
+        $dosens = $query->orderBy('nama_dosen')->get();
 
         // Dropdown data — dibatasi sesuai prodi jika kaprodi/dosen (tambahkan pilihan Dosen Eksternal)
         $prodis      = $prodiId ? Prodi::whereIn('id_prodi', [$prodiId, 99])->get()
