@@ -198,6 +198,11 @@ class Gene
             return 2;
         }
 
+        // HC-New: konflik mahasiswa (kelas dengan nama_kelas sama tidak boleh overlap jadwal)
+        if ($this->namaKelas !== '' && $this->namaKelas === $other->namaKelas) {
+            return 3;
+        }
+
         return 0;
     }
 

@@ -79,6 +79,15 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/settings/kurikulum/tahun/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'destroyTahunAkademik'])->name('kurikulum.destroyTahun');
         Route::put('/settings/kurikulum/master/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'updateKurikulum'])->name('kurikulum.updateKurikulum');
         Route::delete('/settings/kurikulum/master/{id}', [\App\Http\Controllers\PortalKurikulumController::class, 'destroyKurikulum'])->name('kurikulum.destroyKurikulum');
+
+        // Manajemen Hari & Slot Waktu
+        Route::get('/settings/waktu', [\App\Http\Controllers\WaktuController::class, 'index'])->name('settings.waktu.index');
+        Route::post('/settings/waktu/hari', [\App\Http\Controllers\WaktuController::class, 'storeHari'])->name('settings.hari.store');
+        Route::put('/settings/waktu/hari/{id}', [\App\Http\Controllers\WaktuController::class, 'updateHari'])->name('settings.hari.update');
+        Route::delete('/settings/waktu/hari/{id}', [\App\Http\Controllers\WaktuController::class, 'destroyHari'])->name('settings.hari.destroy');
+        Route::post('/settings/waktu/slot', [\App\Http\Controllers\WaktuController::class, 'storeSlot'])->name('settings.slot.store');
+        Route::put('/settings/waktu/slot/{id}', [\App\Http\Controllers\WaktuController::class, 'updateSlot'])->name('settings.slot.update');
+        Route::delete('/settings/waktu/slot/{id}', [\App\Http\Controllers\WaktuController::class, 'destroySlot'])->name('settings.slot.destroy');
     });
 
     // KP & Skripsi

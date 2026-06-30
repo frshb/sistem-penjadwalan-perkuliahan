@@ -105,7 +105,7 @@
             <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl mt-6 border border-gray-100">
 
                 <!-- Header Row: Title & Action Buttons -->
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-gray-100 gap-4 mb-6">
+                <div class="flex flex-row justify-between items-center pb-6 border-b border-gray-100 gap-4 mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-teal-800">
                             Mata Kuliah
@@ -114,7 +114,7 @@
                             Kelola dan filter seluruh daftar mata kuliah program studi dan kurikulum.
                         </p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-3 shrink-0 whitespace-nowrap">
                         <!-- Tombol Aksi Export -->
                         <div class="relative" @click.away="showExportMenu = false">
                             <button @click="showExportMenu = !showExportMenu" class="inline-flex items-center px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 text-sm h-10">
@@ -123,12 +123,6 @@
                                 </svg>
                                 Export
                                 <svg class="w-3.5 h-3.5 ml-1.5 transition-transform duration-200" :class="showExportMenu ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <button @click="showAddModal = true" class="inline-flex items-center px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75 text-sm h-10">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
-                            Tambah Matkul
                             </button>
                             <div x-show="showExportMenu" 
                                  x-transition:enter="transition ease-out duration-100"
@@ -149,6 +143,12 @@
                                 </a>
                             </div>
                         </div>
+                        <button @click="showAddModal = true" class="inline-flex items-center px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75 text-sm h-10">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Tambah Matkul
+                        </button>
                     </div>
                 </div>
 

@@ -530,7 +530,7 @@
             x-transition:leave="transition ease-in duration-250"
             x-transition:leave-start="opacity-100 translate-x-0"
             x-transition:leave-end="opacity-0 -translate-x-10"
-            class="col-span-12 lg:col-span-3 min-h-0 flex relative z-10"
+            class="col-span-12 xl:col-span-3 min-h-0 flex relative z-10"
         >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col w-full overflow-visible">
 
@@ -671,20 +671,20 @@
 
         {{-- WORKSPACE --}}
         <div
-            :class="classSidebarOpen ? 'lg:col-span-9' : 'lg:col-span-12'"
-            class="col-span-12 flex flex-col lg:flex-row gap-4 min-h-0 transition-all duration-300 relative z-10"
+            :class="classSidebarOpen ? 'xl:col-span-9' : 'xl:col-span-12'"
+            class="col-span-12 flex flex-col xl:flex-row gap-4 min-h-0 transition-all duration-300 relative z-10"
         >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 w-full flex flex-col overflow-hidden">
 
                 <div class="p-5 border-b border-gray-100">
                     <div class="flex items-center justify-between">
                         <h2 class="text-lg font-bold text-gray-800">Workspace Jadwal</h2>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
                             @foreach (['senin', 'selasa', 'rabu', 'kamis', 'jumat'] as $hari)
                             <button
                                 @click="selectedDay = '{{ $hari }}'; filterCardsByDay('{{ $hari }}')"
                                 :class="selectedDay === '{{ $hari }}' ? 'bg-teal-600 text-white' : 'border border-gray-200 hover:bg-gray-50 text-gray-700'"
-                                class="px-6 py-2 rounded-xl font-semibold transition capitalize"
+                                class="px-3 sm:px-6 py-1.5 sm:py-2 rounded-xl font-semibold transition capitalize whitespace-nowrap text-xs sm:text-sm"
                             >{{ $hari }}</button>
                             @endforeach
                         </div>
@@ -693,7 +693,7 @@
 
                 <div class="relative flex-1 overflow-auto">
                     @foreach ($slotWaktu as $slot)
-                    <div class="grid grid-cols-12 border-b border-gray-200 h-[120px]
+                    <div class="grid grid-cols-12 border-b border-gray-200 h-[140px]
                     {{ $loop->iteration === 6 ? 'bg-amber-50 border-l-4 border-l-amber-400' : '' }}">
                         <div class="col-span-2 sticky left-0 border-r border-gray-200 px-3 py-3 flex flex-col justify-start z-20 shadow-[2px_0_5px_rgba(0,0,0,0.03)]
                             {{ $loop->iteration === 6 ? 'bg-amber-50' : 'bg-white' }}">
@@ -923,7 +923,7 @@
 // ============================================================
 // KONSTANTA & STATE GLOBAL
 // ============================================================
-const SLOT_HEIGHT    = 120;
+const SLOT_HEIGHT    = 140;
 const CARD_WIDTH     = 185;
 const CARD_GAP       = 12;
 const CSRF_TOKEN     = document.querySelector('meta[name="csrf-token"]').content;
@@ -1043,7 +1043,7 @@ function _restoreWorkspace(snapshot) {
         if (kelasList.length > 1) {
             c.dataset.kelasList   = s.kelasList;
             c.dataset.kelasIdList = s.kelasIdList;
-            const color = getCourseColor(s.nama);
+            const color = getCourseColor(s.kelas);
             c.innerHTML = `
                 <div>
                     <div class="flex items-start justify-between">
@@ -1244,8 +1244,16 @@ function getCourseColor(name) {
         { bg: 'bg-pink-100',   border: 'border-pink-400',   text: 'text-pink-800',   badge: 'bg-pink-200 text-pink-800' },
         { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-800', badge: 'bg-yellow-200 text-yellow-800' },
         { bg: 'bg-indigo-100', border: 'border-indigo-400', text: 'text-indigo-800', badge: 'bg-indigo-200 text-indigo-800' },
+        { bg: 'bg-red-100',    border: 'border-red-400',    text: 'text-red-800',    badge: 'bg-red-200 text-red-800' },
+        { bg: 'bg-orange-100', border: 'border-orange-400', text: 'text-orange-800', badge: 'bg-orange-200 text-orange-800' },
+        { bg: 'bg-teal-100',   border: 'border-teal-400',   text: 'text-teal-800',   badge: 'bg-teal-200 text-teal-800' },
+        { bg: 'bg-cyan-100',   border: 'border-cyan-400',   text: 'text-cyan-800',   badge: 'bg-cyan-200 text-cyan-800' },
+        { bg: 'bg-emerald-100',border: 'border-emerald-400',text: 'text-emerald-800',badge: 'bg-emerald-200 text-emerald-800' },
+        { bg: 'bg-rose-100',   border: 'border-rose-400',   text: 'text-rose-800',   badge: 'bg-rose-200 text-rose-800' },
+        { bg: 'bg-fuchsia-100',border: 'border-fuchsia-400',text: 'text-fuchsia-800',badge: 'bg-fuchsia-200 text-fuchsia-800' },
     ];
     let hash = 0;
+    if (!name) name = 'Default';
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return colors[Math.abs(hash % colors.length)];
 }
@@ -1681,7 +1689,7 @@ function renderTablePreview() {
 function createCard(data, skipSave = false) {
     const { sks, nama, kelas, kelasId, dosen, kodeMk, ruangan, ruanganId,
             slotId, day, jamMulai, jamSelesai, jadwalIds, prodi, jenis } = data;
-    const color = getCourseColor(nama);
+    const color = getCourseColor(kelas);
 
     const sameDay = [...document.querySelectorAll('.jadwal-card')].filter(c => c.dataset.day === day);
     let column = 0;

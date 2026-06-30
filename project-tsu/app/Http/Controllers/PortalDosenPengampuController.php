@@ -86,9 +86,9 @@ class PortalDosenPengampuController extends Controller
             $pengampuQuery->whereHas('kelas', function($q) use ($search) {
                 $q->where(function($sq) use ($search) {
                     $sq->where('nama_kelas', 'like', "%{$search}%")
-                      ->orWhere('kode_matkul', 'like', "%{$search}%")
                       ->orWhereHas('matakuliah', function($mq) use ($search) {
-                          $mq->where('nama_matkul', 'like', "%{$search}%");
+                          $mq->where('nama_matkul', 'like', "%{$search}%")
+                             ->orWhere('kode_matkul', 'like', "%{$search}%");
                       });
                 });
             });
@@ -98,7 +98,8 @@ class PortalDosenPengampuController extends Controller
         // Dosen Query (Prodi restricted if Kaprodi, sembunyikan dosen eksternal id_prodi = 99)
         $dosenQuery = Dosen::with(['prodi'])
             ->where(function($q) {
-                $q->where('id_prodi', '!=', 99)
+                // Tampilkan dosen eksternal fakultas (99) atau null
+                $q->where('id_prodi', '!=', 0) // Dummy condition untuk jaga struktur orWhereNull
                   ->orWhereNull('id_prodi');
             })
             ->orderBy('nama_dosen');
@@ -134,19 +135,21 @@ class PortalDosenPengampuController extends Controller
         if ($search) {
             $kelasQuery->where(function($q) use ($search) {
                 $q->where('nama_kelas', 'like', "%{$search}%")
-                  ->orWhere('kode_matkul', 'like', "%{$search}%")
                   ->orWhereHas('matakuliah', function($mq) use ($search) {
-                      $mq->where('nama_matkul', 'like', "%{$search}%");
+                      $mq->where('nama_matkul', 'like', "%{$search}%")
+                         ->orWhere('kode_matkul', 'like', "%{$search}%");
                   });
             });
         }
-        $kelasList = $kelasQuery->orderBy('kode_matkul')->orderBy('nama_kelas')->get();
+        $kelasList = $kelasQuery->get()->sortBy(function($k) {
+            return ($k->matakuliah->kode_matkul ?? '') . '-' . $k->nama_kelas;
+        })->values();
 
         // Kurikulum & Prodi lookup
         $kurikulums = \App\Models\Kurikulum::orderBy('nama_kurikulum')->get();
         $prodis     = ProdiFilter::getProdiId()
-            ? Prodi::where('id_prodi', ProdiFilter::getProdiId())->get()
-            : Prodi::whereIn('id_prodi', [1, 2, 3])->orderBy('nama_prodi')->get();
+            ? Prodi::whereIn('id_prodi', [ProdiFilter::getProdiId(), 99])->get()
+            : Prodi::whereIn('id_prodi', [1, 2, 3, 99])->orderBy('nama_prodi')->get();
 
         // Pre-mapped untuk JS
         $matkulsJs = $matkuls->map(fn($m) => [
@@ -162,7 +165,8 @@ class PortalDosenPengampuController extends Controller
         $kelasJs = $kelasList->map(fn($k) => [
             'id_kelas'    => $k->id_kelas,
             'nama_kelas'  => $k->nama_kelas,
-            'kode_matkul' => $k->kode_matkul,
+            'id_matakuliah' => $k->id_matakuliah,
+            'kode_matkul' => $k->matakuliah->kode_matkul ?? '',
             'id_prodi'    => $k->id_prodi,
             'nama_prodi'  => $k->prodi->nama_prodi ?? '-',
         ])->values();

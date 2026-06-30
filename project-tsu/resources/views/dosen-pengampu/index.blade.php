@@ -250,7 +250,7 @@
                         data-prodi="{{ $item->prodi->nama_prodi ?? '-' }}"
                         data-id-prodi="{{ $item->id_prodi }}"
                         data-semester="{{ $item->semester }}"
-                        data-kode-matkul="{{ $item->kode_matkul }}"
+                        data-kode-matkul="{{ $item->matakuliah->kode_matkul ?? '' }}"
                         data-nama-matkul="{{ $item->matakuliah->nama_matkul ?? '-' }}"
                         data-jumlah-mahasiswa="{{ $item->jumlah_mahasiswa }}"
                     >
@@ -260,7 +260,7 @@
                                 <p class="text-base text-gray-700 mt-2 font-semibold">{{ $item->matakuliah->nama_matkul ?? '-' }}</p>
                                 <p class="text-sm text-gray-500 mt-1.5">{{ $item->prodi->nama_prodi ?? '-' }}</p>
                                 <div class="flex flex-wrap items-center gap-2 mt-3">
-                                    <span class="text-sm px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg font-mono font-bold">{{ $item->kode_matkul }}</span>
+                                    <span class="text-sm px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg font-mono font-bold">{{ $item->matakuliah->kode_matkul ?? '-' }}</span>
                                     <span class="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold">{{ $item->matakuliah->sks ?? 0 }} SKS</span>
                                     <span class="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-semibold">Semester {{ $item->semester }}</span>
                                 </div>
@@ -298,7 +298,6 @@
                         </div>
 
                         {{-- Filter Dosen Button --}}
-                        @if(!Auth::user() || !Auth::user()->isKaprodi())
                         <div class="relative">
                             <button
                                 id="btn-filter-dosen"
@@ -326,7 +325,6 @@
                                 </div>
                             </div>
                         </div>
-                        @endif
                     </div>
                 </div>
 

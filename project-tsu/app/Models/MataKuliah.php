@@ -11,7 +11,7 @@ class MataKuliah extends Model
     use HasFactory;
 
     protected $table = 'mata_kuliah';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_matakuliah';
     public $incrementing = true;
     protected $keyType = 'int';
     public $timestamps = false;
@@ -66,10 +66,10 @@ class MataKuliah extends Model
         return $this->hasManyThrough(
             PengampuKelas::class,
             Kelas::class,
-            'kode_matkul', // Foreign key on kelas table
-            'id_kelas',    // Foreign key on pengampu_kelas table
-            'kode_matkul', // Local key on mata_kuliah table
-            'id_kelas'     // Local key on kelas table
+            'id_matakuliah', // Foreign key on kelas table
+            'id_kelas',      // Foreign key on pengampu_kelas table
+            'id_matakuliah', // Local key on mata_kuliah table
+            'id_kelas'       // Local key on kelas table
         );
     }
 

@@ -17,7 +17,7 @@ class Kelas extends Model
         'id_tahunakademik',
         'kapasitas',
         'semester',
-        'kode_matkul',
+        'id_matakuliah',
         'jumlah_mahasiswa',
     ];
 
@@ -52,8 +52,8 @@ class Kelas extends Model
     {
         return $this->belongsTo(
             MataKuliah::class,
-            'kode_matkul',
-            'kode_matkul'
+            'id_matakuliah',
+            'id_matakuliah'
         );
     }
 

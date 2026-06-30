@@ -69,6 +69,22 @@
                 </a>
                 @endif
 
+                <!-- Waktu Management Card -->
+                @if(Auth::user()->isAdmin())
+                <a href="{{ route('settings.waktu.index') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-cyan-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+
+                    <div class="relative z-10">
+                        <div class="w-14 h-14 bg-cyan-100 rounded-xl flex items-center justify-center mb-6 text-cyan-600 group-hover:bg-cyan-600 group-hover:text-white transition-colors duration-300">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+
+                        <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-cyan-700 transition-colors">Hari & Slot Waktu</h3>
+                        <p class="text-gray-500 leading-relaxed">Kelola daftar hari aktif dan pembagian slot waktu perkuliahan.</p>
+                    </div>
+                </a>
+                @endif
+
                 <!-- Setup Kurikulum & TA Card -->
                 <a href="{{ route('kurikulum.index') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>

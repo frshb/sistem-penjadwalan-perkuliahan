@@ -92,9 +92,9 @@
 {{-- ================================================ --}}
 {{-- UNIFIED TOOLBAR FILTERS --}}
 {{-- ================================================ --}}
-<div class="bg-gray-50/75 p-5 rounded-2xl border border-gray-200 mb-6 flex flex-wrap items-center gap-3">
+<div class="bg-gray-50/75 p-5 rounded-2xl border border-gray-200 mb-6 flex flex-row items-center gap-3 w-full">
     <!-- Dropdown Filter Semester -->
-    <div class="relative min-w-[140px]">
+    <div class="relative flex-1 min-w-[140px]">
         <select id="table-filter-semester" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
             <option value="">Semua Semester</option>
             @php
@@ -111,7 +111,7 @@
     </div>
 
     <!-- Dropdown Filter Prodi -->
-    <div class="relative min-w-[160px]">
+    <div class="relative flex-1 min-w-[160px]">
         <select id="table-filter-prodi" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
             <option value="">Semua Prodi</option>
             @foreach($prodis as $prodi)
@@ -124,7 +124,7 @@
     </div>
 
     <!-- Dropdown Filter Mata Kuliah -->
-    <div class="relative min-w-[180px]">
+    <div class="relative flex-[2] min-w-[180px]">
         <select id="table-filter-matkul" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
             <option value="">Semua Mata Kuliah</option>
             @foreach($matkuls as $mk)
@@ -181,19 +181,13 @@
                                 <span class="sort-icon text-teal-300 group-hover:text-white transition-colors ml-2">⇅</span>
                             </div>
                         </th>
-                        <th class="px-4 py-2 text-center font-semibold uppercase text-xs tracking-wider cursor-pointer hover:bg-teal-700 select-none group" onclick="sortDosenTable(this, 7, 'number')">
-                            <div class="flex items-center justify-center">
-                                <span>Jml Mhs</span>
-                                <span class="sort-icon text-teal-300 group-hover:text-white transition-colors ml-2">⇅</span>
-                            </div>
-                        </th>
-                        <th class="px-4 py-2 text-left font-semibold uppercase text-xs tracking-wider cursor-pointer hover:bg-teal-700 select-none group" onclick="sortDosenTable(this, 8, 'string')">
+                        <th class="px-4 py-2 text-left font-semibold uppercase text-xs tracking-wider cursor-pointer hover:bg-teal-700 select-none group" onclick="sortDosenTable(this, 7, 'string')">
                             <div class="flex items-center justify-between">
                                 <span>Dosen Pengampu</span>
                                 <span class="sort-icon text-teal-300 group-hover:text-white transition-colors ml-2">⇅</span>
                             </div>
                         </th>
-                        <th class="px-4 py-2 text-center font-semibold uppercase text-xs tracking-wider cursor-pointer hover:bg-teal-700 select-none group" onclick="sortDosenTable(this, 9, 'number')">
+                        <th class="px-4 py-2 text-center font-semibold uppercase text-xs tracking-wider cursor-pointer hover:bg-teal-700 select-none group" onclick="sortDosenTable(this, 8, 'number')">
                             <div class="flex items-center justify-center">
                                 <span>Total SKS</span>
                                 <span class="sort-icon text-teal-300 group-hover:text-white transition-colors ml-2">⇅</span>
@@ -225,17 +219,16 @@
                         data-prodi="{{ $kelas->id_prodi }}"
                         data-prodi-nama="{{ $kelas->prodi->nama_prodi ?? '-' }}"
                         data-semester="{{ $kelas->semester }}"
-                        data-matkul="{{ $kelas->kode_matkul }}"
+                        data-matkul="{{ $kelas->matakuliah->kode_matkul ?? '' }}"
                         data-sks="{{ $kelas->matakuliah->sks ?? 0 }}"
                         data-jml-mhs="{{ $kelas->jumlah_mahasiswa ?? 0 }}">
                         <td class="px-4 py-3 text-slate-500">{{ $no }}</td>
                         <td class="px-4 py-3"><span class="font-semibold text-slate-800">{{ $kelas->nama_kelas }}</span></td>
                         <td class="px-4 py-3 text-slate-600">{{ $kelas->semester }}</td>
-                        <td class="px-4 py-3"><span class="font-mono text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">{{ $kelas->kode_matkul }}</span></td>
+                        <td class="px-4 py-3"><span class="font-mono text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">{{ $kelas->matakuliah->kode_matkul ?? '-' }}</span></td>
                         <td class="px-4 py-3 text-slate-600">{{ $kelas->matakuliah->nama_matkul ?? '-' }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $kelas->prodi->nama_prodi ?? '-' }}</td>
                         <td class="px-4 py-3 text-center text-slate-700 font-medium">{{ $kelas->matakuliah->sks ?? 0 }}</td>
-                        <td class="px-4 py-3 text-center text-slate-700">{{ $kelas->jumlah_mahasiswa }}</td>
                         <td class="px-4 py-3">
                             @if($dosen)
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -244,7 +237,7 @@
                             @else
                                 <span class="text-slate-400 font-medium">-</span>
                             @endif
-                            <input type="hidden" id="mk-{{ $kelas->id_kelas }}" value="{{ $kelas->kode_matkul }}" />
+                            <input type="hidden" id="mk-{{ $kelas->id_kelas }}" value="{{ $kelas->matakuliah->kode_matkul ?? '-' }}" />
                             <input type="hidden" id="prodi-{{ $kelas->id_kelas }}" value="{{ $kelas->id_prodi }}" />
                             @if($pengampu)
                                 <input type="hidden" id="pengampu-{{ $kelas->id_kelas }}" value="{{ $pengampu->id }}" />
@@ -259,10 +252,14 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <button onclick="openDosenModal({{ $kelas->id_kelas }})" class="bg-[#ffc107] text-[#1c1c1c] hover:bg-[#e0a800] px-3 py-1.5 rounded flex items-center justify-center gap-1 text-sm font-semibold shadow-sm transition-colors">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                <button onclick="openDosenModal({{ $kelas->id_kelas }})" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors" title="Edit Pengampu">
                                     Edit
                                 </button>
+                                @if($pengampu)
+                                <button onclick="removeDosen({{ $kelas->id_kelas }}, {{ $pengampu->id }}, event)" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors" title="Reset/Lepas Dosen">
+                                    Reset
+                                </button>
+                                @endif
                             </div>
                         </td>
                     </tr>

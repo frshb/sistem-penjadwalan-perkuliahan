@@ -40,7 +40,7 @@
         id_tahunakademik: '',
         kapasitas: '',
         semester: '',
-        kode_matkul: '',
+        id_matakuliah: '',
         id_kurikulum: '',
         sks: '',
     },
@@ -65,7 +65,7 @@
 
     selectMatkul(kode) {
         let matkul = this.mataKuliahs.find(item =>
-            this.eq(kode, item.kode_matkul) && this.eq(this.selectedProdi, item.id_prodi)
+            this.eq(kode, item.id_matakuliah) && this.eq(this.selectedProdi, item.id_prodi)
         );
 
         if (matkul) {
@@ -77,19 +77,19 @@
 
     selectEditMatkul(kode) {
         let matkul = this.mataKuliahs.find(item =>
-            this.eq(kode, item.kode_matkul) && this.eq(this.editData.id_prodi, item.id_prodi)
+            this.eq(kode, item.id_matakuliah) && this.eq(this.editData.id_prodi, item.id_prodi)
         );
 
         if (matkul) {
             this.editData.sks = matkul.sks ?? '';
-            this.editData.kurikulum = matkul.id_kurikulum ?? '';
+            this.editData.id_kurikulum = matkul.id_kurikulum ?? '';
         } else {
             this.editData.sks = '';
         }
     },
 
     openEdit(kelas) {
-        this.currentEditMatkul = kelas.kode_matkul;
+        this.currentEditMatkul = kelas.id_matakuliah;
 
         this.editData = {
             ...kelas,
@@ -100,7 +100,7 @@
         this.showEditModal = true;
 
         this.$nextTick(() => {
-            this.selectEditMatkul(kelas.kode_matkul);
+            this.selectEditMatkul(kelas.id_matakuliah);
         });
     },
 
@@ -156,6 +156,24 @@
         @include('components.header-profile')
     </div>
 
+    <!-- Flash Messages -->
+    @if(session('success'))
+        <div class="mt-4 p-4 text-sm text-green-800 rounded-xl bg-green-50 border border-green-200 flex items-center gap-3" role="alert">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div>
+                <span class="font-medium">Berhasil!</span> {{ session('success') }}
+            </div>
+        </div>
+    @endif
+    @if(session('error') || $errors->any())
+        <div class="mt-4 p-4 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3" role="alert">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div>
+                <span class="font-medium">Gagal!</span> {{ session('error') ?? 'Terdapat kesalahan.' }}
+            </div>
+        </div>
+    @endif
+
     <!-- Title -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-6 mb-4">
         <h2 class="text-xl font-bold text-gray-700 mb-4 sm:mb-0">
@@ -196,6 +214,53 @@
                     class="px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700">
                 Tambah Kelas
             </button>
+        </div>
+    </div>
+
+    <!-- Statistics Banner -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Card 1: TOTAL KELAS -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
+            <div class="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m-14 0V9a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10"></path></svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Kelas</p>
+                <h3 class="text-2xl font-black text-gray-800">{{ $stats['total_kelas'] ?? 0 }}</h3>
+            </div>
+        </div>
+        
+        <!-- Card 2: MATA KULIAH AKTIF -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
+            <div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mr-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Mata Kuliah</p>
+                <h3 class="text-2xl font-black text-gray-800">{{ $stats['total_matkul'] ?? 0 }}</h3>
+            </div>
+        </div>
+
+        <!-- Card 3: TOTAL SKS -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
+            <div class="w-12 h-12 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center mr-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total SKS</p>
+                <h3 class="text-2xl font-black text-gray-800">{{ $stats['total_sks'] ?? 0 }}</h3>
+            </div>
+        </div>
+
+        <!-- Card 4: KELAS KOSONG -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
+            <div class="w-12 h-12 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mr-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Kelas Kosong (Dosen)</p>
+                <h3 class="text-2xl font-black text-gray-800">{{ $stats['kelas_kosong'] ?? 0 }}</h3>
+            </div>
         </div>
     </div>
 
@@ -350,7 +415,7 @@
                                 data-nama-kelas-asli="{{ $k->nama_kelas }}"
                                 data-nama-kelas="{{ strtolower($k->nama_kelas) }}" 
                                 data-semester="{{ $k->semester ?? '' }}"
-                                data-kode-mk="{{ strtolower($k->kode_matkul ?? '') }}" 
+                                data-kode-mk="{{ strtolower($k->matakuliah->kode_matkul ?? '') }}" 
                                 data-nama-mk="{{ strtolower($k->matakuliah->nama_matkul ?? '') }}">
                                 <td class="text-left py-2 px-3 text-sm">
                                     <div class="flex items-center space-x-3">
@@ -371,7 +436,7 @@
                                     {{ $k->semester ?? '-' }}
                                 </td>
                                 <td class="text-left py-2 px-3 text-sm">
-                                    {{ $k->kode_matkul ?? '-' }}
+                                    {{ $k->matakuliah->kode_matkul ?? '-' }}
                                 </td>
                                 <td class="text-left py-2 px-3 text-sm">
                                     {{ $k->matakuliah->nama_matkul ?? '-' }}
@@ -494,7 +559,7 @@
                         <select
                             name="id_prodi"
                             x-model="selectedProdi"
-                            @change="selectMatkul(document.querySelector('select[name=kode_matkul]')?.value || '')"
+                            @change="selectMatkul(document.querySelector('select[name=id_matakuliah]')?.value || '')"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                             <option value="">Semua Program Studi (Umum)</option>
                             @foreach ($prodis as $prodi)
@@ -521,20 +586,16 @@
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Mata Kuliah</label>
                         <select
-                            name="kode_matkul"
+                            name="id_matakuliah"
                             @change="selectMatkul($event.target.value)"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                             required>
                             <option value="">-- Pilih Mata Kuliah --</option>
                             <template
-                                x-for="matkul in mataKuliahs.filter(m =>
-                                    eq(selectedProdi, m.id_prodi) &&
-                                    eq(selectedSemester, m.semester) &&
-                                    eq(selectedKurikulum, m.id_kurikulum)
-                                )"
-                                :key="matkul.id">
+                                x-for="matkul in mataKuliahs.filter(m => eq(selectedProdi, m.id_prodi) && eq(selectedSemester, m.semester) && eq(selectedKurikulum, m.id_kurikulum))"
+                                :key="matkul.id_matakuliah">
                                 <option
-                                    :value="matkul.kode_matkul"
+                                    :value="matkul.id_matakuliah"
                                     x-text="`${matkul.kode_matkul} - ${matkul.nama_matkul}`">
                                 </option>
                             </template>
@@ -640,7 +701,7 @@
                         <select
                             name="id_prodi"
                             x-model="editData.id_prodi"
-                            @change="selectEditMatkul(document.querySelector('select[name=edit_kode_matkul]')?.value || '')"
+                            @change="selectEditMatkul(editData.id_matakuliah)"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                             <option value="">Semua Program Studi (Umum)</option>
                             @foreach ($prodis as $prodi)
@@ -666,23 +727,17 @@
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Mata Kuliah</label>
                         <select
-                            name="kode_matkul"
-                            x-model="editData.kode_matkul"
+                            name="id_matakuliah"
+                            x-model="editData.id_matakuliah"
                             @change="selectEditMatkul($event.target.value)"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg"
                             required>
                             <option value="">-- Pilih Mata Kuliah --</option>
                             <template
-                                x-for="matkul in mataKuliahs.filter(m =>
-                                    eq(m.kode_matkul, currentEditMatkul) || (
-                                        eq(editData.id_prodi, m.id_prodi) &&
-                                        eq(editData.semester, m.semester) &&
-                                        eq(editData.id_kurikulum, m.id_kurikulum)
-                                    )
-                                )"
-                                :key="matkul.id">
+                                x-for="matkul in mataKuliahs.filter(m => eq(m.id_matakuliah, currentEditMatkul) || (eq(editData.id_prodi, m.id_prodi) && eq(editData.semester, m.semester) && eq(editData.id_kurikulum, m.id_kurikulum)))"
+                                :key="matkul.id_matakuliah">
                                 <option
-                                    :value="matkul.kode_matkul"
+                                    :value="matkul.id_matakuliah"
                                     x-text="`${matkul.kode_matkul} - ${matkul.nama_matkul}`">
                                 </option>
                             </template>

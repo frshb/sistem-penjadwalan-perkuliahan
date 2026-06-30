@@ -14,14 +14,20 @@
 
     <main :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out bg-white min-h-screen">
         
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <div>
+        <div class="flex justify-between items-start gap-4 mb-8">
+            <div class="flex flex-col">
                 <a href="{{ route('settings.index') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-teal-700 transition-colors mb-3 group">
                     <svg class="w-4 h-4 mr-1 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     Kembali ke Pengaturan
                 </a>
-                <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Management Role</h1>
-                <p class="text-sm text-gray-500 mt-1">Atur hak akses dan perizinan untuk setiap peran dalam sistem.</p>
+                <div class="flex items-center">
+                    <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
+                        <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
+                        <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+                    </button>
+                    <h1 class="text-3xl font-bold text-gray-900 ml-3 tracking-tight">Management Role</h1>
+                </div>
+                <p class="text-sm text-gray-500 mt-1 ml-[1.35rem]">Atur hak akses dan perizinan untuk setiap peran dalam sistem.</p>
             </div>
             @include('components.header-profile')
         </div>

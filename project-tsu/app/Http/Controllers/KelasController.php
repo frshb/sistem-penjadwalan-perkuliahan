@@ -51,7 +51,7 @@ class KelasController extends Controller
         if ($searchTerm) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('nama_kelas', 'like', '%' . $searchTerm . '%')
-                ->orWhere('kode_matkul', 'like', '%' . $searchTerm . '%')
+                ->orWhereHas('matakuliah', fn($m) => $m->where('kode_matkul', 'like', '%' . $searchTerm . '%'))
                 ->orWhereHas('matakuliah', fn($m) => $m->where('nama_matkul', 'like', '%' . $searchTerm . '%'))
                 ->orWhereHas('dosen', fn($d) => $d->where('nama_dosen', 'like', '%' . $searchTerm . '%'));
             });
@@ -95,6 +95,7 @@ class KelasController extends Controller
             ->map(function ($m) {
                 return [
                     'id'           => $m->id,
+                    'id_matakuliah'  => $m->id_matakuliah,
                     'kode_matkul'  => trim($m->kode_matkul),
                     'nama_matkul'  => $m->nama_matkul,
                     'sks'          => $m->sks,
@@ -125,9 +126,16 @@ class KelasController extends Controller
         $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
         $tahunAkademik  = TahunAkademik::find($idTahun);
 
+        $stats = [
+            'total_kelas'  => $kelas->count(),
+            'total_matkul' => $kelas->unique('id_matakuliah')->count(),
+            'total_sks'    => $kelas->sum(fn($k) => $k->matakuliah->sks ?? 0),
+            'kelas_kosong' => $kelas->filter(fn($k) => $k->dosen === null)->count(),
+        ];
+
         return view('management.kelas.index', compact(
             'kelas', 'kelasByProdi', 'searchTerm', 'prodis',
-            'tahunAkademiks', 'tahunAkademik', 'mataKuliahs', 'kurikulums'
+            'tahunAkademiks', 'tahunAkademik', 'mataKuliahs', 'kurikulums', 'stats'
         ));
     }
 
@@ -162,7 +170,7 @@ class KelasController extends Controller
             'nama_kelas'       => 'required|string|max:50',
             'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
             'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
-            'kode_matkul'      => 'required|exists:mata_kuliah,kode_matkul',
+            'id_matakuliah'    => 'required|exists:mata_kuliah,id_matakuliah',
             'id_dosen'         => 'nullable|integer|exists:dosen,id_dosen',
             'kapasitas'        => 'required|integer|min:1',
             'semester'         => 'required|integer|min:1|max:14',
@@ -172,7 +180,7 @@ class KelasController extends Controller
             'nama_kelas'       => $request->nama_kelas,
             'id_prodi'         => $request->id_prodi,
             'id_tahunakademik' => $request->id_tahunakademik,
-            'kode_matkul'      => $request->kode_matkul,
+            'id_matakuliah'    => $request->id_matakuliah,
             'id_dosen'         => $request->id_dosen,
             'kapasitas'        => $request->kapasitas,
             'semester'         => $request->semester,
@@ -214,7 +222,7 @@ class KelasController extends Controller
             'nama_kelas'       => 'required|string|max:50',
             'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
             'id_tahunakademik' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
-            'kode_matkul'      => 'required|exists:mata_kuliah,kode_matkul',
+            'id_matakuliah'    => 'required|exists:mata_kuliah,id_matakuliah',
             'id_dosen'         => 'nullable|integer|exists:dosen,id_dosen',
             'kapasitas'        => 'required|integer|min:1',
             'semester'         => 'required|integer|min:1|max:14',
@@ -224,7 +232,7 @@ class KelasController extends Controller
             'nama_kelas'       => $request->nama_kelas,
             'id_prodi'         => $request->id_prodi,
             'id_tahunakademik' => $request->id_tahunakademik,
-            'kode_matkul'      => $request->kode_matkul,
+            'id_matakuliah'    => $request->id_matakuliah,
             'id_dosen'         => $request->id_dosen,
             'kapasitas'        => $request->kapasitas,
             'semester'         => $request->semester,
@@ -240,6 +248,11 @@ class KelasController extends Controller
      */
     public function destroy(Request $request, Kelas $kela)
     {
+        if ($kela->jadwals()->count() > 0) {
+            return redirect()->back()
+                ->with('error', 'Kelas tidak dapat dihapus karena sudah dijadwalkan pada menu penjadwalan.');
+        }
+
         try {
             $tahun = $kela->id_tahunakademik;
 
@@ -251,7 +264,7 @@ class KelasController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Gagal menghapus data. Kelas mungkin masih digunakan.');
+                ->with('error', 'Gagal menghapus data. Kelas mungkin masih digunakan pada data pengampu.');
         }
     }
 
@@ -347,9 +360,20 @@ class KelasController extends Controller
     {
         $ids = explode(',', $request->ids);
 
-        Kelas::whereIn('id_kelas', $ids)->delete();
+        $kelasJadwal = Kelas::whereIn('id_kelas', $ids)->has('jadwals')->count();
+        if ($kelasJadwal > 0) {
+            return redirect()->back()
+                ->with('error', 'Beberapa kelas tidak dapat dihapus karena sudah dijadwalkan pada menu penjadwalan.');
+        }
 
-        return redirect()->back()
-            ->with('success', 'Data kelas berhasil dihapus.');
+        try {
+            Kelas::whereIn('id_kelas', $ids)->delete();
+
+            return redirect()->back()
+                ->with('success', 'Data kelas berhasil dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Gagal menghapus data. Beberapa kelas mungkin masih digunakan pada data pengampu.');
+        }
     }
 }

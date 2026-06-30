@@ -312,19 +312,21 @@ class OptimizeJadwal
                     ];
                 }
 
-                // [HC8/HC4] Kelas sama di slot yang overlap
-                if ($a->id_kelas === $b->id_kelas) {
+                // [HC8/HC-New] Mahasiswa di kelas yang sama tidak boleh overlap jadwal
+                $namaA = $a->kelas->nama_kelas ?? '';
+                $namaB = $b->kelas->nama_kelas ?? '';
+                if ($namaA !== '' && $namaA === $namaB) {
                     $bentrokList[] = [
                         'jadwal_id'     => $a->id_jadwal,
                         'jadwal_lawan'  => $b->id_jadwal,
                         'tipe'          => 'bentrok_kelas',
-                        'keterangan'    => 'Kelas ' . ($a->kelas->nama_kelas ?? '-') . ' dijadwalkan dua kali di waktu yang sama',
+                        'keterangan'    => 'Kelompok Mahasiswa ' . $namaA . ' dijadwalkan pada dua kelas berbeda di waktu yang bersamaan',
                     ];
                     $bentrokList[] = [
                         'jadwal_id'     => $b->id_jadwal,
                         'jadwal_lawan'  => $a->id_jadwal,
                         'tipe'          => 'bentrok_kelas',
-                        'keterangan'    => 'Kelas ' . ($b->kelas->nama_kelas ?? '-') . ' dijadwalkan dua kali di waktu yang sama',
+                        'keterangan'    => 'Kelompok Mahasiswa ' . $namaB . ' dijadwalkan pada dua kelas berbeda di waktu yang bersamaan',
                     ];
                 }
             }
