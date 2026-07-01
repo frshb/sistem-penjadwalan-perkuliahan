@@ -300,6 +300,17 @@ class Gene
         return in_array($tipe, [self::TIPE_REGULER, self::TIPE_HYBRID], true);
     }
 
+    /**
+     * HC-New — Kelas Praktikum/Lab hanya boleh dijadwalkan pada hari Senin, Selasa, atau Rabu (hariId 1, 2, 3).
+     */
+    public function validatePraktikumHari(): bool
+    {
+        if ($this->jenisMatkul === self::JENIS_PRAKTIKUM) {
+            return in_array($this->hariId, [1, 2, 3], true);
+        }
+        return true;
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // SOFT CONSTRAINTS — validasi per-gene (return pelanggaran count)
     // ────────────────────────────────────────────────────────────────────

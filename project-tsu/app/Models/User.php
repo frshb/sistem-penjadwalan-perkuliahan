@@ -146,4 +146,17 @@ class User extends Authenticatable
         // ✅ Aman jika role null
         return $this->role?->hasPermission($module, $item) ?? false;
     }
+
+    /**
+     * Cek permission access level (read/edit).
+     * Admin selalu mendapat akses penuh (edit).
+     */
+    public function hasPermissionAccess(string $module, string $item, string $requiredAccess = 'read'): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return $this->role?->hasPermissionAccess($module, $item, $requiredAccess) ?? false;
+    }
 }

@@ -58,8 +58,8 @@
 {{-- ================================================ --}}
 {{-- SEARCH BAR --}}
 {{-- ================================================ --}}
-<div class="mb-6 flex gap-3">
-    <div class="relative flex-1">
+<div class="mb-6">
+    <div class="relative w-full">
         <input
             type="text"
             id="table-search"
@@ -68,23 +68,6 @@
         />
         <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-        </div>
-    </div>
-    <div class="relative min-w-[180px]">
-        <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-teal-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-        </div>
-        <select id="table-filter-namakelas" class="w-full h-full pl-10 pr-8 py-3.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
-            <option value="">Semua Nama Kelas</option>
-            @php
-                $uniqueNamaKelas = $kelasList->pluck('nama_kelas')->unique()->sort();
-            @endphp
-            @foreach($uniqueNamaKelas as $nk)
-                <option value="{{ strtolower($nk) }}">{{ $nk }}</option>
-            @endforeach
-        </select>
-        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </div>
     </div>
 </div>
@@ -111,11 +94,13 @@
     </div>
 
     <!-- Dropdown Filter Prodi -->
-    <div class="relative flex-1 min-w-[160px]">
+    <div class="relative flex-[2] min-w-[160px]">
         <select id="table-filter-prodi" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
             <option value="">Semua Prodi</option>
             @foreach($prodis as $prodi)
-                <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
+                @if(strtolower($prodi->nama_prodi) !== 'dosen eksternal fakultas')
+                    <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
+                @endif
             @endforeach
         </select>
         <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
@@ -123,12 +108,15 @@
         </div>
     </div>
 
-    <!-- Dropdown Filter Mata Kuliah -->
-    <div class="relative flex-[2] min-w-[180px]">
-        <select id="table-filter-matkul" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
-            <option value="">Semua Mata Kuliah</option>
-            @foreach($matkuls as $mk)
-                <option value="{{ $mk->kode_matkul }}">{{ $mk->kode_matkul }} — {{ $mk->nama_matkul }}</option>
+    <!-- Dropdown Filter Nama Kelas -->
+    <div class="relative flex-1 min-w-[180px]">
+        <select id="table-filter-namakelas" class="w-full pl-3.5 pr-8 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+            <option value="">Semua Nama Kelas</option>
+            @php
+                $uniqueNamaKelas = $kelasList->pluck('nama_kelas')->unique()->sort();
+            @endphp
+            @foreach($uniqueNamaKelas as $nk)
+                <option value="{{ strtolower($nk) }}">{{ $nk }}</option>
             @endforeach
         </select>
         <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
@@ -193,7 +181,9 @@
                                 <span class="sort-icon text-teal-300 group-hover:text-white transition-colors ml-2">⇅</span>
                             </div>
                         </th>
+                        @if(Auth::user()->hasPermissionAccess('management_data', 'Dosen Pengampu', 'edit'))
                         <th class="px-4 py-2 text-center font-semibold uppercase text-xs tracking-wider">Aksi</th>
+                        @endif
                     </tr>
                 </thead>
             <tbody id="table-body">
@@ -221,7 +211,8 @@
                         data-semester="{{ $kelas->semester }}"
                         data-matkul="{{ $kelas->matakuliah->kode_matkul ?? '' }}"
                         data-sks="{{ $kelas->matakuliah->sks ?? 0 }}"
-                        data-jml-mhs="{{ $kelas->jumlah_mahasiswa ?? 0 }}">
+                        data-jml-mhs="{{ $kelas->jumlah_mahasiswa ?? 0 }}"
+                        data-nama-dosen="{{ $dosen->nama_dosen ?? '' }}">
                         <td class="px-4 py-3 text-slate-500">{{ $no }}</td>
                         <td class="px-4 py-3"><span class="font-semibold text-slate-800">{{ $kelas->nama_kelas }}</span></td>
                         <td class="px-4 py-3 text-slate-600">{{ $kelas->semester }}</td>
@@ -250,6 +241,7 @@
                                 <span class="text-slate-400">-</span>
                             @endif
                         </td>
+                        @if(Auth::user()->hasPermissionAccess('management_data', 'Dosen Pengampu', 'edit'))
                         <td class="px-4 py-3 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <button onclick="openDosenModal({{ $kelas->id_kelas }})" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors" title="Edit Pengampu">
@@ -262,6 +254,7 @@
                                 @endif
                             </div>
                         </td>
+                        @endif
                     </tr>
                     @php $no++; @endphp
                 @endforeach
@@ -421,20 +414,26 @@ function filterModalDosen() {
     const searchInput = document.getElementById('table-search');
     const filterProdi = document.getElementById('table-filter-prodi');
     const filterSemester = document.getElementById('table-filter-semester');
-    const filterMatkul = document.getElementById('table-filter-matkul');
     const filterNamaKelas = document.getElementById('table-filter-namakelas');
     
-    function applyFilters() {
+    function applyFilters(saveState = true) {
         const search = (searchInput?.value || '').toLowerCase();
         const prodi = filterProdi?.value || '';
         const semester = filterSemester?.value || '';
-        const matkul = filterMatkul?.value || '';
         const namaKelasFilter = filterNamaKelas?.value || '';
+        
+        if (saveState) {
+            sessionStorage.setItem('dosenTableSearch', searchInput?.value || '');
+            sessionStorage.setItem('dosenTableProdi', prodi);
+            sessionStorage.setItem('dosenTableSemester', semester);
+            sessionStorage.setItem('dosenTableNamaKelas', namaKelasFilter);
+        }
 
+        let no = 1;
         document.querySelectorAll('#table-body tr').forEach(function(row) {
             const namaKelas = (row.dataset.namaKelas || '').toLowerCase();
             const namaMatkul = (row.dataset.namaMatkul || '').toLowerCase();
-            const namaDosen = (row.querySelector('.font-medium')?.textContent || '').toLowerCase();
+            const namaDosen = (row.dataset.namaDosen || '').toLowerCase();
             const rowProdi = row.dataset.prodi || '';
             const rowSemester = parseInt(row.dataset.semester) || 0;
             const rowMatkul = row.dataset.matkul || '';
@@ -448,10 +447,14 @@ function filterModalDosen() {
             // Dropdowns filter
             if (prodi && rowProdi !== prodi) show = false;
             if (semester && rowSemester !== parseInt(semester)) show = false;
-            if (matkul && rowMatkul !== matkul) show = false;
             if (namaKelasFilter && namaKelas !== namaKelasFilter) show = false;
 
             row.style.display = show ? '' : 'none';
+            
+            if (show) {
+                const noCell = row.querySelector('td:first-child');
+                if (noCell) noCell.textContent = no++;
+            }
         });
     }
     
@@ -459,11 +462,24 @@ function filterModalDosen() {
     if (searchInput) searchInput.addEventListener('input', applyFilters);
     if (filterProdi) filterProdi.addEventListener('change', applyFilters);
     if (filterSemester) filterSemester.addEventListener('change', applyFilters);
-    if (filterMatkul) filterMatkul.addEventListener('change', applyFilters);
     if (filterNamaKelas) filterNamaKelas.addEventListener('change', applyFilters);
 
-    // Initial Filter Apply
-    applyFilters();
+    // Restore state from sessionStorage if available
+    if (sessionStorage.getItem('dosenTableSearch') !== null && searchInput) {
+        searchInput.value = sessionStorage.getItem('dosenTableSearch');
+    }
+    if (sessionStorage.getItem('dosenTableProdi') !== null && filterProdi) {
+        filterProdi.value = sessionStorage.getItem('dosenTableProdi');
+    }
+    if (sessionStorage.getItem('dosenTableSemester') !== null && filterSemester) {
+        filterSemester.value = sessionStorage.getItem('dosenTableSemester');
+    }
+    if (sessionStorage.getItem('dosenTableNamaKelas') !== null && filterNamaKelas) {
+        filterNamaKelas.value = sessionStorage.getItem('dosenTableNamaKelas');
+    }
+
+    // Initial Filter Apply (don't overwrite saved state with empty on first load)
+    applyFilters(false);
 
     // Sorting Logic
     let currentSortColumn = -1;

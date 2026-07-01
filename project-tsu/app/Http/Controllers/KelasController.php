@@ -166,6 +166,8 @@ class KelasController extends Controller
      */
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
+
         $request->validate([
             'nama_kelas'       => 'required|string|max:50',
             'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
@@ -218,6 +220,8 @@ class KelasController extends Controller
      */
     public function update(Request $request, Kelas $kela)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
+
         $request->validate([
             'nama_kelas'       => 'required|string|max:50',
             'id_prodi'         => 'nullable|integer|exists:program_studi,id_prodi',
@@ -248,6 +252,8 @@ class KelasController extends Controller
      */
     public function destroy(Request $request, Kelas $kela)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
+
         if ($kela->jadwals()->count() > 0) {
             return redirect()->back()
                 ->with('error', 'Kelas tidak dapat dihapus karena sudah dijadwalkan pada menu penjadwalan.');
@@ -296,6 +302,8 @@ class KelasController extends Controller
 
     public function generate(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
+
         $request->validate([
             'id_prodi'         => 'required',
             'semester'         => 'required',
@@ -358,6 +366,8 @@ class KelasController extends Controller
 
     public function bulkDelete(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
+
         $ids = explode(',', $request->ids);
 
         $kelasJadwal = Kelas::whereIn('id_kelas', $ids)->has('jadwals')->count();

@@ -32,19 +32,20 @@ class Role extends Model
         $roleNameLower = strtolower($this->nama_role);
 
         $managementDataItems = [
-            ['name' => 'Program Studi',        'enabled' => false],
-            ['name' => 'Ruangan',              'enabled' => false],
-            ['name' => 'Mata Kuliah',          'enabled' => false],
-            ['name' => 'Dosen',                'enabled' => false],
-            ['name' => 'Pengampu Mata Kuliah', 'enabled' => false],
-            ['name' => 'Kelas Paralel',        'enabled' => false],
-            ['name' => 'Mahasiswa',            'enabled' => false],
-            ['name' => 'KP & Skripsi',         'enabled' => false],
+            ['name' => 'Program Studi',        'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Ruangan',              'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Mata Kuliah',          'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Dosen',                'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Pengampu Kelas', 'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Kelas Paralel',        'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Mahasiswa',            'enabled' => false, 'access' => 'edit'],
+            ['name' => 'KP & Skripsi',         'enabled' => false, 'access' => 'edit'],
         ];
 
         $modulPenjadwalanItems = [
-            ['name' => 'Generate Jadwal',     'enabled' => false],
-            ['name' => 'Penyesuaian Jadwal',  'enabled' => false],
+            ['name' => 'Generate Jadwal',     'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Perbandingan Hasil',  'enabled' => false, 'access' => 'edit'],
+            ['name' => 'Penyesuaian Jadwal',  'enabled' => false, 'access' => 'edit'],
         ];
 
         $enableItems = function (array &$items, array $names): void {
@@ -77,9 +78,11 @@ class Role extends Model
         if ($roleNameLower === 'kaprodi') {
             $enableItems($managementDataItems, [
                 'Program Studi', 'Ruangan', 'Mata Kuliah',
-                'Dosen', 'Pengampu Mata Kuliah', 'Kelas Paralel', 'Mahasiswa',
+                'Dosen', 'Pengampu Kelas', 'Kelas Paralel', 'Mahasiswa',
             ]);
-            $enableAll($modulPenjadwalanItems);
+            $enableItems($modulPenjadwalanItems, [
+                'Generate Jadwal', 'Hasil Jadwal', 'Perbandingan Hasil'
+            ]);
             return [
                 'management_data'   => ['enabled' => true, 'items' => $managementDataItems],
                 'modul_penjadwalan' => ['enabled' => true, 'items' => $modulPenjadwalanItems],
@@ -140,18 +143,22 @@ class Role extends Model
             // Override enabled flag dari data tersimpan
             $defaults[$module]['enabled'] = (bool) ($saved[$module]['enabled'] ?? $defaults[$module]['enabled']);
 
-            // Buat map nama => enabled dari data tersimpan
+            // Buat map nama => [enabled, access] dari data tersimpan
             $savedItemMap = [];
             foreach ($saved[$module]['items'] ?? [] as $item) {
                 if (isset($item['name'])) {
-                    $savedItemMap[$item['name']] = (bool) ($item['enabled'] ?? false);
+                    $savedItemMap[$item['name']] = [
+                        'enabled' => (bool) ($item['enabled'] ?? false),
+                        'access'  => $item['access'] ?? 'edit'
+                    ];
                 }
             }
 
             // Terapkan ke default items (item baru yang belum ada di DB tetap muncul)
             foreach ($defaults[$module]['items'] as &$defaultItem) {
                 if (array_key_exists($defaultItem['name'], $savedItemMap)) {
-                    $defaultItem['enabled'] = $savedItemMap[$defaultItem['name']];
+                    $defaultItem['enabled'] = $savedItemMap[$defaultItem['name']]['enabled'];
+                    $defaultItem['access']  = $savedItemMap[$defaultItem['name']]['access'];
                 }
             }
             unset($defaultItem); // ✅ Putus reference
@@ -184,6 +191,28 @@ class Role extends Model
         foreach ($moduleData['items'] ?? [] as $pItem) {
             if ($pItem['name'] === $item) {
                 return (bool) $pItem['enabled'];
+            }
+        }
+
+        return false;
+    }
+
+    public function hasPermissionAccess(string $module, string $item, string $requiredAccess = 'read'): bool
+    {
+        $permissions = $this->getMergedPermissions();
+
+        if (!isset($permissions[$module]) || !$permissions[$module]['enabled']) {
+            return false;
+        }
+
+        foreach ($permissions[$module]['items'] ?? [] as $pItem) {
+            if ($pItem['name'] === $item) {
+                if (!$pItem['enabled']) return false;
+                
+                if ($requiredAccess === 'edit' && ($pItem['access'] ?? 'read') !== 'edit') {
+                    return false;
+                }
+                return true;
             }
         }
 

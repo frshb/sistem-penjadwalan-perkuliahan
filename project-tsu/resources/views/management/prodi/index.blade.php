@@ -58,10 +58,12 @@
                                 </a>
                             </div>
                         </div>
+                        @if(Auth::user()->hasPermissionAccess('management_data', 'Program Studi', 'edit'))
                         <button @click="showAddModal = true" class="flex items-center px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                             Tambah Prodi
                         </button>
+                        @endif
                     </div>
                 </div>
 
@@ -73,7 +75,9 @@
                                     <th class="w-16 text-left py-4 px-3 uppercase font-semibold text-xs">No</th>
                                     <th class="text-left py-4 px-3 uppercase font-semibold text-xs">Program Studi</th>
                                     <th class="text-left py-4 px-3 uppercase font-semibold text-xs">Kode Prodi</th>
+                                    @if(Auth::user()->hasPermissionAccess('management_data', 'Program Studi', 'edit'))
                                     <th class="w-48 text-left py-4 px-3 uppercase font-semibold text-xs">Aksi</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700">
@@ -82,6 +86,7 @@
                                         <td class="text-left py-4 px-3 text-sm">{{ $loop->iteration }}</td>
                                         <td class="text-left py-4 px-3 text-sm">{{ $prodi->nama_prodi }}</td>
                                         <td class="text-left py-4 px-3 text-sm">{{ $prodi->kode_prodi }}</td>
+                                        @if(Auth::user()->hasPermissionAccess('management_data', 'Program Studi', 'edit'))
                                         <td class="text-left py-4 px-3 text-sm">
                                             <div class="flex space-x-2">
 
@@ -89,7 +94,6 @@
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                     Detail
                                                 </a>
-
 
                                                 <button
                                                     @click="showEditModal = true;
@@ -110,6 +114,7 @@
                                                 </button>
                                             </div>
                                         </td>
+                                        @endif
                                     </tr>
                                 @empty
                                     <tr><td colspan="4" class="text-center py-4 text-gray-500">Data belum tersedia.</td></tr>

@@ -83,6 +83,8 @@ class ProdiController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Program Studi', 'edit'), 403, 'Unauthorized action.');
+
         // 1. Validasi
         $validated = $request->validate([
             'nama_prodi' => 'required|string|max:100|unique:program_studi,nama_prodi',
@@ -113,6 +115,8 @@ class ProdiController extends Controller
 
     public function update(Request $request, $id)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Program Studi', 'edit'), 403, 'Unauthorized action.');
+
         $user = auth()->user();
         if ($user && !$user->isAdmin() && !$user->isDekan()) {
             $prodiId = $user->getProdiId();
@@ -153,6 +157,8 @@ class ProdiController extends Controller
 
     public function destroy($id)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Program Studi', 'edit'), 403, 'Unauthorized action.');
+
         $user = auth()->user();
         if ($user && !$user->isAdmin() && !$user->isDekan()) {
             $prodiId = $user->getProdiId();

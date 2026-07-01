@@ -19,6 +19,12 @@ class Slot_waktu extends Model
         'jam_ke',
         'waktu_mulai',
         'waktu_selesai',
-        'sesi'
+        'sesi',
+        'is_active',
     ];
+
+    public function haris()
+    {
+        return $this->belongsToMany(Hari::class, 'hari_slot_waktu', 'id_slot', 'id_hari');
+    }
 }

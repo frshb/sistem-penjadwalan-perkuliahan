@@ -80,8 +80,11 @@ class JadwalController extends Controller
         }
 
         $kelas     = $kelasQuery->orderBy('semester')->get();
-        $hari      = Hari::all();
-        $slotWaktu = Slot_waktu::orderBy('jam_ke')->get();
+        $hari = Hari::where('is_active', true)->with('slotWaktus')->get()->sortBy(function ($h) {
+            $urutan = ['senin' => 1, 'selasa' => 2, 'rabu' => 3, 'kamis' => 4, 'jumat' => 5, 'sabtu' => 6, 'minggu' => 7, 'ahad' => 7];
+            return $urutan[strtolower($h->nama_hari)] ?? 99;
+        })->values();
+        $slotWaktu = Slot_waktu::where('is_active', true)->orderBy('jam_ke')->get();
         $ruangan   = Ruangan::all();
 
         $jadwalQuery = Jadwal::with([
@@ -150,6 +153,19 @@ class JadwalController extends Controller
         $ruangId = $request->ruang_id
             ?: Ruangan::orderBy('id_ruang')->value('id_ruang');
 
+        // Validasi pemetaan hari & slot
+        $isSlotValid = \App\Models\Hari::where('id_hari', $request->hari_id)
+            ->whereHas('slotWaktus', function($q) use ($request) {
+                $q->where('slot_waktu.id_slot', $request->slot_id);
+            })->exists();
+
+        if (!$isSlotValid) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Slot waktu tidak aktif atau tidak valid untuk hari tersebut.',
+            ], 422);
+        }
+
         $jadwal = Jadwal::updateOrCreate(
             [
                 // Identifikasi unik: satu kelas hanya punya satu jadwal per tahun akademik
@@ -181,6 +197,28 @@ class JadwalController extends Controller
         Jadwal::where('id_jadwal', $id)->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Hapus semua jadwal untuk satu tahun akademik
+     */
+    public function hapusSemua(Request $request)
+    {
+        $request->validate([
+            'tahun_akademik_id' => 'required|integer|exists:tahun_akademik,id_tahunakademik',
+        ]);
+
+        $idTahun = $request->tahun_akademik_id;
+        
+        // Return response immediately, execute delete in background
+        app()->terminating(function () use ($idTahun) {
+            Jadwal::where('id_tahunakademik', $idTahun)->delete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Proses penghapusan sedang berjalan di latar belakang.'
+        ]);
     }
 
     /**

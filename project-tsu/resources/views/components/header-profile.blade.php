@@ -152,23 +152,19 @@
         </div>
     </template>
 
-    @if ($errors->any() || session('success'))
+    @if ($errors->any())
         <div x-data="{ show: true }" x-init="setTimeout(() => show = false, 5000)" x-show="show" class="fixed bottom-4 right-4 z-[110] max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
             <div class="p-4">
                 <div class="flex items-start">
                     <div class="flex-shrink-0">
-                        @if (session('success'))
-                            <svg class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        @else
-                            <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        @endif
+                        <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
                     <div class="ml-3 w-0 flex-1 pt-0.5">
                         <p class="text-sm font-medium text-gray-900">
-                            {{ session('success') ? 'Berhasil!' : 'Terjadi Kesalahan' }}
+                            Terjadi Kesalahan
                         </p>
                         <p class="mt-1 text-sm text-gray-500">
-                            {{ session('success') ?? $errors->first() }}
+                            {{ $errors->first() }}
                         </p>
                     </div>
                     <div class="ml-4 flex-shrink-0 flex">

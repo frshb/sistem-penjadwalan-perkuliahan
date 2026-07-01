@@ -82,12 +82,9 @@ Route::middleware(['auth'])->group(function () {
 
         // Manajemen Hari & Slot Waktu
         Route::get('/settings/waktu', [\App\Http\Controllers\WaktuController::class, 'index'])->name('settings.waktu.index');
-        Route::post('/settings/waktu/hari', [\App\Http\Controllers\WaktuController::class, 'storeHari'])->name('settings.hari.store');
-        Route::put('/settings/waktu/hari/{id}', [\App\Http\Controllers\WaktuController::class, 'updateHari'])->name('settings.hari.update');
-        Route::delete('/settings/waktu/hari/{id}', [\App\Http\Controllers\WaktuController::class, 'destroyHari'])->name('settings.hari.destroy');
-        Route::post('/settings/waktu/slot', [\App\Http\Controllers\WaktuController::class, 'storeSlot'])->name('settings.slot.store');
-        Route::put('/settings/waktu/slot/{id}', [\App\Http\Controllers\WaktuController::class, 'updateSlot'])->name('settings.slot.update');
-        Route::delete('/settings/waktu/slot/{id}', [\App\Http\Controllers\WaktuController::class, 'destroySlot'])->name('settings.slot.destroy');
+        Route::post('/settings/waktu/hari/{id}/toggle', [\App\Http\Controllers\WaktuController::class, 'toggleHari'])->name('settings.hari.toggle');
+        Route::post('/settings/waktu/slot/{id}/toggle', [\App\Http\Controllers\WaktuController::class, 'toggleSlot'])->name('settings.slot.toggle');
+        Route::post('/settings/waktu/mapping', [\App\Http\Controllers\WaktuController::class, 'updateMapping'])->name('settings.waktu.mapping');
     });
 
     // KP & Skripsi
@@ -119,8 +116,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['permission:management_data,Mata Kuliah'])->group(function () {
         Route::get('/management/matakuliah', [MataKuliahController::class, 'index'])->name('matakuliah.index');
         Route::post('/management/matakuliah', [MataKuliahController::class, 'store'])->name('matakuliah.store');
-        Route::put('/management/matakuliah/{kode_matkul}', [MataKuliahController::class, 'update'])->name('matakuliah.update');
-        Route::delete('/management/matakuliah/{matakuliah}', [MataKuliahController::class, 'destroy'])->name('matakuliah.destroy');
+        Route::put('/management/matakuliah/{id_matakuliah}', [MataKuliahController::class, 'update'])->name('matakuliah.update');
+        Route::delete('/management/matakuliah/{id_matakuliah}', [MataKuliahController::class, 'destroy'])->name('matakuliah.destroy');
         Route::get('/management/matakuliah/export-excel', [MataKuliahController::class, 'exportExcel'])->name('matakuliah.export.excel');
         Route::get('/management/matakuliah/export-pdf', [MataKuliahController::class, 'exportPDF'])->name('matakuliah.export.pdf');
     });
@@ -131,12 +128,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/management/dosen/export-excel', [DosenController::class, 'exportExcel'])->name('dosen.export.excel');
         Route::get('/management/dosen/export-pdf', [DosenController::class, 'exportPdf'])->name('dosen.export.pdf');
         Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
-        Route::put('/management/dosen/{dosen:nuptk}', [DosenController::class, 'update'])->name('dosen.update');
-        Route::delete('/management/dosen/{dosen:nuptk}', [DosenController::class, 'destroy'])->name('dosen.destroy');
+        Route::put('/management/dosen/{id_dosen}', [DosenController::class, 'update'])->name('dosen.update');
+        Route::delete('/management/dosen/{id_dosen}', [DosenController::class, 'destroy'])->name('dosen.destroy');
     });
 
-    // Pengampu Mata Kuliah
-    Route::middleware(['permission:management_data,Pengampu Mata Kuliah'])->group(function () {
+    // Pengampu Kelas
+    Route::middleware(['permission:management_data,Pengampu Kelas'])->group(function () {
         Route::get('/dosen-pengampu/pilih-tahun', [PortalDosenPengampuController::class, 'pilihTahun'])->name('dosen-pengampu.pilih-tahun');
         Route::get('/dosen-pengampu', [PortalDosenPengampuController::class, 'index'])->name('dosen-pengampu.index');
         Route::post('/dosen-pengampu/simpan', [PortalDosenPengampuController::class, 'simpan'])->name('dosen-pengampu.simpan');
@@ -175,11 +172,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/jadwal-otomatis/stream', [JadwalOtomatisController::class, 'stream'])->name('jadwal.otomatis.stream');
         Route::get('/jadwal-otomatis/audit', [JadwalOtomatisController::class, 'audit'])->name('jadwal.otomatis.audit');
 
+    });
+
     // Trials & Comparison
+    Route::middleware(['permission:modul_penjadwalan,Perbandingan Hasil'])->group(function () {
         Route::post('/jadwal-otomatis/trial/simpan', [JadwalOtomatisController::class, 'simpanTrial'])->name('jadwal.otomatis.simpan_trial');
         Route::get('/jadwal-otomatis/trial/perbandingan', [JadwalOtomatisController::class, 'compareTrials'])->name('jadwal.otomatis.compare_trials');
         Route::post('/jadwal-otomatis/trial/{id}/apply', [JadwalOtomatisController::class, 'applyTrial'])->name('jadwal.otomatis.apply_trial');
         Route::delete('/jadwal-otomatis/trial/{id}', [JadwalOtomatisController::class, 'deleteTrial'])->name('jadwal.otomatis.delete_trial');
+        Route::post('/jadwal-otomatis/trial/bulk-delete', [JadwalOtomatisController::class, 'deleteMultipleTrials'])->name('jadwal.otomatis.delete_multiple_trials');
     });
 
     // Penyesuaian Jadwal (Manual)
@@ -189,6 +190,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/penjadwalan/manual', [JadwalController::class, 'manual'])->name('jadwal.manual');
         Route::post('/jadwal/simpan-slot', [JadwalController::class, 'simpanSlot'])->name('jadwal.simpan-slot');
         Route::delete('/jadwal/hapus-slot/{id}', [JadwalController::class, 'hapusSlot'])->name('jadwal.hapus-slot');
+        Route::post('/jadwal/hapus-semua', [JadwalController::class, 'hapusSemua'])->name('jadwal.hapus-semua');
         Route::post('/jadwal/optimasi', [JadwalController::class, 'optimasi'])->name('jadwal.optimasi');
         Route::get('/jadwal/status-bentrok', [JadwalController::class, 'statusBentrok'])->name('jadwal.status-bentrok');
         Route::get('/jadwal/{tahunAkademikId}/export/excel', [JadwalExportController::class, 'exportExcel'])->name('jadwal.export.excel');

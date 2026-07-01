@@ -74,7 +74,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                                         </div>
                                         <div>
-                                            <h3 class="text-base font-bold text-gray-800">Management Data</h3>
+                                            <h3 class="text-lg font-black text-gray-900 tracking-tight">Management Data</h3>
                                             <p class="text-xs text-gray-400">Pengelolaan data master</p>
                                         </div>
                                     </div>
@@ -89,21 +89,45 @@
 
                                 <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" x-show="enabled" x-collapse>
                                     @foreach($permissions['management_data']['items'] as $index => $item)
-                                        <label class="flex items-center space-x-3 p-3 rounded-xl border border-gray-100 hover:bg-teal-50/30 hover:border-teal-100 cursor-pointer transition-all">
-                                            <div class="relative flex items-center">
-                                                <input type="hidden" name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][name]" value="{{ $item['name'] }}">
-                                                <input type="hidden" name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][enabled]" value="0">
-                                                <input 
-                                                    type="checkbox" 
-                                                    name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][enabled]" 
-                                                    value="1" 
-                                                    {{ $item['enabled'] ? 'checked' : '' }} 
-                                                    class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-teal-500 checked:bg-teal-500 hover:border-teal-400"
-                                                >
-                                                <svg class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <div class="flex flex-col p-5 rounded-2xl border border-gray-100 hover:bg-teal-50/20 hover:border-teal-200 transition-all shadow-sm bg-white" 
+                                             x-data="{ 
+                                                 readOn: {{ $item['enabled'] ? 'true' : 'false' }}, 
+                                                 editOn: {{ ($item['enabled'] && isset($item['access']) && $item['access'] === 'edit') ? 'true' : 'false' }} 
+                                             }"
+                                             x-init="$watch('editOn', val => { if(val) readOn = true; }); $watch('readOn', val => { if(!val) editOn = false; })">
+                                            
+                                            <div class="flex items-center justify-between mb-5">
+                                                <span class="text-base font-extrabold text-gray-900 select-none">{{ $item['name'] }}</span>
                                             </div>
-                                            <span class="text-sm font-medium text-gray-700 select-none">{{ $item['name'] }}</span>
-                                        </label>
+                                        
+                                            <div class="flex items-center justify-end space-x-6 border-t border-gray-100 pt-4 mt-auto">
+                                                
+                                                <!-- Toggle Read -->
+                                                <div class="flex items-center space-x-2.5 cursor-pointer" @click="readOn = !readOn">
+                                                    <span class="text-sm font-bold text-gray-600 select-none transition-colors" :class="readOn ? 'text-teal-800 font-extrabold' : ''">Read</span>
+                                                    <div class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200"
+                                                            :class="readOn ? 'bg-teal-600' : 'bg-gray-300'">
+                                                        <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                                                :class="readOn ? 'translate-x-4.5' : 'translate-x-1'"></span>
+                                                    </div>
+                                                </div>
+                                        
+                                                <!-- Toggle Edit -->
+                                                <div class="flex items-center space-x-2.5 cursor-pointer" @click="editOn = !editOn">
+                                                    <span class="text-sm font-bold text-gray-600 select-none transition-colors" :class="editOn ? 'text-teal-800 font-extrabold' : ''">Edit</span>
+                                                    <div class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200"
+                                                            :class="editOn ? 'bg-teal-600' : 'bg-gray-300'">
+                                                        <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                                                :class="editOn ? 'translate-x-4.5' : 'translate-x-1'"></span>
+                                                    </div>
+                                                </div>
+                                                
+                                            </div>
+                                            
+                                            <input type="hidden" name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][name]" value="{{ $item['name'] }}">
+                                            <input type="hidden" name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][enabled]" :value="readOn ? '1' : '0'">
+                                            <input type="hidden" name="permissions[{{ $roleName }}][management_data][items][{{ $index }}][access]" :value="editOn ? 'edit' : 'read'">
+                                        </div>
                                     @endforeach
                                 </div>
                             </div>
@@ -122,7 +146,7 @@
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                         </div>
                                         <div>
-                                            <h3 class="text-base font-bold text-gray-800">Modul Penjadwalan</h3>
+                                            <h3 class="text-lg font-black text-gray-900 tracking-tight">Modul Penjadwalan</h3>
                                             <p class="text-xs text-gray-400">Pengaturan jadwal kuliah</p>
                                         </div>
                                     </div>
@@ -137,21 +161,45 @@
 
                                 <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" x-show="enabled" x-collapse>
                                     @foreach($permissions['modul_penjadwalan']['items'] as $index => $item)
-                                        <label class="flex items-center space-x-3 p-3 rounded-xl border border-gray-100 hover:bg-yellow-50/30 hover:border-yellow-100 cursor-pointer transition-all">
-                                            <div class="relative flex items-center">
-                                                <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][name]" value="{{ $item['name'] }}">
-                                                <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][enabled]" value="0">
-                                                <input 
-                                                    type="checkbox" 
-                                                    name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][enabled]" 
-                                                    value="1" 
-                                                    {{ $item['enabled'] ? 'checked' : '' }} 
-                                                    class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-yellow-500 checked:bg-yellow-500 hover:border-yellow-400"
-                                                >
-                                                <svg class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <div class="flex flex-col p-5 rounded-2xl border border-gray-100 hover:bg-yellow-50/20 hover:border-yellow-200 transition-all shadow-sm bg-white" 
+                                             x-data="{ 
+                                                 readOn: {{ $item['enabled'] ? 'true' : 'false' }}, 
+                                                 editOn: {{ ($item['enabled'] && isset($item['access']) && $item['access'] === 'edit') ? 'true' : 'false' }} 
+                                             }"
+                                             x-init="$watch('editOn', val => { if(val) readOn = true; }); $watch('readOn', val => { if(!val) editOn = false; })">
+                                            
+                                            <div class="flex items-center justify-between mb-5">
+                                                <span class="text-base font-extrabold text-gray-900 select-none">{{ $item['name'] }}</span>
                                             </div>
-                                            <span class="text-sm font-medium text-gray-700 select-none">{{ $item['name'] }}</span>
-                                        </label>
+                                        
+                                            <div class="flex items-center justify-end space-x-6 border-t border-gray-100 pt-4 mt-auto">
+                                                
+                                                <!-- Toggle Read -->
+                                                <div class="flex items-center space-x-2.5 cursor-pointer" @click="readOn = !readOn">
+                                                    <span class="text-sm font-bold text-gray-600 select-none transition-colors" :class="readOn ? 'text-yellow-800 font-extrabold' : ''">Read</span>
+                                                    <div class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200"
+                                                            :class="readOn ? 'bg-yellow-500' : 'bg-gray-300'">
+                                                        <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                                                :class="readOn ? 'translate-x-4.5' : 'translate-x-1'"></span>
+                                                    </div>
+                                                </div>
+                                        
+                                                <!-- Toggle Edit -->
+                                                <div class="flex items-center space-x-2.5 cursor-pointer" @click="editOn = !editOn">
+                                                    <span class="text-sm font-bold text-gray-600 select-none transition-colors" :class="editOn ? 'text-yellow-800 font-extrabold' : ''">Edit</span>
+                                                    <div class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200"
+                                                            :class="editOn ? 'bg-yellow-500' : 'bg-gray-300'">
+                                                        <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                                                :class="editOn ? 'translate-x-4.5' : 'translate-x-1'"></span>
+                                                    </div>
+                                                </div>
+                                                
+                                            </div>
+                                            
+                                            <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][name]" value="{{ $item['name'] }}">
+                                            <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][enabled]" :value="readOn ? '1' : '0'">
+                                            <input type="hidden" name="permissions[{{ $roleName }}][modul_penjadwalan][items][{{ $index }}][access]" :value="editOn ? 'edit' : 'read'">
+                                        </div>
                                     @endforeach
                                 </div>
                             </div>

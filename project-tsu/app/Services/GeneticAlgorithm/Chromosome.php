@@ -61,6 +61,7 @@ class Chromosome
     public int   $conflicts            = 0;
     public int   $dosenConflicts       = 0;
     public int   $ruanganConflicts     = 0;
+    public int   $kelasConflicts       = 0;  // [BARU] HC8/HC-New
     public int   $constraintViolations = 0;  // total soft violations (SC)
     public int   $hardViolations       = 0;  // HC6/HC10/HC12/HC14/HC15
 
@@ -187,14 +188,17 @@ class Chromosome
         //
         $this->dosenConflicts   = 0;
         $this->ruanganConflicts = 0;
+        $this->kelasConflicts   = 0;
 
         // Index: [entityId][hariId][slotId] = true jika sudah terisi
         $dosenIndex = [];
         $ruangIndex = [];
+        $kelasIndex = []; // Untuk deteksi mahasiswa/kelas yang sama
 
         foreach ($this->genes as $gene) {
             $did  = $gene->dosenId;
             $rid  = $gene->ruangId;
+            $nk   = $gene->namaKelas;
             $hari = $gene->hariId;
             $end  = $gene->getSlotAkhir();
 
@@ -216,9 +220,18 @@ class Chromosome
                         $ruangIndex[$rid][$hari][$slot] = true;
                     }
                 }
+
+                // Konflik kelas mahasiswa (HC8/HC-New)
+                if ($nk !== '') {
+                    if (isset($kelasIndex[$nk][$hari][$slot])) {
+                        $this->kelasConflicts++;
+                    } else {
+                        $kelasIndex[$nk][$hari][$slot] = true;
+                    }
+                }
             }
         }
-        $this->conflicts = $this->dosenConflicts + $this->ruanganConflicts;
+        $this->conflicts = $this->dosenConflicts + $this->ruanganConflicts + $this->kelasConflicts;
 
         // ── HC lainnya & SC per-gene ─────────────────────────────────────
         $hardPenalty = 0.0;
@@ -226,9 +239,10 @@ class Chromosome
 
         // Hard per-gene aggregates
         $hc6Count  = 0;
-        // HC10 moved to soft constraint - treated as soft because data completeness varies
+        $hc10Count = 0;
         $hc12Count = 0;
-        // HC13 moved to soft constraint - treated as soft because data completeness varies
+        $hc13Count = 0;
+        $hcPraktikumHariCount = 0;
 
         // Track regular classes per room per day for SC17
         $roomHasRegularClass = [];
@@ -257,10 +271,8 @@ class Chromosome
 
             // HC6
             if (!$gene->validateDosenExists()) { $hc6Count++; }
-            // HC10 moved to soft constraint - check below
             // HC12/HC3
             if (!$gene->validateTimeConstraint($this->eveningStartSlot, $this->breakSlots)) { $hc12Count++; }
-            // HC13 moved to soft constraint - check below
 
             $did   = $gene->dosenId;
             $hari  = $gene->hariId;
@@ -292,18 +304,19 @@ class Chromosome
             $fitViol = $gene->validateRoomFit();
             $softPenalty += $fitViol * $this->wSC5_fit;
 
-            // HC10 moved to soft constraint: room exists in valid list
-            // [FIX] Untuk praktikum, naikkan bobot ke 5.0 (hard level)
+            // HC10: room exists in valid list
             if (!empty($this->validRuangIds) && !$gene->validateRoomExists($this->validRuangIds)) {
-                $penalty = ($gene->jenisMatkul === Gene::JENIS_PRAKTIKUM) ? 5.0 : $this->wHC10_noRoom;
-                $softPenalty += $penalty;
+                $hc10Count++;
             }
 
-            // HC13 moved to soft constraint: room type matching
-            // [FIX] Untuk praktikum, naikkan bobot ke 5.0 (hard level)
+            // HC13: room type matching
             if (!$gene->validateRoomType()) {
-                $penalty = ($gene->jenisMatkul === Gene::JENIS_PRAKTIKUM) ? 5.0 : $this->wHC13_type;
-                $softPenalty += $penalty;
+                $hc13Count++;
+            }
+
+            // HC-New: Praktikum hanya Senin-Rabu
+            if (!$gene->validatePraktikumHari()) {
+                $hcPraktikumHariCount++;
             }
 
             // SC9 dihapus — bertolak belakang dengan SC16:
@@ -317,12 +330,14 @@ class Chromosome
 
         // Hard per-gene penalties
         $hardPenalty += $hc6Count  * $this->wHC6_dosen0;
-        // HC10 moved to soft constraint - removed from hard penalty
+        $hardPenalty += $hc10Count * $this->wHC10_noRoom;
         $hardPenalty += $hc12Count * $this->wHC12_time;
-        // HC13 moved to soft constraint - removed from hard penalty
+        $hardPenalty += $hc13Count * $this->wHC13_type;
+        $hardPenalty += $hcPraktikumHariCount * 5.0; // Bobot tinggi agar dihindari mati-matian
         $hardPenalty += ($this->dosenConflicts   * $this->wHC1_dosen);
         $hardPenalty += ($this->ruanganConflicts * $this->wHC2_ruangan);
-        $this->hardViolations = $hc6Count + $hc12Count;
+        $hardPenalty += ($this->kelasConflicts   * 5.0); // Penalty yang sama dengan HC1/HC2
+        $this->hardViolations = $hc6Count + $hc10Count + $hc12Count + $hc13Count + $hcPraktikumHariCount;
 
         // ── HC14: Dosen > 8 SKS/hari ────────────────────────────────────
         $hc14Count = 0;
@@ -643,6 +658,7 @@ class Chromosome
     public function getConflicts(): int         { return $this->conflicts; }
     public function getDosenConflicts(): int    { return $this->dosenConflicts; }
     public function getRuanganConflicts(): int  { return $this->ruanganConflicts; }
+    public function getKelasConflicts(): int    { return $this->kelasConflicts; }
     public function getConstraintViolations(): int { return $this->constraintViolations; }
     public function getHardViolations(): int    { return $this->hardViolations; }
     /**

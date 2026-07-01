@@ -96,6 +96,7 @@
             </div>
         </div>
         <div class="flex items-center gap-2.5">
+            @if($mode !== 'table')
             <button
                 @click="kelasSidebarOpen = !kelasSidebarOpen"
                 :class="kelasSidebarOpen ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-white border-gray-200 text-gray-700'"
@@ -104,6 +105,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
                 <span x-text="kelasSidebarOpen ? 'Sembunyikan Kelas' : 'Tampilkan Kelas'"></span>
             </button>
+            @endif
             <button
                 @click="focusMode = !focusMode; sidebarOpen = !focusMode; kelasSidebarOpen = !focusMode"
                 :class="focusMode ? 'bg-gray-800 border-transparent text-white' : 'bg-white border-gray-200 text-gray-700'"
@@ -190,7 +192,12 @@
                                 <div>
                                     <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Semester</p>
                                     <div class="grid grid-cols-2 gap-1.5">
-                                        @foreach([1,2,3,4,5,6,7,8] as $sem)
+                                        @php
+                                            $keterangan = strtolower($tahunAkademik->nama_tahunakademik ?? '');
+                                            $isGenap = (strpos($keterangan, 'genap') !== false || strpos($keterangan, 'even') !== false);
+                                            $semesters = $isGenap ? [2, 4, 6, 8] : [1, 3, 5, 7];
+                                        @endphp
+                                        @foreach($semesters as $sem)
                                         <label class="flex items-center gap-2 cursor-pointer group">
                                             <input type="checkbox" class="filter-semester w-4 h-4 rounded text-teal-600 border-gray-300 focus:ring-teal-500" value="{{ $sem }}" onchange="applyMatkulFilter()">
                                             <span class="text-sm text-gray-700 group-hover:text-teal-700">Semester {{ $sem }}</span>
@@ -472,6 +479,7 @@
     const CSRF      = document.querySelector('meta[name="csrf-token"]').content;
     const MATKULS   = window.__MATKULS__;
     const PENGAMPUS = window.__PENGAMPUS__;
+    const HAS_EDIT_PERMISSION = @json(Auth::user()->hasPermissionAccess('management_data', 'Dosen Pengampu', 'edit'));
 
     // ── Init: render assigned cards dari DB ──────────────────────
     function init() {
@@ -508,9 +516,17 @@
         div.dataset.semester   = semester;
         div.dataset.kodeMatkul = kodeMatkul;
 
-        div.setAttribute('draggable', 'true');
+        if (HAS_EDIT_PERMISSION) {
+            div.setAttribute('draggable', 'true');
+        } else {
+            div.setAttribute('draggable', 'false');
+        }
 
         div.addEventListener('dragstart', function(e) {
+            if (!HAS_EDIT_PERMISSION) {
+                e.preventDefault();
+                return;
+            }
             div.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'copy';
             
@@ -545,13 +561,14 @@
                     '<span class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">Smt ' + (semester || '-') + '</span>' +
                 '</div>' +
             '</div>' +
+            (HAS_EDIT_PERMISSION ? 
             '<button onclick="hapusPengampu(\'' + pengampuId + '\',this)" ' +
                 'class="flex-shrink-0 text-gray-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition opacity-0 group-hover:opacity-100" ' +
                 'title="Lepaskan">' +
                 '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
                     '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>' +
                 '</svg>' +
-            '</button>';
+            '</button>' : '');
         return div;
     }
 
@@ -591,7 +608,11 @@
                 }
             } else {
                 item.classList.remove('is-assigned');
-                item.setAttribute('draggable', 'true');
+                if (HAS_EDIT_PERMISSION) {
+                    item.setAttribute('draggable', 'true');
+                } else {
+                    item.setAttribute('draggable', 'false');
+                }
                 belum++;
                 
                 // Remove checkmark badge
@@ -647,6 +668,10 @@
     // ── Drag & Drop ──────────────────────────────────────────────
     document.querySelectorAll('.kelas-item').forEach(function(item) {
         item.addEventListener('dragstart', function(e) {
+            if (!HAS_EDIT_PERMISSION) {
+                e.preventDefault();
+                return;
+            }
             item.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'copy';
             
@@ -676,6 +701,7 @@
             if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
         });
         zone.addEventListener('drop', function(e) {
+            if (!HAS_EDIT_PERMISSION) return;
             e.preventDefault();
             zone.classList.remove('drag-over');
             var rawData = e.dataTransfer.getData('text/plain');
@@ -955,50 +981,9 @@
         document.addEventListener('alpine:init', function() {
             @if($mode === 'table')
                 Alpine.start();
-                initTableModeFilter();
+                // Table filtering logic is now handled entirely within table.blade.php
             @endif
         });
-
-        function initTableModeFilter() {
-            // Simple filter using data attributes on rows
-            const searchInput = document.getElementById('table-search');
-            const filterProdi = document.getElementById('table-filter-prodi');
-            const filterSemester = document.getElementById('table-filter-semester');
-            const filterMatkul = document.getElementById('table-filter-matkul');
-            const filterStatus = document.getElementById('table-filter-status');
-
-            function applyFilters() {
-                const search = (searchInput?.value || '').toLowerCase();
-                const prodi = filterProdi?.value || '';
-                const semester = filterSemester?.value || '';
-                const matkul = filterMatkul?.value || '';
-                const status = filterStatus?.value || '';
-
-                document.querySelectorAll('#table-body tr').forEach(function(row) {
-                    const namaKelas = (row.dataset.namaKelas || '').toLowerCase();
-                    const namaMatkul = (row.dataset.namaMatkul || '').toLowerCase();
-                    const rowProdi = row.dataset.prodi || '';
-                    const rowSemester = row.dataset.semester || '';
-                    const rowMatkul = row.dataset.matkul || '';
-                    const rowStatus = row.dataset.status || '';
-
-                    let show = true;
-                    if (search && !namaKelas.includes(search) && !namaMatkul.includes(search)) show = false;
-                    if (prodi && rowProdi !== prodi) show = false;
-                    if (semester && rowSemester !== semester) show = false;
-                    if (matkul && rowMatkul !== matkul) show = false;
-                    if (status && rowStatus !== status) show = false;
-
-                    row.style.display = show ? '' : 'none';
-                });
-            }
-
-            if (searchInput) searchInput.addEventListener('input', applyFilters);
-            if (filterProdi) filterProdi.addEventListener('change', applyFilters);
-            if (filterSemester) filterSemester.addEventListener('change', applyFilters);
-            if (filterMatkul) filterMatkul.addEventListener('change', applyFilters);
-            if (filterStatus) filterStatus.addEventListener('change', applyFilters);
-        }
     </script>
 
     <script>
@@ -1062,45 +1047,7 @@
         };
 
         document.addEventListener('DOMContentLoaded', function() {
-            @if($mode === 'table')
-                const searchInput = document.getElementById('table-search');
-                const filterProdi = document.getElementById('table-filter-prodi');
-                const filterSemester = document.getElementById('table-filter-semester');
-                const filterMatkul = document.getElementById('table-filter-matkul');
-                const filterStatus = document.getElementById('table-filter-status');
-
-                function applyTableFilters() {
-                    const search = (searchInput ? searchInput.value.toLowerCase() : '');
-                    const prodi = (filterProdi ? filterProdi.value : '');
-                    const semester = (filterSemester ? filterSemester.value : '');
-                    const matkul = (filterMatkul ? filterMatkul.value : '');
-                    const status = (filterStatus ? filterStatus.value : '');
-
-                    document.querySelectorAll('#table-body tr').forEach(function(row) {
-                        const namaKelas = (row.dataset.namaKelas || '').toLowerCase();
-                        const namaMatkul = (row.dataset.namaMatkul || '').toLowerCase();
-                        const rowProdi = row.dataset.prodi || '';
-                        const rowSemester = row.dataset.semester || '';
-                        const rowMatkul = row.dataset.matkul || '';
-                        const rowStatus = row.dataset.status || '';
-
-                        let show = true;
-                        if (search && !namaKelas.includes(search) && !namaMatkul.includes(search)) show = false;
-                        if (prodi && rowProdi !== prodi) show = false;
-                        if (semester && rowSemester !== semester) show = false;
-                        if (matkul && rowMatkul !== matkul) show = false;
-                        if (status && rowStatus !== status) show = false;
-
-                        row.style.display = show ? '' : 'none';
-                    });
-                }
-
-                if (searchInput) searchInput.addEventListener('input', applyTableFilters);
-                if (filterProdi) filterProdi.addEventListener('change', applyTableFilters);
-                if (filterSemester) filterSemester.addEventListener('change', applyTableFilters);
-                if (filterMatkul) filterMatkul.addEventListener('change', applyTableFilters);
-                if (filterStatus) filterStatus.addEventListener('change', applyTableFilters);
-            @endif
+            // The table mode filtering is handled within table.blade.php
         });
     </script>
 

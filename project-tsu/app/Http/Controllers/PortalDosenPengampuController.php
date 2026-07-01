@@ -54,8 +54,10 @@ class PortalDosenPengampuController extends Controller
         $search = $request->input('search');
 
         // Pengampu Query
-        $pengampuQuery = PengampuKelas::with(['kelas.matakuliah.program_studi'])
-            ->where('id_tahunakademik', $idTahun);
+        $pengampuQuery = PengampuKelas::with([
+            'kelas.matakuliah.program_studi', 
+            'dosen.pengampus.kelas.matakuliah'
+        ])->where('id_tahunakademik', $idTahun);
         
         if ($prodiId) {
             $pengampuQuery->whereHas('kelas', function($q) use ($prodiId) {
@@ -198,6 +200,7 @@ class PortalDosenPengampuController extends Controller
 
     public function simpan(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Pengampu Kelas', 'edit'), 403, 'Unauthorized action.');
         $request->validate([
             'id_dosen'         => 'required|exists:dosen,id_dosen',
             'id_kelas'         => 'required|integer|exists:kelas,id_kelas',
@@ -229,6 +232,7 @@ class PortalDosenPengampuController extends Controller
 
     public function hapus(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Pengampu Kelas', 'edit'), 403, 'Unauthorized action.');
         $request->validate([
             'id' => 'required|integer|exists:pengampu_kelas,id'
         ]);

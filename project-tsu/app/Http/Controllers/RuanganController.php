@@ -38,6 +38,8 @@ class RuanganController extends Controller
      */
     public function create()
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'), 403, 'Unauthorized action.');
+
         $gedungs = Gedung::orderBy('nama_gedung', 'asc')->get();
         return view('management.ruangan.create', compact('gedungs'));
     }
@@ -47,6 +49,8 @@ class RuanganController extends Controller
      */
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'), 403, 'Unauthorized action.');
+
         $request->validate([
             'nama_ruang' => 'required|string|max:50|unique:ruang,nama_ruang',
             'id_gedung' => 'required|integer|exists:gedung,id_gedung',
@@ -63,6 +67,8 @@ class RuanganController extends Controller
      */
     public function edit(Ruangan $ruangan)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'), 403, 'Unauthorized action.');
+
         $gedungs = Gedung::orderBy('nama_gedung', 'asc')->get();
         return view('management.ruangan.edit', compact('ruangan', 'gedungs'));
     }
@@ -72,6 +78,8 @@ class RuanganController extends Controller
      */
     public function update(Request $request, Ruangan $ruangan)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'), 403, 'Unauthorized action.');
+
         $request->validate([
             'nama_ruang' => 'required|string|max:50|unique:ruang,nama_ruang,' . $ruangan->id_ruang . ',id_ruang',
             'id_gedung' => 'required|integer|exists:gedung,id_gedung',
@@ -88,6 +96,8 @@ class RuanganController extends Controller
      */
     public function destroy(Ruangan $ruangan)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'), 403, 'Unauthorized action.');
+
         try {
             $ruangan->delete();
             return redirect()->route('ruangan.index')

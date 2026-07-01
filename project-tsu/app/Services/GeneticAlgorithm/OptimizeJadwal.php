@@ -54,6 +54,12 @@ class OptimizeJadwal
     /** [HC14] Maksimum total SKS yang boleh diajar satu dosen dalam satu hari */
     private int $maxSksDosenPerHari = 8;
 
+    /** Hari yang aktif */
+    private array $activeHariIds = [];
+
+    /** Pemetaan Hari ke Slot { hariId => [slotId, slotId] } */
+    private array $hariSlotMap = [];
+
     public function __construct()
     {
         // Slot istirahat = slot dengan jam_ke = 6
@@ -62,6 +68,13 @@ class OptimizeJadwal
 
         // Batas malam: 16:30 (dalam menit)
         $this->menitBatasMalam = 16 * 60 + 30;
+
+        // Load hari yang aktif dan pemetaannya
+        $haris = \App\Models\Hari::where('is_active', true)->with('slotWaktus')->get();
+        $this->activeHariIds = $haris->pluck('id_hari')->toArray();
+        foreach ($haris as $h) {
+            $this->hariSlotMap[$h->id_hari] = $h->slotWaktus->pluck('id_slot')->toArray();
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -850,6 +863,10 @@ class OptimizeJadwal
             // Pastikan semua slot dalam range ada
             if (count(array_diff($slotRange, $slotIds)) > 0) continue;
 
+            // Pastikan semua slot dalam range valid (dipetakan) untuk hari ini
+            $validSlotsForHari = $this->hariSlotMap[$hariId] ?? [];
+            if (count(array_diff($slotRange, $validSlotsForHari)) > 0) continue;
+
             // Jangan lewati slot istirahat
             if ($this->melewatiIstirahat($slotRange)) continue;
 
@@ -928,7 +945,7 @@ class OptimizeJadwal
     /** Urutan hari: coba hari asal dulu, lalu hari lain */
     private function urutanHari(int $hariAsal, string $namaKelas): array
     {
-        $semua = [1, 2, 3, 4, 5];
+        $semua = $this->activeHariIds;
         // Kelas S (malam) bebas di semua hari
         // Kelas A/B (pagi) coba hari asal dulu
         return array_unique(array_merge([$hariAsal], $semua));

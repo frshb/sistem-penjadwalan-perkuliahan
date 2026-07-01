@@ -380,20 +380,21 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                    <div class="bg-[#fefce8] border border-yellow-200 rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all cursor-pointer group" onclick="window.location='{{ route('prodi.index') }}'">
+                    <a href="{{ route('prodi.index') }}" class="block bg-[#fefce8] border border-yellow-200 rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all group">
                         <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-yellow-700 transition-colors">Management Data</h3>
                         <p class="text-sm text-gray-600">Kelola semua informasi fundamental sistem</p>
-                    </div>
+                    </a>
 
 
-                    <div class="bg-[#facc15] rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all cursor-pointer group text-white relative overflow-hidden" onclick="window.location='{{ route('jadwal.otomatis.index') }}'">
+
+                    <a href="{{ route('jadwal.otomatis.index') }}" class="block bg-[#facc15] rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all group text-white relative overflow-hidden">
                         <div class="relative z-10">
                             <h3 class="text-lg font-bold mb-2 text-gray-900 group-hover:text-black transition-colors">Modul Penjadwalan</h3>
                             <p class="text-sm text-gray-800 font-medium">Buat & atur jadwal otomatis dan manual</p>
                         </div>
 
                         <div class="absolute right-[-10px] bottom-[-10px] w-24 h-24 bg-white opacity-20 rounded-full"></div>
-                    </div>
+                    </a>
                 </div>
             </div>            
         </main>

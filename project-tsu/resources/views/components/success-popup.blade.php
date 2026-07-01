@@ -59,10 +59,25 @@
             setTimeout(() => {
                 popup.style.opacity = '1';
             }, 10);
+            
+            // Auto close after 2.5 seconds
+            setTimeout(() => {
+                closePopup('js-success-popup');
+                // Reload if the button has reload action (optional, but keep it just visual hide)
+            }, 1500);
         } else {
             console.error('Elemen popup tidak ditemukan!');
         }
     }
+    
+    // Auto-close session popup if it exists
+    document.addEventListener('DOMContentLoaded', () => {
+        if (document.getElementById('session-success-popup')) {
+            setTimeout(() => {
+                closePopup('session-success-popup');
+            }, 1500);
+        }
+    });
 </script>
 
 <style>

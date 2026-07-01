@@ -42,9 +42,7 @@ class MataKuliah extends Model
         return $this->belongsToMany(
             Ruangan::class,
             'matkul_ruang',
-            'kode_matkul',
-            'id_ruang',
-            'kode_matkul',
+            'id_matakuliah',
             'id_ruang'
         );
     }

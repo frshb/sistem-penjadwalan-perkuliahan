@@ -21,13 +21,11 @@ class JadwalOtomatisController extends Controller
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
         foreach ($tahunAkademikList as $ta) {
-            $query = PengampuKelas::where('id_tahunakademik', $ta->id_tahunakademik);
+            $query = \App\Models\Kelas::where('id_tahunakademik', $ta->id_tahunakademik);
             if ($prodiId) {
-                $query->whereHas('kelas', function ($q) use ($prodiId) {
-                    $q->where('id_prodi', $prodiId);
-                });
+                $query->where('id_prodi', $prodiId);
             }
-            $ta->kelas_count = $query->distinct('id_kelas')->count('id_kelas');
+            $ta->setAttribute('kelas_count', $query->count());
         }
 
         return view('jadwal-otomatis.index', compact('tahunAkademikList', 'tahunAkademikAktif'));
@@ -47,34 +45,22 @@ class JadwalOtomatisController extends Controller
         $user = auth()->user();
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
-        // Ambil data pengampu kelas untuk tahun akademik ini (sumber utama dari pengampu_kelas)
-        $pengampuKelasQuery = PengampuKelas::with([
-                'kelas.matakuliah.ruangans',
-                'kelas.prodi',
-                'dosen',
+        // Ambil data kelas untuk tahun akademik ini
+        $kelasQuery = \App\Models\Kelas::with([
+                'matakuliah.ruangans',
+                'prodi',
+                'pengampuMatkul.dosen',
             ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
-                $q->where('id_prodi', $prodiId);
-            });
+            $kelasQuery->where('id_prodi', $prodiId);
         }
 
-        $pengampus = $pengampuKelasQuery->get();
-
-        // Transformasikan pengampu_kelas menjadi koleksi Kelas
-        $kelas = $pengampus->map(function ($pk) {
-            $k = $pk->kelas;
-            if ($k) {
-                $k->setRelation('pengampus', collect([$pk]));
-                $k->setRelation('pengampuMatkul', collect([$pk]));
-            }
-            return $k;
-        })->filter()->values();
+        $kelas = $kelasQuery->get();
 
         if ($kelas->isEmpty()) {
-            return back()->withErrors(['kelas' => 'Tidak ada data kelas dengan dosen pengampu untuk tahun akademik ini.']);
+            return back()->withErrors(['kelas' => 'Tidak ada data kelas yang terdaftar untuk tahun akademik ini.']);
         }
 
 
@@ -87,7 +73,7 @@ class JadwalOtomatisController extends Controller
             ])
             ->all();
 
-        $hariList = [1, 2, 3, 4, 5];
+        $hariList = \App\Models\Hari::where('is_active', true)->pluck('id_hari')->toArray();
 
         $populasiProses  = (int) $request->populasi;
         $generasiProses  = (int) $request->generasi;
@@ -96,10 +82,15 @@ class JadwalOtomatisController extends Controller
         $scheduler = new GeneticScheduler(
             populationSize: $populasiProses,
             maxGenerations: $generasiProses,
-            crossoverRate: 0.8,
-            mutationRate: 0.1,
+            crossoverRate: $request->filled('crossover') ? (float) $request->crossover : 0.8,
+            mutationRate: $request->filled('mutation') ? (float) $request->mutation : 0.1,
         );
         $scheduler->setTimeLimit((float) $timeLimitProses);
+        
+        if ($request->filled('elite')) $scheduler->setEliteK((int) $request->elite);
+        if ($request->filled('stagnation')) $scheduler->setStagnationThreshold((int) $request->stagnation);
+        if ($request->filled('temp')) $scheduler->setTemp((int) $request->temp);
+        if ($request->filled('early_exit')) $scheduler->setEarlyExitFitness((float) $request->early_exit);
 
         set_time_limit($timeLimitProses + 60);
         ini_set('memory_limit', '512M');
@@ -164,6 +155,7 @@ class JadwalOtomatisController extends Controller
             'jadwalJson'         => json_encode($jadwalRows),
             'dosenConflicts'     => $hasil['dosen_conflicts']      ?? 0,
             'ruanganConflicts'   => $hasil['ruangan_conflicts']    ?? 0,
+            'kelasConflicts'     => $hasil['kelas_conflicts']      ?? 0,
             'softViolations'     => $hasil['constraint_violations'] ?? 0,
             'problemLog'         => $hasil['problem_log']          ?? [],
             'diagnosa'           => $this->diagnoseConflicts($jadwalRows),
@@ -227,6 +219,7 @@ class JadwalOtomatisController extends Controller
             'total_kelas'       => $request->total_kelas,
             'dosen_conflicts'   => $request->dosen_conflicts,
             'ruangan_conflicts' => $request->ruangan_conflicts,
+            'kelas_conflicts'   => $request->kelas_conflicts,
             'soft_violations'   => $request->soft_violations,
             'jadwal_json'       => $request->jadwal_json,
         ]);
@@ -240,15 +233,15 @@ class JadwalOtomatisController extends Controller
     public function compareTrials(Request $request)
     {
         $tahunAkademikList = TahunAkademik::where('status_aktif', 1)->orderByDesc('id_tahunakademik')->get();
-        
+
         $tahunAkademikId = $request->tahun_akademik_id;
         $selectedTahun = null;
         if ($tahunAkademikId) {
             $selectedTahun = TahunAkademik::find($tahunAkademikId);
         }
-        
+
         if (!$selectedTahun) {
-            $selectedTahun = TahunAkademik::where('status_aktif', 1)->first() 
+            $selectedTahun = TahunAkademik::where('status_aktif', 1)->first()
                 ?? TahunAkademik::orderByDesc('id_tahunakademik')->first();
         }
 
@@ -303,6 +296,23 @@ class JadwalOtomatisController extends Controller
             ->with('success', 'Uji coba berhasil dihapus!');
     }
 
+    // ── Hapus banyak data Uji Coba (Trial Run) ────
+    public function deleteMultipleTrials(Request $request)
+    {
+        $request->validate([
+            'trial_ids' => 'required|array',
+            'trial_ids.*' => 'exists:jadwal_trials,id',
+        ]);
+
+        $tahunAkademikId = $request->input('tahun_akademik_id');
+
+        JadwalTrial::whereIn('id', $request->trial_ids)->delete();
+
+        return redirect()
+            ->route('jadwal.otomatis.compare_trials', ['tahun_akademik_id' => $tahunAkademikId])
+            ->with('success', count($request->trial_ids) . ' uji coba berhasil dihapus!');
+    }
+
         public function stream(Request $request)
     {
         $request->validate([
@@ -316,30 +326,18 @@ class JadwalOtomatisController extends Controller
         $user = auth()->user();
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
-        $pengampuKelasQuery = PengampuKelas::with([
-                'kelas.matakuliah.ruangans',
-                'kelas.prodi',
-                'dosen',
+        $kelasQuery = \App\Models\Kelas::with([
+                'matakuliah.ruangans',
+                'prodi',
+                'pengampuMatkul.dosen',
             ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
-                $q->where('id_prodi', $prodiId);
-            });
+            $kelasQuery->where('id_prodi', $prodiId);
         }
 
-        $pengampus = $pengampuKelasQuery->get();
-
-        // Transformasikan pengampu_kelas menjadi koleksi Kelas
-        $kelas = $pengampus->map(function ($pk) {
-            $k = $pk->kelas;
-            if ($k) {
-                $k->setRelation('pengampus', collect([$pk]));
-                $k->setRelation('pengampuMatkul', collect([$pk]));
-            }
-            return $k;
-        })->filter()->values();
+        $kelas = $kelasQuery->get();
 
         $slots = Slot_waktu::orderBy('id_slot')->get()
             ->map(fn($s) => [
@@ -358,10 +356,15 @@ class JadwalOtomatisController extends Controller
         $scheduler = new GeneticScheduler(
             populationSize: $populasi,
             maxGenerations: $generasi,
-            crossoverRate:  0.8,
-            mutationRate:   0.15,
+            crossoverRate:  $request->filled('crossover') ? (float) $request->crossover : 0.8,
+            mutationRate:   $request->filled('mutation') ? (float) $request->mutation : 0.15,
         );
         $scheduler->setTimeLimit((float) $timeLimitSek);
+        
+        if ($request->filled('elite')) $scheduler->setEliteK((int) $request->elite);
+        if ($request->filled('stagnation')) $scheduler->setStagnationThreshold((int) $request->stagnation);
+        if ($request->filled('temp')) $scheduler->setTemp((int) $request->temp);
+        if ($request->filled('early_exit')) $scheduler->setEarlyExitFitness((float) $request->early_exit);
 
         $ruangansAll = \App\Models\Ruangan::all()->keyBy('id_ruang');
 
@@ -476,6 +479,7 @@ class JadwalOtomatisController extends Controller
                     'jadwal_rows'       => $jadwalRows,
                     'dosen_conflicts'   => $hasil['dosen_conflicts']       ?? 0,
                     'ruangan_conflicts' => $hasil['ruangan_conflicts']     ?? 0,
+                    'kelas_konflik'     => $hasil['kelas_konflik']         ?? 0,
                     'soft_violations'   => $hasil['constraint_violations'] ?? 0,
                     'problem_log'       => $hasil['problem_log']           ?? [],
                     'diagnosa'          => $this->diagnoseConflicts($jadwalRows),
@@ -534,36 +538,24 @@ class JadwalOtomatisController extends Controller
         $user = auth()->user();
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
-        $pengampuKelasQuery = PengampuKelas::with([
-                'kelas.matakuliah.ruangans',
-                'kelas.prodi',
-                'dosen',
+        $kelasQuery = \App\Models\Kelas::with([
+                'matakuliah.ruangans',
+                'prodi',
+                'pengampuMatkul.dosen',
             ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
-                $q->where('id_prodi', $prodiId);
-            });
+            $kelasQuery->where('id_prodi', $prodiId);
         }
 
-        $pengampus = $pengampuKelasQuery->get();
-
-        // Transformasikan pengampu_kelas menjadi koleksi Kelas
-        $kelas = $pengampus->map(function ($pk) {
-            $k = $pk->kelas;
-            if ($k) {
-                $k->setRelation('pengampus', collect([$pk]));
-                $k->setRelation('pengampuMatkul', collect([$pk]));
-            }
-            return $k;
-        })->filter()->values();
+        $kelas = $kelasQuery->get();
 
         if ($kelas->isEmpty()) {
             return response()->json([
                 'feasible' => false,
                 'issues' => [
-                    ['type' => 'fatal', 'message' => 'Tidak ada data kelas dengan dosen pengampu untuk tahun akademik ini.']
+                    ['type' => 'fatal', 'message' => 'Tidak ada data kelas yang terdaftar untuk tahun akademik ini.']
                 ]
             ]);
         }
@@ -644,7 +636,8 @@ class JadwalOtomatisController extends Controller
             $dId = $pengampu?->id_dosen ?? 0;
             $dName = $pengampu?->dosen?->nama_dosen ?? null;
             if (!$dId) {
-                $kelasDosenKosong[] = $k->nama_kelas . ' (' . ($mk->nama_matakuliah ?? '-') . ')';
+                // FIX: properti yang benar adalah nama_matkul (bukan nama_matakuliah)
+                $kelasDosenKosong[] = $k->nama_kelas . ' (' . ($mk->nama_matkul ?? '-') . ')';
             } else {
                 $dosenSks[$dId] = ($dosenSks[$dId] ?? 0) + $sks;
                 $dosenNames[$dId] = $dName ?: 'Dosen ID: ' . $dId;
@@ -653,18 +646,7 @@ class JadwalOtomatisController extends Controller
             // Cek ruangan options
             $ruangOptions = $mk->ruangans ? $mk->ruangans->pluck('id_ruang')->toArray() : [];
             if (empty($ruangOptions)) {
-                // cek fallback global
-                $hasFallback = false;
-                $kap = (int) ($k->kapasitas ?? 0);
-                foreach ($ruanganList as $r) {
-                    if (($r->kapasitas ?? 0) >= $kap) {
-                        $hasFallback = true;
-                        break;
-                    }
-                }
-                if (!$hasFallback) {
-                    $kelasTanpaRuang[] = $k->nama_kelas . ' (' . ($mk->nama_matakuliah ?? '-') . ')';
-                }
+                $kelasTanpaRuang[] = $k->nama_kelas . ' (' . ($mk->nama_matkul ?? '-') . ')';
             }
         }
 
@@ -705,22 +687,30 @@ class JadwalOtomatisController extends Controller
         // D. Kelas Dosen Kosong (HC6)
         if (!empty($kelasDosenKosong)) {
             $count = count($kelasDosenKosong);
-            $list = implode(', ', array_slice($kelasDosenKosong, 0, 3));
-            if ($count > 3) $list .= '... dan ' . ($count - 3) . ' kelas lainnya';
+            $listHtml = '<div class="max-h-40 overflow-y-auto mt-2 p-2 bg-white/50 rounded border border-rose-100"><ul class="list-disc pl-4 space-y-1 font-normal text-xs">';
+            foreach ($kelasDosenKosong as $item) {
+                $listHtml .= "<li>$item</li>";
+            }
+            $listHtml .= '</ul></div>';
+
             $issues[] = [
-                'type' => 'warning',
-                'message' => "Terdapat $count kelas yang belum memiliki dosen pengampu (misal: $list). Kelas-kelas ini akan masuk dalam daftar bentrok sisa."
+                'type' => 'fatal',
+                'message' => "Terdapat $count kelas yang belum memiliki dosen pengampu. Anda harus memplot dosen pengampu terlebih dahulu di menu Manajemen Pengampu:<br>" . $listHtml
             ];
         }
 
         // E. Kelas Tanpa Ruang Valid (HC10)
         if (!empty($kelasTanpaRuang)) {
             $count = count($kelasTanpaRuang);
-            $list = implode(', ', array_slice($kelasTanpaRuang, 0, 3));
-            if ($count > 3) $list .= '... dan ' . ($count - 3) . ' kelas lainnya';
+            $listHtml = '<div class="max-h-40 overflow-y-auto mt-2 p-2 bg-white/50 rounded border border-rose-100"><ul class="list-disc pl-4 space-y-1 font-normal text-xs">';
+            foreach ($kelasTanpaRuang as $item) {
+                $listHtml .= "<li>$item</li>";
+            }
+            $listHtml .= '</ul></div>';
+
             $issues[] = [
-                'type' => 'warning',
-                'message' => "Terdapat $count kelas yang matakuliahnya tidak terhubung ke ruangan valid mana pun dan kapasitasnya tidak muat di ruangan global (misal: $list)."
+                'type' => 'fatal',
+                'message' => "Terdapat $count kelas yang matakuliahnya belum dicentang/direlasikan dengan ruangan manapun. Silakan atur relasi ruangan di menu Manajemen Mata Kuliah terlebih dahulu:<br>" . $listHtml
             ];
         }
 

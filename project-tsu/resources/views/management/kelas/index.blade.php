@@ -210,10 +210,12 @@
                 </div>
             </div>
 
+            @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
             <button @click="showAddModal = true"
                     class="px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700">
                 Tambah Kelas
             </button>
+            @endif
         </div>
     </div>
 
@@ -344,6 +346,7 @@
         <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold text-gray-700">Daftar Kelas</h3>
+                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
                 <button
                     @click="
                         showGenerateModal = true;
@@ -353,6 +356,7 @@
                     class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                     Generate Kelas
                 </button>
+                @endif
             </div>
 
             <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
@@ -403,7 +407,9 @@
                                         <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
                                     </div>
                                 </th>
+                                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
                                 <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
+                                @endif
                             </tr>
                         </thead>
 
@@ -447,6 +453,7 @@
                                 <td class="text-left py-2 px-3 text-sm">
                                     {{ $k->kapasitas }}
                                 </td>
+                                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
                                 <td class="text-left py-2 px-3 text-sm">
                                     <div class="flex space-x-2">
                                         <button
@@ -461,6 +468,7 @@
                                         </button>
                                     </div>
                                 </td>
+                                @endif
                             </tr>
                             @empty
                             <tr>
@@ -476,6 +484,7 @@
             </div>
 
             <!-- BULK ACTION -->
+            @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
             <div class="flex items-center justify-between mt-4">
                 <div class="flex items-center space-x-2">
                     <button
@@ -499,6 +508,7 @@
                     Centang data yang ingin dihapus
                 </span>
             </div>
+            @endif
         </div>
     </div>
 

@@ -16,6 +16,12 @@ class Hari extends Model
 
     protected $fillable = [
         'id_hari',
-        'nama_hari'
+        'nama_hari',
+        'is_active',
     ];
+
+    public function slotWaktus()
+    {
+        return $this->belongsToMany(Slot_waktu::class, 'hari_slot_waktu', 'id_hari', 'id_slot');
+    }
 }

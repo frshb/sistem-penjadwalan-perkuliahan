@@ -44,6 +44,7 @@ class RoleManagementController extends Controller
                             $items[] = [
                                 'name' => $item['name'] ?? '',
                                 'enabled' => isset($item['enabled']) && ($item['enabled'] === '1' || $item['enabled'] === true),
+                                'access' => $item['access'] ?? 'read',
                             ];
                         }
                     }

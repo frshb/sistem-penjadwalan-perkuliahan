@@ -8,6 +8,7 @@ use App\Models\Prodi;
 use App\Models\Kurikulum;
 use App\Models\MataKuliah;
 use App\Models\PengampuMatkul;
+use App\Models\TahunAkademik;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\DosenExport;
@@ -48,6 +49,8 @@ class DosenController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Dosen', 'edit'), 403, 'Unauthorized action.');
+
         $request->validate([
             'nama_dosen' => 'required|string|max:100',
             'nidn' => [
@@ -96,8 +99,12 @@ class DosenController extends Controller
             ->with('success', 'Data dosen berhasil ditambahkan.');
     }
 
-    public function update(Request $request, Dosen $dosen)
+    public function update(Request $request, $id_dosen)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Dosen', 'edit'), 403, 'Unauthorized action.');
+
+        $dosen = Dosen::findOrFail($id_dosen);
+
         $request->validate([
             'nama_dosen' => 'required|string|max:100',
             'nidn' => [
@@ -156,6 +163,8 @@ class DosenController extends Controller
 
     public function destroy(Request $request, Dosen $dosen)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Dosen', 'edit'), 403, 'Unauthorized action.');
+
         $dosen->delete();
 
         return redirect()

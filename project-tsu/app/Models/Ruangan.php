@@ -29,9 +29,7 @@ class Ruangan extends Model
             MataKuliah::class,
             'matkul_ruang',
             'id_ruang',
-            'kode_matkul',
-            'id_ruang',
-            'kode_matkul'
+            'id_matakuliah'
         );
     }
 }

@@ -47,6 +47,8 @@ class MataKuliahController extends Controller
      */
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Mata Kuliah', 'edit'), 403, 'Unauthorized action.');
+
         // Validasi data (termasuk id_kurikulum)
         $request->validate([
             'nama_matkul' => 'required|string|max:100',
@@ -56,7 +58,7 @@ class MataKuliahController extends Controller
             'semester' => 'required|integer|min:1|max:8',
             'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum', // Validasi kurikulum
             'id_prodi' => 'required|integer|exists:program_studi,id_prodi', // Validasi program studi
-            'ruangan_ids' => 'required|array',
+            'ruangan_ids' => 'nullable|array',
             'ruangan_ids.*' => 'exists:ruang,id_ruang',
             'konsentrasi' => 'nullable|string|in:AI,Programming and Software Development,IT Mobility and Security',
             'sifat' => 'required|string|in:W,P',
@@ -75,7 +77,7 @@ class MataKuliahController extends Controller
             'sifat' => $request->sifat,
         ]);
          // SIMPAN RELASI RUANGAN
-        $matkul->ruangans()->sync($request->ruangan_ids);
+        $matkul->ruangans()->sync($request->input('ruangan_ids', []));
 
 
         return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil ditambahkan.');
@@ -84,9 +86,11 @@ class MataKuliahController extends Controller
     /**
      * Memperbarui data mata kuliah.
      */
-    public function update(Request $request, $kode_matkul)
+    public function update(Request $request, $id_matakuliah)
     {
-        $matkul = MataKuliah::where('kode_matkul', $kode_matkul)->firstOrFail();
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Mata Kuliah', 'edit'), 403, 'Unauthorized action.');
+
+        $matkul = MataKuliah::findOrFail($id_matakuliah);
 
         // Validasi
         $request->validate([
@@ -98,7 +102,7 @@ class MataKuliahController extends Controller
             'semester' => 'required|integer|min:1|max:8',
             'id_kurikulum' => 'required|integer|exists:kurikulum,id_kurikulum',
             'id_prodi' => 'required|integer|exists:program_studi,id_prodi',
-            'ruangan_ids' => 'required|array',
+            'ruangan_ids' => 'nullable|array',
             'ruangan_ids.*' => 'exists:ruang,id_ruang',
             'konsentrasi' => 'nullable|string|in:AI,Programming and Software Development,IT Mobility and Security',
             'sifat' => 'required|string|in:W,P',
@@ -116,8 +120,9 @@ class MataKuliahController extends Controller
             'konsentrasi' => $request->konsentrasi ?: null,
             'sifat' => $request->sifat,
         ]);
-        $matkul->ruangans()->sync($request->ruangan_ids);
+        $matkul->ruangans()->sync($request->input('ruangan_ids', []));
 
+        session()->flash('success', 'Mata kuliah berhasil diperbarui.');
         return response()->json(['message' => 'Mata kuliah berhasil diperbarui.']);
     }
 
@@ -134,9 +139,11 @@ class MataKuliahController extends Controller
     /**
      * Menghapus mata kuliah dari database.
      */
-    public function destroy($kode_matkul)
+    public function destroy($id_matakuliah)
     {
-        $matkul = MataKuliah::where('kode_matkul', $kode_matkul)->firstOrFail();
+        abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Mata Kuliah', 'edit'), 403, 'Unauthorized action.');
+
+        $matkul = MataKuliah::findOrFail($id_matakuliah);
 
         $matkul->delete();
 

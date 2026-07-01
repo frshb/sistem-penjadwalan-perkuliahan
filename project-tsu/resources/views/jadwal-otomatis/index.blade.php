@@ -23,6 +23,8 @@
         /* Smooth progress bar */
         #progress-bar { transition: width .4s cubic-bezier(.4,0,.2,1); }
         #fitness-fill  { transition: width .6s cubic-bezier(.4,0,.2,1); }
+
+
     </style>
 </head>
 <body x-data="{ sidebarOpen: true }" class="bg-slate-50 overflow-x-hidden min-h-screen font-sans">
@@ -34,10 +36,10 @@
     {{-- ── Top Header ── --}}
     <div class="bg-white border-b border-slate-200 px-6 sm:px-10 py-5 sticky top-0 z-10">
         <div class="flex items-center gap-3">
-            <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
+            <div class="flex flex-col">
                 <div class="w-1.5 h-4 bg-teal-700 rounded-t"></div>
                 <div class="w-1.5 h-2.5 bg-amber-400 rounded-b"></div>
-            </button>
+            </div>
             <div>
                 <h1 class="text-2xl font-bold text-slate-800 leading-tight">Buat Jadwal Otomatis</h1>
                 <p class="text-sm text-slate-500 mt-1">Sistem Cerdas Penyusun Jadwal Perkuliahan</p>
@@ -54,7 +56,7 @@
     <div id="section-form" class="max-w-3xl mx-auto space-y-6">
 
         {{-- Kolom Konfigurasi Utama --}}
-        <div class="space-y-5">
+        <div id="left-column" class="space-y-5">
 
             {{-- Card: Tahun Akademik + Preset --}}
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -73,7 +75,7 @@
                             Pilih semester mana yang ingin dibuatkan jadwalnya. Data dosen dan mata kuliah akan otomatis diambil dari semester ini.
                         </p>
                         <div class="relative">
-                            <select id="inp-tahun" onchange="updateEstimator()"
+                            <select id="inp-tahun"
                                 class="w-full pl-4 pr-10 py-3.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-base font-medium text-slate-700 appearance-none shadow-sm cursor-pointer">
                                 <option value="">— Silakan Pilih Tahun Akademik —</option>
                                 @foreach ($tahunAkademikList as $ta)
@@ -87,127 +89,84 @@
                     {{-- Preset Mode --}}
                     <div>
                         <label class="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">
-                            Pilih Tingkat Ketelitian
+                            Pilih Tingkat Ketelitian (Preset)
                         </label>
                         <p class="text-sm text-slate-500 mb-4">
-                            Sistem cerdas kami akan mencoba menyusun jadwal terbaik. Pilih seberapa detail sistem harus menganalisis data Anda.
+                            Pilih seberapa detail sistem harus menganalisis data Anda.
                         </p>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
                             <button type="button" onclick="applyPreset('cepat')"
-                                class="preset-btn p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-teal-400 hover:bg-teal-50 text-base font-bold text-slate-700 transition text-center flex flex-col items-center" data-preset="cepat">
+                                class="preset-btn p-3 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50 text-sm font-bold text-slate-700 transition text-center shadow-sm flex flex-col items-center" data-preset="cepat">
                                 <div class="text-2xl mb-1">⚡</div>
-                                Cepat (Uji Coba)
-                                <div class="text-slate-500 font-normal text-sm mt-2 leading-relaxed">
-                                    Proses lebih cepat. Cocok untuk melihat hasil sementara atau data kelas yang sedikit.
-                                </div>
+                                Cepat
+                                <div class="text-slate-500 font-normal text-xs mt-1">Pop: 40, Gen: 100</div>
                             </button>
-                            
-                            <button type="button" onclick="applyPreset('seimbang')"
-                                class="preset-btn p-4 rounded-xl border-2 border-teal-500 bg-teal-50 text-base font-bold text-teal-800 transition text-center shadow-sm flex flex-col items-center" data-preset="seimbang">
+
+                            <button type="button" onclick="applyPreset('normal')"
+                                class="preset-btn p-3 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-blue-50 text-sm font-bold text-slate-700 transition text-center shadow-sm flex flex-col items-center" data-preset="normal">
                                 <div class="text-2xl mb-1">⚖️</div>
-                                Normal (Disarankan)
-                                <div class="text-teal-600/80 font-normal text-sm mt-2 leading-relaxed">
-                                    Pilihan terbaik untuk sebagian besar kasus. Menyeimbangkan waktu dan kualitas jadwal.
-                                </div>
+                                Normal
+                                <div class="text-slate-500 font-normal text-xs mt-1">Pop: 80, Gen: 300</div>
                             </button>
                             
-                            <button type="button" onclick="applyPreset('optimal')"
-                                class="preset-btn p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-400 hover:bg-purple-50 text-base font-bold text-slate-700 transition text-center flex flex-col items-center" data-preset="optimal">
+                            <button type="button" onclick="applyPreset('akurat')"
+                                class="preset-btn p-3 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-400 hover:bg-purple-50 text-sm font-bold text-slate-700 transition text-center shadow-sm flex flex-col items-center" data-preset="akurat">
                                 <div class="text-2xl mb-1">🎯</div>
-                                Maksimal (Data Besar)
-                                <div class="text-slate-500 font-normal text-sm mt-2 leading-relaxed">
-                                    Proses analisis lebih mendalam dan butuh waktu sedikit lebih lama. Untuk data jadwal yang sangat banyak.
-                                </div>
+                                Akurat
+                                <div class="text-slate-500 font-normal text-xs mt-1">Pop: 150, Gen: 500</div>
+                            </button>
+
+                            <button type="button" onclick="applyPreset('custom')"
+                                class="preset-btn p-3 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-amber-400 hover:bg-amber-50 text-sm font-bold text-slate-700 transition text-center flex flex-col items-center" data-preset="custom">
+                                <div class="text-2xl mb-1">⚙️</div>
+                                Custom
+                                <div class="text-slate-500 font-normal text-xs mt-1">Atur Manual</div>
                             </button>
                         </div>
                     </div>
 
                     {{-- Populasi Slider --}}
-                    <div class="hidden bg-slate-50 rounded-xl p-4 border border-slate-100">
-                        <div class="flex items-start justify-between mb-2">
-                            <div class="flex-1">
+                    <div id="container-populasi" class="hidden bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex-1 pr-3">
                                 <label class="text-sm font-bold text-slate-700 block">
-                                    Ukuran Populasi
+                                    Variasi Jadwal (Populasi)
                                 </label>
-                                <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                    <strong>Apa ini?</strong> Jumlah "rancangan jadwal acak" yang dibuat sekaligus di awal proses.<br>
-                                    <strong>Analoginya:</strong> Seperti meminta 100 orang masing-masing membuat jadwal versi mereka sendiri. Semakin banyak orang, semakin besar peluang salah satunya mendekati sempurna — tapi butuh waktu lebih lama.<br>
-                                    <strong>Angka dari mana?</strong> Berdasarkan jumlah kelas: sedikit kelas → angka kecil sudah cukup; banyak kelas → perlu lebih besar.
+                                <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                    Ibarat meminta banyak orang menyusun jadwal sekaligus. Makin banyak orang = peluang hasil sempurna makin tinggi, tapi proses makin lambat.
                                 </p>
                             </div>
-                            <div class="flex items-center gap-2 ml-4">
+                            <div class="flex items-center gap-1.5 shrink-0">
                                 <input type="number" id="num-populasi" min="10" max="500" value="100"
-                                    class="w-16 text-center border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold text-teal-700 outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+                                    class="w-14 text-center border border-slate-200 rounded-md px-1.5 py-1 text-sm font-bold text-teal-700 outline-none focus:ring-2 focus:ring-teal-400 bg-white"
                                     oninput="syncSlider('populasi', this.value)">
-                                <span class="text-xs text-slate-400">jadwal</span>
                             </div>
                         </div>
                         <input type="range" id="range-populasi" min="10" max="500" step="10" value="100"
-                            class="w-full h-2 rounded-full accent-teal-600 cursor-pointer"
+                            class="w-full h-1.5 rounded-full accent-teal-600 cursor-pointer mb-1"
                             oninput="syncNumber('populasi', this.value)">
-                        <div class="flex justify-between text-xs mt-1.5">
-                            <span class="text-slate-400">10 <span class="text-slate-300">(sangat cepat)</span></span>
-                            <span class="font-medium" id="tip-populasi">✅ Seimbang</span>
-                            <span class="text-slate-400">500 <span class="text-slate-300">(sangat lambat)</span></span>
-                        </div>
-                        <div class="mt-2 grid grid-cols-3 gap-1 text-center">
-                            <div class="bg-green-50 border border-green-100 rounded-lg px-2 py-1.5 text-xs">
-                                <div class="font-bold text-green-600">10–50</div>
-                                <div class="text-green-500 mt-0.5">Uji coba cepat</div>
-                            </div>
-                            <div class="bg-teal-50 border border-teal-200 rounded-lg px-2 py-1.5 text-xs">
-                                <div class="font-bold text-teal-600">50–150</div>
-                                <div class="text-teal-500 mt-0.5">Normal ✓ disarankan</div>
-                            </div>
-                            <div class="bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 text-xs">
-                                <div class="font-bold text-amber-600">150–500</div>
-                                <div class="text-amber-500 mt-0.5">Data besar, lambat</div>
-                            </div>
-                        </div>
                     </div>
 
                     {{-- Generasi Slider --}}
-                    <div class="hidden bg-slate-50 rounded-xl p-4 border border-slate-100">
-                        <div class="flex items-start justify-between mb-2">
-                            <div class="flex-1">
+                    <div id="container-generasi" class="hidden bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex-1 pr-3">
                                 <label class="text-sm font-bold text-slate-700 block">
-                                    Jumlah Generasi
+                                    Batas Percobaan (Generasi)
                                 </label>
-                                <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                    <strong>Apa ini?</strong> Berapa kali jadwal-jadwal tersebut "disempurnakan" secara bertahap.<br>
-                                    <strong>Analoginya:</strong> Setiap generasi, jadwal yang jelek dibuang, yang bagus dikombinasikan untuk menghasilkan yang lebih bagus. Seperti turnamen: makin banyak babak, juara akhirnya makin kuat.<br>
-                                    <strong>Kapan cukup?</strong> Sistem otomatis berhenti lebih awal jika jadwal sudah sempurna — tidak perlu menunggu semua generasi selesai.
+                                <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                    Ibarat turnamen perbaikan jadwal. Makin banyak babak (angka besar) = jadwal akhir makin matang dan minim bentrok.
                                 </p>
                             </div>
-                            <div class="flex items-center gap-2 ml-4">
+                            <div class="flex items-center gap-1.5 shrink-0">
                                 <input type="number" id="num-generasi" min="10" max="1000" value="200"
-                                    class="w-16 text-center border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold text-blue-600 outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                                    class="w-14 text-center border border-slate-200 rounded-md px-1.5 py-1 text-sm font-bold text-blue-600 outline-none focus:ring-2 focus:ring-blue-400 bg-white"
                                     oninput="syncSlider('generasi', this.value)">
-                                <span class="text-xs text-slate-400">putaran</span>
                             </div>
                         </div>
                         <input type="range" id="range-generasi" min="10" max="1000" step="10" value="200"
-                            class="w-full h-2 rounded-full accent-blue-600 cursor-pointer"
+                            class="w-full h-1.5 rounded-full accent-blue-600 cursor-pointer mb-1"
                             oninput="syncNumber('generasi', this.value)">
-                        <div class="flex justify-between text-xs mt-1.5">
-                            <span class="text-slate-400">10 <span class="text-slate-300">(kasar)</span></span>
-                            <span class="font-medium" id="tip-generasi">✅ Disarankan</span>
-                            <span class="text-slate-400">1000 <span class="text-slate-300">(sangat teliti)</span></span>
-                        </div>
-                        <div class="mt-2 grid grid-cols-3 gap-1 text-center">
-                            <div class="bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 text-xs">
-                                <div class="font-bold text-amber-600">10–100</div>
-                                <div class="text-amber-500 mt-0.5">Hasil kurang matang</div>
-                            </div>
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 text-xs">
-                                <div class="font-bold text-blue-600">100–300</div>
-                                <div class="text-blue-500 mt-0.5">Normal ✓ disarankan</div>
-                            </div>
-                            <div class="bg-purple-50 border border-purple-100 rounded-lg px-2 py-1.5 text-xs">
-                                <div class="font-bold text-purple-600">300–1000</div>
-                                <div class="text-purple-500 mt-0.5">Sangat detail, lambat</div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -298,25 +257,6 @@
                 </div>
             </div>
 
-            {{-- Estimasi Waktu Proses --}}
-            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-sm" id="estimator-card" style="display: none">
-                <div class="flex items-center gap-3">
-                    <div class="p-2.5 rounded-xl bg-teal-50 text-teal-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Estimasi Durasi</p>
-                        <p class="text-xs font-black text-slate-700 mt-1 leading-none" id="val-estimasi">~10 detik</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-none">Total Beban</p>
-                    <p class="text-xs font-bold text-slate-600 mt-1 leading-none" id="val-estimasi-kelas">0 kelas</p>
-                </div>
-            </div>
-
             {{-- Tombol Generate --}}
             <button id="btn-generate" onclick="startGA()"
                 class="w-full py-4 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/25 flex items-center justify-center gap-3 transition-all duration-200 active:scale-[.98]">
@@ -325,10 +265,11 @@
                 </svg>
                 <span id="btn-label">Jalankan Algoritma Genetika</span>
             </button>
+            <input type="hidden" id="adv-early-exit" value="95">
         </div>
 
         {{-- Kolom kanan: Pengaturan Lanjutan (2/5) --}}
-        <div class="hidden lg:col-span-2 space-y-5">
+        <div id="right-column" class="hidden lg:col-span-2 space-y-5">
 
             {{-- Card: Parameter GA Lanjutan --}}
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -338,101 +279,95 @@
                         <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
                         <span class="text-sm font-semibold text-slate-700">Pengaturan Lanjutan</span>
                     </div>
-                    <svg id="chevron-advanced" class="w-4 h-4 text-slate-400 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <svg id="chevron-advanced" class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                 </button>
-                <div id="collapse-advanced" class="collapse-body" style="max-height:none">
-                <div class="px-4 pb-4 space-y-3">
+                <div id="collapse-advanced" class="collapse-body closed" style="max-height:0">
+                <div class="px-4 pb-4 space-y-4">
 
                     {{-- Core Parameters --}}
-                    <div class="space-y-3">
+                    <div class="space-y-2.5">
                         {{-- Crossover Rate --}}
-                        <div>
+                        <div class="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
                             <div class="flex items-center justify-between mb-1">
-                                <label class="text-xs font-medium text-slate-600 flex items-center gap-1">
-                                    Crossover
-                                    <span class="text-[10px] text-slate-400 cursor-help" title="Menggabungkan 2 jadwal bagus untuk hasil lebih baik">ℹ️</span>
+                                <label class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                    🧬 Kombinasi Jadwal <span class="text-[10px] font-normal text-slate-400">(Crossover)</span>
                                 </label>
-                                <span id="val-crossover" class="text-xs font-bold text-purple-600">0.80</span>
+                                <span id="val-crossover" class="text-[11px] font-black text-purple-600">0.80</span>
                             </div>
                             <input type="range" id="adv-crossover" min="0.4" max="1.0" step="0.05" value="0.80"
-                                class="w-full h-1 rounded-full accent-purple-600 cursor-pointer"
+                                class="w-full h-1.5 rounded-full accent-purple-600 cursor-pointer"
                                 oninput="document.getElementById('val-crossover').textContent=parseFloat(this.value).toFixed(2)">
-                            <p class="text-[10px] text-slate-400 mt-1">Semakin tinggi = kombinasi lebih banyak</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Menciptakan jadwal baru dengan menggabungkan keunggulan 2 draf jadwal.</p>
                         </div>
 
                         {{-- Mutation Rate --}}
-                        <div>
+                        <div class="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
                             <div class="flex items-center justify-between mb-1">
-                                <label class="text-xs font-medium text-slate-600 flex items-center gap-1">
-                                    Mutation
-                                    <span class="text-[10px] text-slate-400 cursor-help" title="Perubahan acak agar tidak stuck di solusi jelek">ℹ️</span>
+                                <label class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                    ⚡ Variasi Acak <span class="text-[10px] font-normal text-slate-400">(Mutation)</span>
                                 </label>
-                                <span id="val-mutation" class="text-xs font-bold text-orange-600">0.10</span>
+                                <span id="val-mutation" class="text-[11px] font-black text-orange-600">0.10</span>
                             </div>
                             <input type="range" id="adv-mutation" min="0.01" max="0.5" step="0.01" value="0.10"
-                                class="w-full h-1 rounded-full accent-orange-500 cursor-pointer"
+                                class="w-full h-1.5 rounded-full accent-orange-500 cursor-pointer"
                                 oninput="document.getElementById('val-mutation').textContent=parseFloat(this.value).toFixed(2)">
-                            <p class="text-[10px] text-slate-400 mt-1">Terlalu tinggi = kacau, terlalu rendah = stagnan</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Mengacak sedikit jadwal untuk membuka kemungkinan hasil yang tak terpikirkan.</p>
                         </div>
 
                         {{-- Elitism --}}
-                        <div>
+                        <div class="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
                             <div class="flex items-center justify-between mb-1">
-                                <label class="text-xs font-medium text-slate-600 flex items-center gap-1">
-                                    Elitism (K)
-                                    <span class="text-[10px] text-slate-400 cursor-help" title="Jumlah jadwal terbaik yang selalu dipertahankan">ℹ️</span>
+                                <label class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                    🏆 Simpan Terbaik <span class="text-[10px] font-normal text-slate-400">(Elitism)</span>
                                 </label>
-                                <span id="val-elite" class="text-xs font-bold text-teal-600">3</span>
+                                <span id="val-elite" class="text-[11px] font-black text-teal-600">3</span>
                             </div>
                             <input type="range" id="adv-elite" min="1" max="10" step="1" value="3"
-                                class="w-full h-1 rounded-full accent-teal-600 cursor-pointer"
+                                class="w-full h-1.5 rounded-full accent-teal-600 cursor-pointer"
                                 oninput="document.getElementById('val-elite').textContent=this.value">
-                            <p class="text-[10px] text-slate-400 mt-1">Pertahankan jadwal terbaik setiap generasi</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Mengamankan draf jadwal paling bagus agar tak sengaja rusak di putaran berikutnya.</p>
                         </div>
                     </div>
 
-                    <div class="border-t border-slate-100 pt-3 space-y-3">
-                        <p class="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Anti-Stagnasi
+                    <div class="border-t border-slate-100 pt-3 space-y-2.5">
+                        <p class="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                            🛡️ Strategi Pencegah Kebuntuan
                         </p>
 
                         {{-- Stagnation --}}
-                        <div>
+                        <div class="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
                             <div class="flex items-center justify-between mb-1">
-                                <label class="text-xs font-medium text-slate-600 flex items-center gap-1">
-                                    Threshold (gen)
-                                    <span class="text-[10px] text-slate-400 cursor-help" title="Berapa generasi tanpa improvement sebelum di-reset">ℹ️</span>
+                                <label class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                    ⏱️ Batas Sabar <span class="text-[10px] font-normal text-slate-400">(Stagnasi)</span>
                                 </label>
-                                <span id="val-stagnation" class="text-xs font-bold text-red-500">10</span>
+                                <span id="val-stagnation" class="text-[11px] font-black text-red-500">10</span>
                             </div>
                             <input type="range" id="adv-stagnation" min="5" max="50" step="5" value="10"
-                                class="w-full h-1 rounded-full accent-red-500 cursor-pointer"
+                                class="w-full h-1.5 rounded-full accent-red-500 cursor-pointer"
                                 oninput="document.getElementById('val-stagnation').textContent=this.value">
-                            <p class="text-[10px] text-slate-400 mt-1">Kecil = cepat bereaksi, Besar = lebih sabar</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Merombak strategi pencarian otomatis jika jadwal tidak kunjung membaik.</p>
                         </div>
 
                         {{-- SA Temperature --}}
-                        <div>
+                        <div class="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
                             <div class="flex items-center justify-between mb-1">
-                                <label class="text-xs font-medium text-slate-600 flex items-center gap-1">
-                                    SA Temp
-                                    <span class="text-[10px] text-slate-400 cursor-help" title="Toleransi mundur untuk cari solusi lebih baik">ℹ️</span>
+                                <label class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                    🌡️ Toleransi Mundur <span class="text-[10px] font-normal text-slate-400">(SA Temp)</span>
                                 </label>
-                                <span id="val-temp" class="text-xs font-bold text-amber-600">5.0</span>
+                                <span id="val-temp" class="text-[11px] font-black text-amber-600">5.0</span>
                             </div>
                             <input type="range" id="adv-temp" min="1" max="20" step="1" value="5"
-                                class="w-full h-1 rounded-full accent-amber-500 cursor-pointer"
+                                class="w-full h-1.5 rounded-full accent-amber-500 cursor-pointer"
                                 oninput="document.getElementById('val-temp').textContent=this.value+'.0'">
-                            <p class="text-[10px] text-slate-400 mt-1">Tinggi = berani coba baru, Rendah = konservatif</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Keberanian mencoba jadwal yang sedikit lebih jelek demi melompat ke hasil yang jauh lebih baik.</p>
                         </div>
                     </div>
 
                     <div class="pt-2 flex justify-between items-center">
-                        <span class="text-[10px] text-slate-400">⚙ Parameter sudah optimal</span>
+                        <span class="text-[10px] text-slate-400">⚙️ Parameter sudah optimal</span>
                         <button type="button" onclick="resetAdvanced()"
-                            class="text-xs text-slate-500 hover:text-slate-700 font-medium transition">
-                            Reset
+                            class="text-xs text-slate-500 hover:text-slate-700 font-bold transition">
+                            Reset ke Bawaan
                         </button>
                     </div>
                 </div>
@@ -735,75 +670,71 @@
             @csrf
             <input type="hidden" name="jadwal_json" id="inp-jadwal-json">
             <input type="hidden" name="tahun_akademik_id" id="inp-tahun-hidden">
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <button type="button" onclick="resetForm()"
-                    class="px-6 py-3 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
+                    class="flex-1 sm:flex-none px-6 py-3 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl font-semibold flex items-center justify-center gap-2 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     Ulangi Generate
                 </button>
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 sm:flex-none">
-                    <button type="button" onclick="openTrialModal()"
-                        class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow flex items-center justify-center gap-2 transition active:scale-[.98]">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-                        </svg>
-                        Simpan Sementara (Trial Run)
-                    </button>
-                    <button type="submit"
-                        class="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-600/25 flex items-center justify-center gap-2 transition-all active:scale-[.98]">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Simpan & Buka di Workspace Manual
-                    </button>
-                </div>
+                <button type="button" onclick="openTrialModal()"
+                    class="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl shadow-lg shadow-amber-600/25 flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    Simpan Sementara (Trial Run)
+                </button>
+                <button type="submit"
+                    class="flex-1 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-600/25 flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Simpan & Buka di Workspace Manual
+                </button>
             </div>
         </form>
+
+        <!-- Modal Simpan Sementara -->
+        <div id="trial-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTrialModal()"></div>
+            <!-- Content -->
+            <div class="relative bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 m-4 transform scale-95 transition-all duration-300">
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Simpan Sementara (Trial Run)</h3>
+                <p class="text-xs text-slate-500 mb-4">
+                    Simpan hasil uji coba ini untuk dibandingkan dengan hasil lainnya. Jadwal ini tidak akan menimpa worksheet utama sampai Anda menerapkannya secara eksplisit.
+                </p>
+                
+                <form id="form-simpan-trial" method="POST" action="{{ route('jadwal.otomatis.simpan_trial') }}">
+                    @csrf
+                    <input type="hidden" name="jadwal_json" id="trial-jadwal-json">
+                    <input type="hidden" name="tahun_akademik_id" id="trial-tahun-hidden">
+                    <input type="hidden" name="fitness" id="trial-fitness">
+                    <input type="hidden" name="generasi" id="trial-generasi">
+                    <input type="hidden" name="total_kelas" id="trial-total-kelas">
+                    <input type="hidden" name="dosen_conflicts" id="trial-dosen-conflicts">
+                    <input type="hidden" name="ruangan_conflicts" id="trial-ruangan-conflicts">
+                    <input type="hidden" name="soft_violations" id="trial-soft-violations">
+
+                    <div class="mb-5">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Label Uji Coba</label>
+                        <input type="text" name="label" id="inp-trial-label" placeholder="Contoh: Uji Coba #1 (Pop 100, Gen 200)"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm text-slate-700 transition">
+                    </div>
+                    
+                    <div class="flex gap-3 justify-end">
+                        <button type="button" onclick="closeTrialModal()"
+                            class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition text-sm">
+                            Batal
+                        </button>
+                        <button type="submit"
+                            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition shadow-lg shadow-amber-500/30 text-sm">
+                            Simpan Uji Coba
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
     </div>{{-- end section-hasil --}}
 
     </div>{{-- end max-w --}}
     </div>{{-- end px padding --}}
-
-    <!-- Modal Simpan Sementara -->
-    <div id="trial-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
-        <!-- Backdrop -->
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTrialModal()"></div>
-        <!-- Content -->
-        <div class="relative bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 m-4 transform scale-95 transition-all duration-300">
-            <h3 class="text-lg font-bold text-slate-800 mb-2">Simpan Sementara (Trial Run)</h3>
-            <p class="text-xs text-slate-500 mb-4">
-                Simpan hasil uji coba ini untuk dibandingkan dengan hasil lainnya. Jadwal ini tidak akan menimpa worksheet utama sampai Anda menerapkannya secara eksplisit.
-            </p>
-            
-            <form id="form-simpan-trial" method="POST" action="{{ route('jadwal.otomatis.simpan_trial') }}">
-                @csrf
-                <input type="hidden" name="jadwal_json" id="inp-trial-jadwal-json">
-                <input type="hidden" name="tahun_akademik_id" id="inp-trial-tahun-id">
-                <input type="hidden" name="fitness" id="inp-trial-fitness">
-                <input type="hidden" name="generasi" id="inp-trial-generasi">
-                <input type="hidden" name="total_kelas" id="inp-trial-total-kelas">
-                <input type="hidden" name="dosen_conflicts" id="inp-trial-dosen-conflicts">
-                <input type="hidden" name="ruangan_conflicts" id="inp-trial-ruangan-conflicts">
-                <input type="hidden" name="soft_violations" id="inp-trial-soft-violations">
-
-                <div class="mb-5">
-                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Label Uji Coba</label>
-                    <input type="text" name="label" id="inp-trial-label" placeholder="Contoh: Uji Coba #1 (Pop 100, Gen 200)"
-                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-400 outline-none text-sm font-medium text-slate-700">
-                </div>
-
-                <div class="flex items-center justify-end gap-3">
-                    <button type="button" onclick="closeTrialModal()"
-                        class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-100 transition">
-                        Batal
-                    </button>
-                    <button type="submit"
-                        class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold rounded-lg shadow-md transition">
-                        Simpan Uji Coba
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
 </main>
 
 <script>
@@ -815,77 +746,84 @@ let fitnessHistory = [];
 let activeES = null;
 let startTime = null;
 let allRows = [];
+let lastGAData = null;
+
+let loadingIntervalId = null;
+const loadingMessages = [
+    "Memproses Algoritma Genetika...",
+    "Mengevaluasi populasi kelas...",
+    "Melakukan persilangan (crossover)...",
+    "Melakukan mutasi cerdas...",
+    "Menghindari bentrok dosen...",
+    "Menyusun jadwal ruangan...",
+    "Menghitung skor kebugaran (fitness)...",
+    "Menyesuaikan kapasitas kelas...",
+    "Mengurangi jam kosong dosen..."
+];
 
 // ─────────────────────────────────────────────────
 // Slider helpers
 // ─────────────────────────────────────────────────
 function syncNumber(id, v) {
     document.getElementById('num-' + id).value = v;
-    updateTip(id, parseInt(v));
-    updateEstimator();
+    document.getElementById('range-' + id).value = v;
 }
 function syncSlider(id, v) {
     document.getElementById('range-' + id).value = v;
-    updateTip(id, parseInt(v));
-    updateEstimator();
-}
-function updateTip(id, n) {
-    const el = document.getElementById('tip-' + id);
-    if (id === 'populasi') {
-        if (n < 50)       { el.className='text-xs text-amber-500'; el.textContent='⚠ Terlalu kecil'; }
-        else if (n <= 150){ el.className='text-xs text-teal-600';  el.textContent='✅ Seimbang'; }
-        else if (n <= 300){ el.className='text-xs text-blue-500';  el.textContent='ℹ Cukup besar'; }
-        else              { el.className='text-xs text-amber-500'; el.textContent='⚠ Sangat besar'; }
-    } else {
-        if (n < 100)      { el.className='text-xs text-amber-500'; el.textContent='⚠ Terlalu sedikit'; }
-        else if (n <= 300){ el.className='text-xs text-blue-500';  el.textContent='✅ Disarankan'; }
-        else if (n <= 600){ el.className='text-xs text-blue-500';  el.textContent='ℹ Banyak putaran'; }
-        else              { el.className='text-xs text-amber-500'; el.textContent='⚠ Sangat banyak'; }
-    }
+    document.getElementById('num-' + id).value = v;
 }
 
-// ─────────────────────────────────────────────────
-// Preset
-// ─────────────────────────────────────────────────
-const presets = {
-    cepat:    { pop:50,  gen:100, cr:0.75, mr:0.15, elite:2, stag:10, temp:3 },
-    seimbang: { pop:100, gen:200, cr:0.80, mr:0.10, elite:3, stag:10, temp:5 },
-    optimal:  { pop:200, gen:500, cr:0.85, mr:0.08, elite:5, stag:8,  temp:8 },
-};
+let currentPresetMode = 'normal';
+
 function applyPreset(key) {
-    const p = presets[key];
-    document.getElementById('num-populasi').value  = p.pop;
-    document.getElementById('range-populasi').value = p.pop;
-    document.getElementById('num-generasi').value  = p.gen;
-    document.getElementById('range-generasi').value = p.gen;
-    document.getElementById('adv-crossover').value  = p.cr;
-    document.getElementById('val-crossover').textContent = p.cr.toFixed(2);
-    document.getElementById('adv-mutation').value   = p.mr;
-    document.getElementById('val-mutation').textContent  = p.mr.toFixed(2);
-    document.getElementById('adv-elite').value      = p.elite;
-    document.getElementById('val-elite').textContent     = p.elite;
-    document.getElementById('adv-stagnation').value = p.stag;
-    document.getElementById('val-stagnation').textContent = p.stag;
-    document.getElementById('adv-temp').value        = p.temp;
-    document.getElementById('val-temp').textContent  = p.temp + '.0';
+    currentPresetMode = key;
+    const isCustom = key === 'custom';
+    const containerPop = document.getElementById('container-populasi');
+    const containerGen = document.getElementById('container-generasi');
+    const sectionForm = document.getElementById('section-form');
+    const leftColumn = document.getElementById('left-column');
+    const rightColumn = document.getElementById('right-column');
 
-    updateTip('populasi', p.pop);
-    updateTip('generasi', p.gen);
+    if (isCustom) {
+        if (containerPop) containerPop.classList.remove('hidden');
+        if (containerGen) containerGen.classList.remove('hidden');
+        if (sectionForm) sectionForm.className = "grid grid-cols-1 lg:grid-cols-5 gap-6 max-w-5xl mx-auto items-start space-y-6 lg:space-y-0";
+        if (leftColumn) leftColumn.className = "lg:col-span-3 space-y-5";
+        if (rightColumn) rightColumn.classList.remove('hidden');
+    } else {
+        if (containerPop) containerPop.classList.add('hidden');
+        if (containerGen) containerGen.classList.add('hidden');
+        if (sectionForm) sectionForm.className = "max-w-3xl mx-auto space-y-6";
+        if (leftColumn) leftColumn.className = "space-y-5";
+        if (rightColumn) rightColumn.classList.add('hidden');
+
+        let pop = 100, gen = 300;
+        if (key === 'cepat') { pop = 40; gen = 100; }
+        else if (key === 'normal') { pop = 80; gen = 300; }
+        else if (key === 'akurat') { pop = 150; gen = 500; }
+
+        syncSlider('populasi', pop);
+        syncSlider('generasi', gen);
+    }
 
     document.querySelectorAll('.preset-btn').forEach(b => {
         const isActive = b.dataset.preset === key;
         b.className = b.className
-            .replace(/border-(teal|purple|slate)-\d+/g, '')
-            .replace(/bg-(teal|purple|slate)-\d+/g, '')
-            .replace(/text-(teal|purple|slate)-\d+/g, '');
-        if (key==='cepat'    && isActive) b.classList.add('border-teal-400','bg-teal-50','text-teal-700');
-        if (key==='seimbang' && isActive) b.classList.add('border-teal-400','bg-teal-50','text-teal-700');
-        if (key==='optimal'  && isActive) b.classList.add('border-purple-400','bg-purple-50','text-purple-700');
-        if (!isActive) b.classList.add('border-slate-200','bg-slate-50','text-slate-600');
+            .replace(/border-(teal|slate|amber|emerald|blue|purple)-\d+/g, '')
+            .replace(/bg-(teal|slate|amber|emerald|blue|purple)-\d+/g, '')
+            .replace(/text-(teal|slate|amber|emerald|blue|purple)-\d+/g, '')
+            .replace(/shadow-sm/g, '');
+        
+        if (isActive) {
+            if (key === 'cepat') b.classList.add('border-emerald-500','bg-emerald-50','text-emerald-800','shadow-sm');
+            else if (key === 'normal') b.classList.add('border-blue-500','bg-blue-50','text-blue-800','shadow-sm');
+            else if (key === 'akurat') b.classList.add('border-purple-500','bg-purple-50','text-purple-800','shadow-sm');
+            else if (key === 'custom') b.classList.add('border-amber-400','bg-amber-50','text-amber-700','shadow-sm');
+        } else {
+            b.classList.add('border-slate-200','bg-slate-50','text-slate-600');
+        }
     });
-    updateEstimator();
 }
-function resetAdvanced() { applyPreset('seimbang'); }
 
 // ─────────────────────────────────────────────────
 // Collapse / expand
@@ -967,6 +905,14 @@ function startGA() {
     const tahun    = document.getElementById('inp-tahun').value;
     const populasi = document.getElementById('num-populasi').value;
     const generasi = document.getElementById('num-generasi').value;
+    
+    // Custom parameters
+    const crossover  = document.getElementById('adv-crossover').value;
+    const mutation   = document.getElementById('adv-mutation').value;
+    const elite      = document.getElementById('adv-elite').value;
+    const stagnation = document.getElementById('adv-stagnation').value;
+    const temp       = document.getElementById('adv-temp').value;
+    const earlyExit  = document.getElementById('adv-early-exit').value;
 
     if (!tahun) {
         shakeEl('inp-tahun');
@@ -1008,19 +954,19 @@ function startGA() {
                 msg += '</div>';
                 
                 showAuditModal('Peringatan Audit Kelayakan', msg, true, () => {
-                    runGAProcess(tahun, populasi, generasi);
+                    runGAProcess(tahun, populasi, generasi, crossover, mutation, elite, stagnation, temp, earlyExit);
                 });
                 resetGenerateButton();
                 return;
             }
 
             // Layak & tanpa issue, jalankan GA langsung
-            runGAProcess(tahun, populasi, generasi);
+            runGAProcess(tahun, populasi, generasi, crossover, mutation, elite, stagnation, temp, earlyExit);
         })
         .catch(err => {
             console.error('Audit error:', err);
             // Fallback: jalankan saja GA jika audit endpoint gagal demi toleransi kesalahan
-            runGAProcess(tahun, populasi, generasi);
+            runGAProcess(tahun, populasi, generasi, crossover, mutation, elite, stagnation, temp, earlyExit);
         });
 }
 
@@ -1099,7 +1045,7 @@ function showAuditModal(title, contentHtml, showConfirm = false, onConfirm = nul
     }
 }
 
-function runGAProcess(tahun, populasi, generasi) {
+function runGAProcess(tahun, populasi, generasi, crossover = null, mutation = null, elite = null, stagnation = null, temp = null, earlyExit = null) {
     maxGen = parseInt(generasi);
     bestFitnessPrev = 0; prevFitness = 0;
     fitnessHistory = [];
@@ -1120,7 +1066,7 @@ function runGAProcess(tahun, populasi, generasi) {
     document.getElementById('stat-soft').textContent    = '—';
     document.getElementById('progress-bar').style.width = '0%';
     document.getElementById('progress-pct-label').textContent = '0%';
-    document.getElementById('progress-title').textContent = 'Memproses Algoritma Genetika…';
+    document.getElementById('progress-title').textContent = 'Memproses Algoritma Genetika...';
     document.getElementById('progress-eta').textContent  = '';
     document.getElementById('dot-pulse').className = 'w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse';
 
@@ -1128,7 +1074,13 @@ function runGAProcess(tahun, populasi, generasi) {
     btn.disabled = true;
     document.getElementById('btn-label').textContent = 'Sedang memproses…';
 
-    const url = `{{ route('jadwal.otomatis.stream') }}?tahun_akademik_id=${tahun}&populasi=${populasi}&generasi=${generasi}`;
+    let url = `{{ route('jadwal.otomatis.stream') }}?tahun_akademik_id=${tahun}&populasi=${populasi}&generasi=${generasi}`;
+    if (crossover !== null)  url += `&crossover=${crossover}`;
+    if (mutation !== null)   url += `&mutation=${mutation}`;
+    if (elite !== null)      url += `&elite=${elite}`;
+    if (stagnation !== null) url += `&stagnation=${stagnation}`;
+    if (temp !== null)       url += `&temp=${temp}`;
+    if (earlyExit !== null)  url += `&early_exit=${earlyExit}`;
     activeES = new EventSource(url);
 
     activeES.onmessage = function(e) {
@@ -1137,7 +1089,7 @@ function runGAProcess(tahun, populasi, generasi) {
         if (data.done) {
             activeES.close();
             activeES = null;
-
+            
             // Tampilkan badge early-exit jika GA selesai sebelum generasi penuh
             if (data.early_exit) {
                 const reasonMap = {
@@ -1148,7 +1100,6 @@ function runGAProcess(tahun, populasi, generasi) {
                     fatal_error:   '❌ Terjadi error, hasil terbaik ditampilkan.',
                 };
                 const msg = reasonMap[data.early_reason] || '✅ Hasil optimal ditemukan!';
-                // Update progress title dengan info early exit
                 document.getElementById('progress-title').textContent = msg;
             }
 
@@ -1160,11 +1111,8 @@ function runGAProcess(tahun, populasi, generasi) {
     };
     activeES.onerror = function() {
         if (activeES) { activeES.close(); activeES = null; }
-        // Coba ambil hasil terbaik yang mungkin sudah dikirim via interim
-        // Jika hasilInterim sudah ada di blade (onSelesai sudah pernah dipanggil), skip error
         const hasilPanel = document.getElementById('section-hasil');
         if (hasilPanel && !hasilPanel.classList.contains('hidden')) {
-            // Hasil sudah ditampilkan via early-exit — abaikan onerror
             return;
         }
         onError('Koneksi ke server terputus. Coba jalankan ulang.');
@@ -1183,13 +1131,15 @@ function onProgress(data) {
     const pct = Math.round((data.gen / maxGen) * 100);
     const dc  = data.dosen_konflik   || 0;
     const rc  = data.ruangan_konflik || 0;
+    const kc  = data.kelas_konflik   || 0;
     const sv  = data.soft_violations || 0;
     const fit = parseFloat(data.fitness) || 0;
 
     document.getElementById('stat-gen').textContent     = data.gen;
     document.getElementById('stat-fitness').textContent = fit + '%';
-    document.getElementById('stat-hard').textContent    = dc + rc;
-    document.getElementById('stat-hard-detail').textContent = `D:${dc} R:${rc}`;
+    
+    document.getElementById('stat-hard').textContent    = dc + rc + kc;
+    document.getElementById('stat-hard-detail').textContent = `D:${dc} R:${rc} K:${kc}`;
     document.getElementById('stat-soft').textContent    = sv;
     document.getElementById('progress-bar').style.width = pct + '%';
     document.getElementById('progress-pct-label').textContent = pct + '%';
@@ -1251,6 +1201,8 @@ function onSelesai(data) {
     const rc  = parseInt(data.ruangan_conflicts) || 0;
     const sv  = parseInt(data.soft_violations)   || 0;
 
+    lastGAData = data;
+
     // Update progress panel
     document.getElementById('dot-pulse').className = 'w-2.5 h-2.5 rounded-full bg-green-500';
 
@@ -1269,8 +1221,8 @@ function onSelesai(data) {
     document.getElementById('progress-eta').textContent = '';
     document.getElementById('stat-gen').textContent  = data.generasi;
     document.getElementById('stat-fitness').textContent = fit + '%';
-    document.getElementById('stat-hard').textContent = dc + rc;
-    document.getElementById('stat-hard-detail').textContent = `D:${dc} R:${rc}`;
+    document.getElementById('stat-hard').textContent = dc + rc + (data.kelas_konflik || 0);
+    document.getElementById('stat-hard-detail').textContent = `D:${dc} R:${rc} K:${data.kelas_konflik || 0}`;
     document.getElementById('stat-soft').textContent = sv;
 
     fitnessHistory.push(fit);
@@ -1394,16 +1346,6 @@ function onSelesai(data) {
     document.getElementById('inp-jadwal-json').value  = JSON.stringify(allRows);
     document.getElementById('inp-tahun-hidden').value = document.getElementById('inp-tahun').value;
 
-    // Populate hidden trial inputs
-    document.getElementById('inp-trial-jadwal-json').value = JSON.stringify(allRows);
-    document.getElementById('inp-trial-tahun-id').value = document.getElementById('inp-tahun').value;
-    document.getElementById('inp-trial-fitness').value = fit;
-    document.getElementById('inp-trial-generasi').value = data.generasi;
-    document.getElementById('inp-trial-total-kelas').value = data.total_kelas;
-    document.getElementById('inp-trial-dosen-conflicts').value = dc;
-    document.getElementById('inp-trial-ruangan-conflicts').value = rc;
-    document.getElementById('inp-trial-soft-violations').value = sv;
-
     document.getElementById('section-hasil').classList.remove('hidden');
     document.getElementById('section-hasil').scrollIntoView({ behavior:'smooth', block:'start' });
 }
@@ -1469,8 +1411,12 @@ function renderTable(rows) {
             <td class="px-4 py-3 text-center text-slate-500">${row.semester||'—'}</td>`;
         tbody.appendChild(tr);
     });
+
+
     document.getElementById('tabel-count').textContent = `Menampilkan ${rows.length} jadwal`;
 }
+
+
 
 function filterTable() {
     const q    = document.getElementById('filter-tabel').value.toLowerCase().trim();
@@ -1534,49 +1480,27 @@ function shakeEl(id) {
 // Resize chart on window resize
 window.addEventListener('resize', drawChart);
 
-function updateEstimator() {
-    const select = document.getElementById('inp-tahun');
-    if (!select) return;
-    const selectedOpt = select.options[select.selectedIndex];
-    const card = document.getElementById('estimator-card');
-    if (!card) return;
-    
-    if (!selectedOpt || !selectedOpt.value) {
-        card.style.display = 'none';
-        return;
-    }
-    
-    const kelasCount = parseInt(selectedOpt.getAttribute('data-kelas-count')) || 0;
-    const pop = parseInt(document.getElementById('num-populasi').value) || 100;
-    const gen = parseInt(document.getElementById('num-generasi').value) || 200;
-    
-    // Rumus estimasi durasi proses: N * P * G / 80000
-    let estimasiDetik = Math.ceil((kelasCount * pop * gen) / 80000);
-    if (estimasiDetik < 1) estimasiDetik = 1;
-    
-    let labelWaktu = `~${estimasiDetik} detik`;
-    if (estimasiDetik >= 60) {
-        const menit = Math.floor(estimasiDetik / 60);
-        const sisaDetik = estimasiDetik % 60;
-        labelWaktu = `~${menit} menit` + (sisaDetik > 0 ? ` ${sisaDetik} detik` : '');
-    }
-    
-    if (kelasCount > 0) {
-        card.style.display = 'flex';
-        document.getElementById('val-estimasi').innerHTML = `${labelWaktu} <span class="text-[9px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded ml-1 font-semibold">Bisa lebih cepat (Early Exit)</span>`;
-        document.getElementById('val-estimasi-kelas').textContent = `${kelasCount} kelas`;
-    } else {
-        card.style.display = 'none';
-    }
-}
-
+// Trial Modal functions
 function openTrialModal() {
-    const modal = document.getElementById('trial-modal');
-    modal.classList.remove('hidden');
+    if (!lastGAData) return;
+    
+    // Fill hidden inputs
+    document.getElementById('trial-jadwal-json').value = JSON.stringify(allRows);
+    document.getElementById('trial-tahun-hidden').value = document.getElementById('inp-tahun').value;
+    document.getElementById('trial-fitness').value = lastGAData.fitness;
+    document.getElementById('trial-generasi').value = lastGAData.generasi;
+    document.getElementById('trial-total-kelas').value = lastGAData.total_kelas;
+    document.getElementById('trial-dosen-conflicts').value = lastGAData.dosen_conflicts || 0;
+    document.getElementById('trial-ruangan-conflicts').value = lastGAData.ruangan_conflicts || 0;
+    document.getElementById('trial-soft-violations').value = lastGAData.soft_violations || 0;
+
+    // Set default label
     const now = new Date();
     const timestamp = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    const fitnessText = document.getElementById('inp-trial-fitness').value || '0';
-    document.getElementById('inp-trial-label').value = `Uji Coba ${timestamp} (Fit: ${fitnessText}%)`;
+    document.getElementById('inp-trial-label').value = `Uji Coba ${timestamp} (Fit: ${lastGAData.fitness}%)`;
+
+    // Show modal
+    document.getElementById('trial-modal').classList.remove('hidden');
     document.getElementById('inp-trial-label').focus();
 }
 
@@ -1585,9 +1509,11 @@ function closeTrialModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    updateEstimator();
+    applyPreset('normal');
 });
 </script>
 
+
 </body>
 </html>
+

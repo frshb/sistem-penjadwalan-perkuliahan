@@ -14,10 +14,10 @@
 <main :class="sidebarOpen ? 'lg:ml-64' : ''" class="flex-1 p-6 sm:p-10 transition-all duration-300">
 
     <div class="flex items-center mb-8">
-        <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
-                        <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
-                        <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                    </button>
+        <div class="flex flex-col">
+            <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
+            <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+        </div>
         <h1 class="text-3xl font-bold text-gray-800 ml-3">Hasil Penjadwalan Otomatis</h1>
     </div>
 

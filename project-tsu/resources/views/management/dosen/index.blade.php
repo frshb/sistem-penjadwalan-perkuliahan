@@ -38,18 +38,14 @@
 
     editUrl: '',
 
-    openEditModal(
-        nidn,
-        nuptk,
-        nama,
-        prodi
-    ) {
-        this.editNama = nama;
-        this.editNuptk = nuptk;
+    openEditModal(id_dosen, nidn, nuptk, nama, prodi) {
+        this.editProdi = prodi;
         this.editNidn = nidn;
+        this.editNuptk = nuptk;
+        this.editNama = nama;
         this.editProdi = prodi;
 
-        this.editUrl = '/management/dosen/' + nuptk;
+        this.editUrl = '/management/dosen/' + id_dosen;
 
         this.showEditModal = true;
     },
@@ -132,9 +128,11 @@
                                 </a>
                             </div>
                         </div>
+                        @if(Auth::user()->hasPermissionAccess('management_data', 'Dosen', 'edit'))
                         <button @click="showAddModal = true" class="px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
                             Tambah Dosen
                         </button>
+                        @endif
                     </div>
                 </div>
 
@@ -214,7 +212,9 @@
                                             <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
                                         </div>
                                     </th>
+                                    @if(Auth::user()->hasPermissionAccess('management_data', 'Dosen', 'edit'))
                                     <th class="w-48 text-left py-2 px-4 uppercase font-semibold text-xs whitespace-nowrap">Aksi</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700" id="dosenTableBody">
@@ -225,10 +225,12 @@
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap font-medium text-gray-900">{{ $dosen->nama_dosen }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nuptk }}</td>
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">{{ $dosen->nidn }}</td>
+                                        @if(Auth::user()->hasPermissionAccess('management_data', 'Dosen', 'edit'))
                                         <td class="text-left py-3 px-4 text-sm whitespace-nowrap">
                                             <div class="flex space-x-2">
                                                 <button
                                                     @click="openEditModal(
+                                                        '{{ $dosen->id_dosen }}',
                                                         '{{ $dosen->nidn }}',
                                                         '{{ $dosen->nuptk }}',
                                                         '{{ $dosen->nama_dosen }}',
@@ -241,7 +243,7 @@
  
                                                 <button
                                                     @click="confirmDelete('{{ route('dosen.destroy',[
-                                                        $dosen->nuptk
+                                                        $dosen->id_dosen
                                                     ]) }}')"
                                                     class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -249,6 +251,7 @@
                                                 </button>
                                             </div>
                                         </td>
+                                        @endif
                                     </tr>
                                 @empty
                                     <tr>

@@ -21,6 +21,7 @@
     showEditModal: false,
     showExportMenu: false,
     activeTab: 'all',
+    searchQuery: '',
     editData: { id_ruang: null, nama_ruang: '', id_gedung: '', kapasitas: '', fasilitas: '' },
     openEdit(ruangan) {
         this.editData = ruangan;
@@ -77,85 +78,24 @@
                         </a>
                     </div>
                 </div>
+                @if(Auth::user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'))
                 <button @click="showAddModal = true" class="px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75">
                     Tambah Ruang Baru
                 </button>
+                @endif
             </div>
         </div>
 
         <div class="mb-6">
-            <form onsubmit="event.preventDefault();">
-                <div class="relative">
-                    <input type="text" name="search" value="{{ $searchTerm ?? '' }}" placeholder="Cari nama ruangan..." class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-                    <button type="submit" class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Block 1: Search Results (Visible only when searching) -->
-        <div id="search-results-section" class="bg-white p-6 sm:p-8 rounded-lg shadow-md border border-transparent hidden mb-6">
-            <h3 class="text-xl font-bold text-gray-700 mb-6">
-                Hasil Pencarian untuk: "<span id="search-query-display"></span>"
-            </h3>
-
-            <div class="overflow-hidden rounded-lg border border-[#DBDBDB]">
-                <div class="overflow-x-auto w-full">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-teal-700 text-white">
-                            <tr>
-                                <th class="w-16 text-left py-2 px-3 uppercase font-semibold text-xs">No</th>
-                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Nama Ruangan</th>
-                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Gedung</th>
-                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Lokasi</th>
-                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Fasilitas</th>
-                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
-                                <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Status</th>
-                                <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-gray-700">
-                            @forelse ($ruangans as $ruangan)
-                            <tr class="ruangan-search-row border-b border-[#DBDBDB] hover:bg-gray-50" data-nama="{{ strtolower($ruangan->nama_ruang) }}">
-                                <td class="text-left py-2 px-3 text-sm row-number">{{ $loop->iteration }}</td>
-                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->nama_ruang }}</td>
-                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->nama_gedung }}</td>
-                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->lokasi }}</td>
-                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->fasilitas }}</td>
-                                <td class="text-left py-2 px-3 text-sm">{{ $ruangan->kapasitas }}</td>
-                                <td class="text-left py-2 px-3 text-sm">
-                                    <span class="px-2 py-1 text-xs font-semibold leading-tight text-green-700 bg-green-100 rounded-full">Tersedia</span>
-                                </td>
-                                <td class="text-left py-2 px-3 text-sm">
-                                    <div class="flex space-x-2">
-                                        <button @click='openEdit(@json($ruangan))'
-                                                class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                            Edit
-                                        </button>
-                                        <button onclick="confirmDelete('{{ route('ruangan.destroy', $ruangan->id_ruang) }}')"
-                                                class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                            Hapus
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr class="search-no-data-row">
-                                <td colspan="8" class="text-center py-4 text-gray-500">
-                                    Data ruangan tidak ditemukan.
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+            <div class="relative">
+                <input type="text" x-model="searchQuery" placeholder="Cari nama ruangan..." class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <button type="button" class="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-teal-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
             </div>
         </div>
 
-        <!-- Block 2: Grouped Building Tabs (Visible only when NOT searching) -->
+        <!-- Block: Grouped Building Tabs -->
         <div id="grouped-gedung-section">
             <div class="flex space-x-2 mb-6 border-b border-gray-300 overflow-x-auto">
                 <button
@@ -199,18 +139,22 @@
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Lokasi</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Fasilitas</th>
                                             <th class="text-left py-2 px-3 uppercase font-semibold text-xs">Kapasitas</th>
+                                            @if(Auth::user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'))
                                             <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
+                                            @endif
                                         </tr>
                                     </thead>
                                     <tbody class="text-gray-700">
                                         @forelse ($ruangansInGedung as $ruangan)
-                                        <tr class="border-b border-[#DBDBDB] hover:bg-gray-50">
+                                        <tr class="border-b border-[#DBDBDB] hover:bg-gray-50"
+                                            x-show="searchQuery === '' || '{{ strtolower($ruangan->nama_ruang) }}'.includes(searchQuery.toLowerCase())">
                                             <td class="text-left py-2 px-3 text-sm">{{ $loop->iteration }}</td>
                                             <td class="text-left py-2 px-3 text-sm">{{ $ruangan->nama_ruang }}</td>
                                             <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->nama_gedung }}</td>
                                             <td class="text-left py-2 px-3 text-sm">{{ $ruangan->gedung->lokasi }}</td>
                                             <td class="text-left py-2 px-3 text-sm">{{ $ruangan->fasilitas }}</td>
                                             <td class="text-left py-2 px-3 text-sm">{{ $ruangan->kapasitas }}</td>
+                                            @if(Auth::user()->hasPermissionAccess('management_data', 'Ruangan', 'edit'))
                                             <td class="text-left py-2 px-3 text-sm">
                                                 <div class="flex space-x-2">
                                                     <button @click='openEdit(@json($ruangan))' class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
@@ -224,6 +168,7 @@
                                                     </button>
                                                 </div>
                                             </td>
+                                            @endif
                                         </tr>
                                         @empty
                                         <tr>

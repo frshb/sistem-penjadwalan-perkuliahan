@@ -15,11 +15,11 @@
     allMatkuls: @js($matkuls),
     filteredMatkuls: @js($matkuls),
     
-    searchTerm: '',
-    selectedSemesterType: 'ganjil',
-    selectedSemester: '',
-    selectedKurikulum: '',
-    selectedProdi: '',
+    searchTerm: sessionStorage.getItem('matkul_searchTerm') || '',
+    selectedSemesterType: sessionStorage.getItem('matkul_selectedSemesterType') || 'ganjil',
+    selectedSemester: sessionStorage.getItem('matkul_selectedSemester') || '',
+    selectedKurikulum: sessionStorage.getItem('matkul_selectedKurikulum') || '',
+    selectedProdi: sessionStorage.getItem('matkul_selectedProdi') || '',
 
     allRooms: @js($ruangans),
     filteredRooms: @js($ruangans),
@@ -54,6 +54,21 @@
         }
     },
 
+    init() {
+        this.$watch('searchTerm', value => sessionStorage.setItem('matkul_searchTerm', value));
+        this.$watch('selectedSemesterType', value => sessionStorage.setItem('matkul_selectedSemesterType', value));
+        this.$watch('selectedSemester', value => sessionStorage.setItem('matkul_selectedSemester', value));
+        this.$watch('selectedKurikulum', value => sessionStorage.setItem('matkul_selectedKurikulum', value));
+        this.$watch('selectedProdi', value => sessionStorage.setItem('matkul_selectedProdi', value));
+        
+        // Apply filters on initial load if there are saved values
+        this.$nextTick(() => {
+            if (this.searchTerm || this.selectedSemester || this.selectedKurikulum || this.selectedProdi || this.selectedSemesterType !== 'ganjil') {
+                this.filterMatkuls();
+            }
+        });
+    },
+
     filterRooms(tipe) {
         if (tipe === 'Teori') {
             this.filteredRooms = this.allRooms.filter(room => room.nama_ruang.startsWith('C'));
@@ -66,7 +81,7 @@
         }
     },
 
-    openEditModal(kode, nama, sks, jenis, semester, kurikulum, prodi, ruanganIds, konsentrasi, sifat) {
+    openEditModal(id_matakuliah, kode, nama, sks, jenis, semester, kurikulum, prodi, ruanganIds, konsentrasi, sifat) {
         this.editProdi = prodi;
         this.editKodeMatkul = kode;
         this.editNamaMatkul = nama;
@@ -77,8 +92,8 @@
         this.editKonsentrasi = konsentrasi || '';
         this.editSifat = sifat || 'W';
         this.editRuanganIds = ruanganIds;
-        this.editSelectedRooms = ruanganIds;
-        this.editUrl = '{{ route('matakuliah.index') }}/' + kode;
+        this.editSelectedRooms = Array.isArray(ruanganIds) ? ruanganIds.map(String) : [];
+        this.editUrl = '{{ route('matakuliah.index') }}/' + id_matakuliah;
         this.filterRooms(this.editTipe);
         this.showEditModal = true;
     }
@@ -143,12 +158,14 @@
                                 </a>
                             </div>
                         </div>
+                        @if(Auth::user()->hasPermissionAccess('management_data', 'Mata Kuliah', 'edit'))
                         <button @click="showAddModal = true" class="inline-flex items-center px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75 text-sm h-10">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                             </svg>
                             Tambah Matkul
                         </button>
+                        @endif
                     </div>
                 </div>
 
@@ -235,7 +252,9 @@
                                     <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Program Studi</th>
                                     <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Sifat</th>
                                     <th class="text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Konsentrasi</th>
+                                    @if(Auth::user()->hasPermissionAccess('management_data', 'Mata Kuliah', 'edit'))
                                     <th class="w-48 text-left py-2 px-5 uppercase font-semibold text-xs tracking-wider">Aksi</th>
+                                    @endif
                                 </tr>
                             </thead>
                             {{-- SESUDAH (BENAR) --}}
@@ -261,10 +280,12 @@
                                             <td class="text-left py-4 px-5 text-sm">
                                                 {{ in_array($matkul->semester, [5, 6]) ? ($matkul->konsentrasi ?? '-') : '-' }}
                                             </td>
+                                            @if(Auth::user()->hasPermissionAccess('management_data', 'Mata Kuliah', 'edit'))
                                             <td class="text-left py-4 px-5 text-sm">
                                                 <div class="flex space-x-2">
                                                     <button
                                                         @click="openEditModal(
+                                                            '{{ $matkul->id_matakuliah }}',
                                                             '{{ $matkul->kode_matkul }}',
                                                             '{{ addslashes($matkul->nama_matkul) }}',
                                                             '{{ $matkul->sks }}',
@@ -284,7 +305,7 @@
                                                         Edit
                                                     </button>
                                                     <button
-                                                        onclick="confirmDelete('{{ route('matakuliah.destroy', $matkul->kode_matkul) }}')"
+                                                        onclick="confirmDelete('{{ route('matakuliah.destroy', $matkul->id_matakuliah) }}')"
                                                         class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -294,6 +315,7 @@
                                                     </button>
                                                 </div>
                                             </td>
+                                            @endif
                                         </tr>
                                     @empty
                                         <tr>
@@ -640,7 +662,7 @@
                                                 <input
                                                     type="checkbox"
                                                     name="ruangan_ids[]"
-                                                    :value="ruangan.id_ruang"
+                                                    :value="String(ruangan.id_ruang)"
                                                     x-model="editSelectedRooms"
                                                     class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                                                 >

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <div x-data="testData()">
+        <h3>Testing Alpine Checkboxes</h3>
+        <button @click="openModal([16, 17])">Open Modal [16, 17]</button>
+        <button @click="openModalString(['16', '17'])">Open Modal ['16', '17']</button>
+
+        <div style="margin-top: 20px;">
+            <template x-for="room in rooms" :key="room.id">
+                <label style="display: block;">
+                    <input type="checkbox" :value="room.id" x-model="selected">
+                    <span x-text="room.name"></span> (ID Type: <span x-text="typeof room.id"></span>)
+                </label>
+            </template>
+        </div>
+
+        <div style="margin-top: 20px;">
+            Selected: <span x-text="JSON.stringify(selected)"></span>
+            <br>
+            Selected Type: <span x-text="selected.length > 0 ? typeof selected[0] : 'empty'"></span>
+        </div>
+    </div>
+
+    <script>
+        function testData() {
+            return {
+                rooms: [
+                    { id: 16, name: 'C 3.1' },
+                    { id: '17', name: 'C 3.2' },
+                    { id: 18, name: 'C 3.3' }
+                ],
+                selected: [],
+                openModal(ids) {
+                    this.selected = ids.map(Number);
+                },
+                openModalString(ids) {
+                    this.selected = ids.map(String);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
