@@ -211,8 +211,7 @@
                         data-semester="{{ $kelas->semester }}"
                         data-matkul="{{ $kelas->matakuliah->kode_matkul ?? '' }}"
                         data-sks="{{ $kelas->matakuliah->sks ?? 0 }}"
-                        data-jml-mhs="{{ $kelas->jumlah_mahasiswa ?? 0 }}"
-                        data-nama-dosen="{{ $dosen->nama_dosen ?? '' }}">
+                        data-jml-mhs="{{ $kelas->jumlah_mahasiswa ?? 0 }}">
                         <td class="px-4 py-3 text-slate-500">{{ $no }}</td>
                         <td class="px-4 py-3"><span class="font-semibold text-slate-800">{{ $kelas->nama_kelas }}</span></td>
                         <td class="px-4 py-3 text-slate-600">{{ $kelas->semester }}</td>
@@ -423,17 +422,17 @@ function filterModalDosen() {
         const namaKelasFilter = filterNamaKelas?.value || '';
         
         if (saveState) {
-            sessionStorage.setItem('dosenTableSearch', searchInput?.value || '');
-            sessionStorage.setItem('dosenTableProdi', prodi);
-            sessionStorage.setItem('dosenTableSemester', semester);
-            sessionStorage.setItem('dosenTableNamaKelas', namaKelasFilter);
+            localStorage.setItem('dosenTableSearch', searchInput?.value || '');
+            localStorage.setItem('dosenTableProdi', prodi);
+            localStorage.setItem('dosenTableSemester', semester);
+            localStorage.setItem('dosenTableNamaKelas', namaKelasFilter);
         }
 
         let no = 1;
         document.querySelectorAll('#table-body tr').forEach(function(row) {
             const namaKelas = (row.dataset.namaKelas || '').toLowerCase();
             const namaMatkul = (row.dataset.namaMatkul || '').toLowerCase();
-            const namaDosen = (row.dataset.namaDosen || '').toLowerCase();
+            const namaDosen = (row.querySelector('.font-medium')?.textContent || '').toLowerCase();
             const rowProdi = row.dataset.prodi || '';
             const rowSemester = parseInt(row.dataset.semester) || 0;
             const rowMatkul = row.dataset.matkul || '';
@@ -464,18 +463,18 @@ function filterModalDosen() {
     if (filterSemester) filterSemester.addEventListener('change', applyFilters);
     if (filterNamaKelas) filterNamaKelas.addEventListener('change', applyFilters);
 
-    // Restore state from sessionStorage if available
-    if (sessionStorage.getItem('dosenTableSearch') !== null && searchInput) {
-        searchInput.value = sessionStorage.getItem('dosenTableSearch');
+    // Restore state from localStorage if available
+    if (localStorage.getItem('dosenTableSearch') !== null && searchInput) {
+        searchInput.value = localStorage.getItem('dosenTableSearch');
     }
-    if (sessionStorage.getItem('dosenTableProdi') !== null && filterProdi) {
-        filterProdi.value = sessionStorage.getItem('dosenTableProdi');
+    if (localStorage.getItem('dosenTableProdi') !== null && filterProdi) {
+        filterProdi.value = localStorage.getItem('dosenTableProdi');
     }
-    if (sessionStorage.getItem('dosenTableSemester') !== null && filterSemester) {
-        filterSemester.value = sessionStorage.getItem('dosenTableSemester');
+    if (localStorage.getItem('dosenTableSemester') !== null && filterSemester) {
+        filterSemester.value = localStorage.getItem('dosenTableSemester');
     }
-    if (sessionStorage.getItem('dosenTableNamaKelas') !== null && filterNamaKelas) {
-        filterNamaKelas.value = sessionStorage.getItem('dosenTableNamaKelas');
+    if (localStorage.getItem('dosenTableNamaKelas') !== null && filterNamaKelas) {
+        filterNamaKelas.value = localStorage.getItem('dosenTableNamaKelas');
     }
 
     // Initial Filter Apply (don't overwrite saved state with empty on first load)

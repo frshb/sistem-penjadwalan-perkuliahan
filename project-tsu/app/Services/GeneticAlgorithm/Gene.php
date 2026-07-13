@@ -102,6 +102,10 @@ class Gene
 
     // ── Kategori matkul (SC13, SC15, SC16) ───────────────────────────────
     public string $kategoriMatkul;  // 'ringan' | 'sedang' | 'berat' | 'praktikum'
+    
+    // ── Informasi tambahan (HC-New) ──────────────────────────────────────
+    public string $namaMatkul;
+    public string $namaRuang;
 
     // ── Konstanta ────────────────────────────────────────────────────────
     public const JENIS_TEORI     = 'teori';
@@ -130,7 +134,9 @@ class Gene
         string $namaKelas       = '',
         int    $maxSlot         = 14,
         string $tipeRuangan     = self::TIPE_REGULER,
-        string $kategoriMatkul  = self::KATEGORI_SEDANG
+        string $kategoriMatkul  = self::KATEGORI_SEDANG,
+        string $namaMatkul      = '',
+        string $namaRuang       = ''
     ) {
         $this->kelasId        = $kelasId;
         $this->hariId         = $hariId;
@@ -145,6 +151,8 @@ class Gene
         $this->jenisMatkul    = strtolower(trim($jenisMatkul))    ?: self::JENIS_TEORI;
         $this->tipeRuangan    = strtolower(trim($tipeRuangan))    ?: self::TIPE_REGULER;
         $this->kategoriMatkul = strtolower(trim($kategoriMatkul)) ?: self::KATEGORI_SEDANG;
+        $this->namaMatkul     = $namaMatkul;
+        $this->namaRuang      = $namaRuang;
         // HC12: deteksi kelas sore dari suffix nama ATAU kata "sore"/"malam"
         // Suffix: -S, -S1, -S2, -SI, -4S, dst. (case-insensitive)
         // Format: A2-S, A2-S1, A2-4S, dll.
@@ -301,12 +309,21 @@ class Gene
     }
 
     /**
-     * HC-New — Kelas Praktikum/Lab hanya boleh dijadwalkan pada hari Senin, Selasa, atau Rabu (hariId 1, 2, 3).
+     * HC-New — Hanya mata kuliah praktikum yang menempati Lab 1, 2, dan 3 saja yang wajib berada di hari Senin - Rabu (hariId 1, 2, 3).
+     * Mata kuliah lain (misal: Jaringan di Lab 4 & 8, IoT di Lab 5 & 6) boleh menempati hari selain Senin - Rabu.
      */
     public function validatePraktikumHari(): bool
     {
         if ($this->jenisMatkul === self::JENIS_PRAKTIKUM) {
-            return in_array($this->hariId, [1, 2, 3], true);
+            $namaRg = strtolower(trim($this->namaRuang));
+            
+            // Jika menempati Lab 1, Lab 2, atau Lab 3, wajib Senin - Rabu
+            if (strpos($namaRg, 'lab 1') !== false || strpos($namaRg, 'lab 2') !== false || strpos($namaRg, 'lab 3') !== false) {
+                return in_array($this->hariId, [1, 2, 3], true);
+            }
+            
+            // Selain Lab 1, 2, 3 boleh di hari apa saja
+            return true;
         }
         return true;
     }
@@ -497,7 +514,8 @@ class Gene
             $this->kelasId, $this->hariId, $this->slotMulai, $this->durasi,
             $this->ruangId, $this->dosenId, $this->kapasitasKelas,
             $this->jenisMatkul, $this->kapasitasRuang, $this->namaKelas,
-            $this->maxSlot, $this->tipeRuangan, $this->kategoriMatkul
+            $this->maxSlot, $this->tipeRuangan, $this->kategoriMatkul,
+            $this->namaMatkul, $this->namaRuang
         );
         $clone->isKelasS = $this->isKelasS;
         return $clone;

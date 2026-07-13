@@ -511,12 +511,24 @@ class GeneticScheduler
                 // Abaikan error relasi ruangan
             }
 
-            // Fallback room assignment removed to strictly enforce explicit room relations
+            // [L5] Fallback: cari ruangan global yang cukup kapasitasnya
+            if (empty($ruanganOptions) && !empty($this->ruanganList)) {
+                $kap = (int) ($k->kapasitas ?? 0);
+                foreach ($this->ruanganList as $r) {
+                    if ($r['kapasitas'] >= $kap) {
+                        $ruanganOptions[] = $r['id'];
+                    }
+                }
+                if (!empty($ruanganOptions)) {
+                    $this->logProblem('fallback_ruangan',
+                        "Kelas id={$k->id_kelas}: ruangan dari global fallback.");
+                }
+            }
 
-            // [NEW] Ambil id_dosen dari relasi pengampuMatkul (bukan kolom id_dosen lama)
+            // [NEW] Ambil id_dosen dari relasi pengampuKelas (bukan kolom id_dosen lama)
             $idDosen = 0;
-            if (!empty($k->pengampuMatkul) && $k->pengampuMatkul->count() > 0) {
-                $idDosen = (int) $k->pengampuMatkul->first()->id_dosen;
+            if (!empty($k->pengampuKelas) && $k->pengampuKelas->count() > 0) {
+                $idDosen = (int) $k->pengampuKelas->first()->id_dosen;
             }
 
             $this->kelasData[(int) $k->id_kelas] = [
@@ -529,6 +541,7 @@ class GeneticScheduler
                 'kapasitas'       => (int) ($k->kapasitas ?? 0),
                 'ruangan_options' => $ruanganOptions,
                 'kode_matkul'     => (string) ($mk->kode_matkul ?? ''),
+                'nama_matkul'     => (string) ($mk->nama_matkul ?? ''),
             ];
         }
 
@@ -610,10 +623,6 @@ class GeneticScheduler
      */
     public function getValidHariList(string $jenisMatkul = 'Teori'): array
     {
-        if (strtolower($jenisMatkul) === 'praktikum') {
-            $valid = array_values(array_intersect($this->hariList, [1, 2, 3]));
-            return !empty($valid) ? $valid : $this->hariList;
-        }
         return $this->hariList;
     }
 
@@ -739,12 +748,14 @@ class GeneticScheduler
         $geneA = new Gene(
             $kelasIdA, $hari, $slotMulaiA, $durasiA, $ruangIdA, $infoA['id_dosen'],
             $infoA['kapasitas'], $infoA['jenis'], $kapRuangA, $infoA['nama'],
-            $this->maxSlot, $tipeA, $infoA['kategori'] ?? Gene::KATEGORI_SEDANG
+            $this->maxSlot, $tipeA, $infoA['kategori'] ?? Gene::KATEGORI_SEDANG,
+            $infoA['nama_matkul'] ?? '', $this->ruanganList[$ruangIdA]['nama'] ?? ''
         );
         $geneB = new Gene(
             $kelasIdB, $hari, $slotMulaiB, $durasiB, $ruangIdB, $infoB['id_dosen'],
             $infoB['kapasitas'], $infoB['jenis'], $kapRuangB, $infoB['nama'],
-            $this->maxSlot, $tipeB, $infoB['kategori'] ?? Gene::KATEGORI_SEDANG
+            $this->maxSlot, $tipeB, $infoB['kategori'] ?? Gene::KATEGORI_SEDANG,
+            $infoB['nama_matkul'] ?? '', $this->ruanganList[$ruangIdB]['nama'] ?? ''
         );
 
         return [$geneA, $geneB];
@@ -788,7 +799,9 @@ class GeneticScheduler
             $info['nama'],
             $this->maxSlot,
             $tipeRuangan,
-            $info['kategori'] ?? Gene::KATEGORI_SEDANG
+            $info['kategori'] ?? Gene::KATEGORI_SEDANG,
+            $info['nama_matkul'] ?? '',
+            $this->ruanganList[$ruangId]['nama'] ?? ''
         );
     }
 
@@ -1686,6 +1699,7 @@ class GeneticScheduler
                 $gene->ruangId        = $ruangId;
                 $gene->kapasitasRuang = $this->ruanganList[$ruangId]['kapasitas']    ?? 0;
                 $gene->tipeRuangan    = $this->ruanganList[$ruangId]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+                $gene->namaRuang      = $this->ruanganList[$ruangId]['nama'] ?? '';
                 break;
         }
     }
@@ -2040,6 +2054,7 @@ class GeneticScheduler
                     $rInfo = $this->ruanganList[$rId] ?? null;
                     $gene->kapasitasRuang = $rInfo['kapasitas'] ?? 0;
                     $gene->tipeRuangan    = $rInfo['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+                    $gene->namaRuang      = $rInfo['nama'] ?? '';
 
                     $chromosome->markDirty();
                     $chromosome->calculateFitness();
@@ -2067,6 +2082,7 @@ class GeneticScheduler
                 $rInfo = $this->ruanganList[$localBestRuang] ?? null;
                 $gene->kapasitasRuang = $rInfo['kapasitas'] ?? 0;
                 $gene->tipeRuangan    = $rInfo['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+                $gene->namaRuang      = $rInfo['nama'] ?? '';
 
                 $chromosome->markDirty();
                 $chromosome->calculateFitness();
@@ -2720,7 +2736,8 @@ class GeneticScheduler
                 $ruangId, $info['id_dosen'],
                 $info['kapasitas'], $info['jenis'], $kapRuang,
                 $info['nama'], $this->maxSlot,
-                $tipeRuang, $info['kategori'] ?? Gene::KATEGORI_SEDANG
+                $tipeRuang, $info['kategori'] ?? Gene::KATEGORI_SEDANG,
+                $info['nama_matkul'] ?? '', $this->ruanganList[$ruangId]['nama'] ?? ''
             );
             $hariIndex++;
         }

@@ -80,7 +80,7 @@ class KelasController extends Controller
         //    supaya tidak tergantung struktur internal Eloquent (hidden attribute,
         //    casts, accessor tersembunyi) yang bisa diam-diam menghapus field
         //    yang dibutuhkan Alpine.
-        // 3. dosen yang sudah terhapus / id_dosen orphan di pengampu_matkul
+        // 3. dosen yang sudah terhapus / id_dosen orphan di pengampu_kelas
         //    di-filter (->filter(fn($p) => $p['dosen'] !== null)) supaya
         //    tidak ada entri dosen "null" nyangkut di dropdown.
         // 4. Tidak difilter by id_prodi di server — biar Alpine yang filter

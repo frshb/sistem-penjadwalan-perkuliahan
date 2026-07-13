@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,9 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('matkul_ruang', function (Blueprint $table) {
-            $table->renameColumn('id', 'id_matkulruang');
-        });
+        DB::table('role')->insert([
+            'id_role' => 6,
+            'nama_role' => 'sekretaris prodi'
+        ]);
     }
 
     /**
@@ -21,8 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('matkul_ruang', function (Blueprint $table) {
-            $table->renameColumn('id_matkulruang', 'id');
-        });
+        DB::table('role')->where('nama_role', 'sekretaris prodi')->delete();
     }
 };

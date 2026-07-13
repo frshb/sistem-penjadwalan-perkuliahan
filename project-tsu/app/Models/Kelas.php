@@ -81,7 +81,7 @@ class Kelas extends Model
         );
     }
 
-    public function pengampuMatkul()
+    public function pengampuKelas()
     {
         return $this->hasMany(
             PengampuKelas::class,

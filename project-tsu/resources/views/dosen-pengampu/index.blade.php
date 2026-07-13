@@ -981,9 +981,46 @@
         document.addEventListener('alpine:init', function() {
             @if($mode === 'table')
                 Alpine.start();
-                // Table filtering logic is now handled entirely within table.blade.php
+                initTableModeFilter();
             @endif
         });
+
+        function initTableModeFilter() {
+            // Simple filter using data attributes on rows
+            const searchInput = document.getElementById('table-search');
+            const filterProdi = document.getElementById('table-filter-prodi');
+            const filterSemester = document.getElementById('table-filter-semester');
+            const filterStatus = document.getElementById('table-filter-status');
+
+            function applyFilters() {
+                const search = (searchInput?.value || '').toLowerCase();
+                const prodi = filterProdi?.value || '';
+                const semester = filterSemester?.value || '';
+                const status = filterStatus?.value || '';
+
+                document.querySelectorAll('#table-body tr').forEach(function(row) {
+                    const namaKelas = (row.dataset.namaKelas || '').toLowerCase();
+                    const namaMatkul = (row.dataset.namaMatkul || '').toLowerCase();
+                    const rowProdi = row.dataset.prodi || '';
+                    const rowSemester = row.dataset.semester || '';
+                    const rowMatkul = row.dataset.matkul || '';
+                    const rowStatus = row.dataset.status || '';
+
+                    let show = true;
+                    if (search && !namaKelas.includes(search) && !namaMatkul.includes(search)) show = false;
+                    if (prodi && rowProdi !== prodi) show = false;
+                    if (semester && rowSemester !== semester) show = false;
+                    if (status && rowStatus !== status) show = false;
+
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+
+            if (searchInput) searchInput.addEventListener('input', applyFilters);
+            if (filterProdi) filterProdi.addEventListener('change', applyFilters);
+            if (filterSemester) filterSemester.addEventListener('change', applyFilters);
+            if (filterStatus) filterStatus.addEventListener('change', applyFilters);
+        }
     </script>
 
     <script>

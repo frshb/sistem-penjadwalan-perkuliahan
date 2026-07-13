@@ -22,8 +22,8 @@ class ProdiFilter
             return null;
         }
 
-        // Kaprodi → filter by id_prodi user
-        if ($user->isKaprodi()) {
+        // Kaprodi atau Sekretaris Prodi → filter by id_prodi user
+        if ($user->isKaprodi() || $user->isSekretarisProdi()) {
             return $user->getProdiId();
         }
 

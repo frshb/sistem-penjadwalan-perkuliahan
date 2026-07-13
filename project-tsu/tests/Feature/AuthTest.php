@@ -113,7 +113,7 @@ class AuthTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)
-            ->from(route('settings.users.create'))
+            ->from(route('settings.users.register'))
             ->post(route('settings.users.store'), [
                 'username' => 'admin_new_dekan',
                 'password' => 'password123',
@@ -121,7 +121,7 @@ class AuthTest extends TestCase
                 'id_dosen' => null, // Left empty
             ]);
 
-        $response->assertRedirect(route('settings.users.create'));
+        $response->assertRedirect(route('settings.users.register'));
         $response->assertSessionHasErrors(['id_dosen']);
     }
 
@@ -142,7 +142,7 @@ class AuthTest extends TestCase
                 'id_dosen' => 1,
             ]);
 
-        $response->assertRedirect(route('settings.users.create'));
+        $response->assertRedirect(route('settings.users.register'));
         $this->assertDatabaseHas('user', [
             'username' => 'admin_dekan_berhasil',
             'id_role' => 3,

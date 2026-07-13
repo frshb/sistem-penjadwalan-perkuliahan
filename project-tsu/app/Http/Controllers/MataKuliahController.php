@@ -60,7 +60,7 @@ class MataKuliahController extends Controller
             'id_prodi' => 'required|integer|exists:program_studi,id_prodi', // Validasi program studi
             'ruangan_ids' => 'nullable|array',
             'ruangan_ids.*' => 'exists:ruang,id_ruang',
-            'konsentrasi' => 'nullable|string|in:AI,Programming and Software Development,IT Mobility and Security',
+            'konsentrasi' => 'nullable|string|max:100',
             'sifat' => 'required|string|in:W,P',
         ]);
 
@@ -77,7 +77,7 @@ class MataKuliahController extends Controller
             'sifat' => $request->sifat,
         ]);
          // SIMPAN RELASI RUANGAN
-        $matkul->ruangans()->sync($request->input('ruangan_ids', []));
+        $matkul->ruangans()->sync($request->ruangan_ids ?? []);
 
 
         return redirect()->route('matakuliah.index')->with('success', 'Mata kuliah berhasil ditambahkan.');
@@ -104,7 +104,7 @@ class MataKuliahController extends Controller
             'id_prodi' => 'required|integer|exists:program_studi,id_prodi',
             'ruangan_ids' => 'nullable|array',
             'ruangan_ids.*' => 'exists:ruang,id_ruang',
-            'konsentrasi' => 'nullable|string|in:AI,Programming and Software Development,IT Mobility and Security',
+            'konsentrasi' => 'nullable|string|max:100',
             'sifat' => 'required|string|in:W,P',
         ]);
 
@@ -120,9 +120,8 @@ class MataKuliahController extends Controller
             'konsentrasi' => $request->konsentrasi ?: null,
             'sifat' => $request->sifat,
         ]);
-        $matkul->ruangans()->sync($request->input('ruangan_ids', []));
+        $matkul->ruangans()->sync($request->ruangan_ids ?? []);
 
-        session()->flash('success', 'Mata kuliah berhasil diperbarui.');
         return response()->json(['message' => 'Mata kuliah berhasil diperbarui.']);
     }
 

@@ -67,8 +67,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/settings/academic-calendar/{id}', [\App\Http\Controllers\AcademicCalendarController::class, 'destroy'])->name('settings.academic_calendar.destroy');
 
         // Admin User Registration
-        Route::get('/settings/users/register', [\App\Http\Controllers\UserRegistrationController::class, 'create'])->name('settings.users.create');
+        Route::get('/settings/users/register', [\App\Http\Controllers\UserRegistrationController::class, 'create'])->name('settings.users.register');
         Route::post('/settings/users', [\App\Http\Controllers\UserRegistrationController::class, 'store'])->name('settings.users.store');
+        Route::get('/settings/users/{id}/edit', [\App\Http\Controllers\UserRegistrationController::class, 'edit'])->name('settings.users.edit');
+        Route::put('/settings/users/{id}', [\App\Http\Controllers\UserRegistrationController::class, 'update'])->name('settings.users.update');
+        Route::delete('/settings/users/{id}', [\App\Http\Controllers\UserRegistrationController::class, 'destroy'])->name('settings.users.destroy');
 
         // Kurikulum Write Actions
         Route::post('/settings/kurikulum/store', [\App\Http\Controllers\PortalKurikulumController::class, 'store'])->name('kurikulum.store');
@@ -116,8 +119,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['permission:management_data,Mata Kuliah'])->group(function () {
         Route::get('/management/matakuliah', [MataKuliahController::class, 'index'])->name('matakuliah.index');
         Route::post('/management/matakuliah', [MataKuliahController::class, 'store'])->name('matakuliah.store');
-        Route::put('/management/matakuliah/{id_matakuliah}', [MataKuliahController::class, 'update'])->name('matakuliah.update');
-        Route::delete('/management/matakuliah/{id_matakuliah}', [MataKuliahController::class, 'destroy'])->name('matakuliah.destroy');
+        Route::put('/management/matakuliah/{matakuliah}', [MataKuliahController::class, 'update'])->name('matakuliah.update');
+        Route::delete('/management/matakuliah/{matakuliah}', [MataKuliahController::class, 'destroy'])->name('matakuliah.destroy');
         Route::get('/management/matakuliah/export-excel', [MataKuliahController::class, 'exportExcel'])->name('matakuliah.export.excel');
         Route::get('/management/matakuliah/export-pdf', [MataKuliahController::class, 'exportPDF'])->name('matakuliah.export.pdf');
     });
@@ -128,8 +131,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/management/dosen/export-excel', [DosenController::class, 'exportExcel'])->name('dosen.export.excel');
         Route::get('/management/dosen/export-pdf', [DosenController::class, 'exportPdf'])->name('dosen.export.pdf');
         Route::post('/management/dosen', [DosenController::class, 'store'])->name('dosen.store');
-        Route::put('/management/dosen/{id_dosen}', [DosenController::class, 'update'])->name('dosen.update');
-        Route::delete('/management/dosen/{id_dosen}', [DosenController::class, 'destroy'])->name('dosen.destroy');
+        Route::put('/management/dosen/{dosen:nuptk}', [DosenController::class, 'update'])->name('dosen.update');
+        Route::delete('/management/dosen/{dosen:nuptk}', [DosenController::class, 'destroy'])->name('dosen.destroy');
     });
 
     // Pengampu Kelas

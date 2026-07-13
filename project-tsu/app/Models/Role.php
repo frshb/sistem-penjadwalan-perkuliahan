@@ -74,8 +74,8 @@ class Role extends Model
             ];
         }
 
-        // Kaprodi
-        if ($roleNameLower === 'kaprodi') {
+        // Kaprodi & Sekretaris Prodi
+        if ($roleNameLower === 'kaprodi' || $roleNameLower === 'sekretaris prodi') {
             $enableItems($managementDataItems, [
                 'Program Studi', 'Ruangan', 'Mata Kuliah',
                 'Dosen', 'Pengampu Kelas', 'Kelas Paralel', 'Mahasiswa',

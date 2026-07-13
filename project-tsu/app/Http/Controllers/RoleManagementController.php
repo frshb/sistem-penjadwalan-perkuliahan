@@ -8,7 +8,11 @@ class RoleManagementController extends Controller
 {
     public function index()
     {
-        $roles = \App\Models\Role::all();
+        $order = ['admin', 'kaprodi', 'sekretaris prodi', 'dekan', 'dosen', 'mahasiswa'];
+        $roles = \App\Models\Role::all()->sortBy(function($role) use ($order) {
+            $pos = array_search($role->nama_role, $order);
+            return $pos !== false ? $pos : 999;
+        });
         $rolesData = [];
 
         foreach ($roles as $role) {

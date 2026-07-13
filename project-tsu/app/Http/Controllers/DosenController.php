@@ -7,7 +7,6 @@ use App\Models\Dosen;
 use App\Models\Prodi;
 use App\Models\Kurikulum;
 use App\Models\MataKuliah;
-use App\Models\PengampuMatkul;
 use App\Models\TahunAkademik;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
@@ -66,9 +65,6 @@ class DosenController extends Controller
                 Rule::unique('dosen', 'nuptk'),
             ],
             'id_prodi' => 'required|exists:program_studi,id_prodi',
-
-            'mata_kuliah' => 'nullable|array',
-            'mata_kuliah.*' => 'exists:mata_kuliah,kode_matkul',
         ]);
 
         $dosen = Dosen::create([
@@ -78,32 +74,15 @@ class DosenController extends Controller
             'id_prodi' => $request->id_prodi,
         ]);
 
-        if ($request->mata_kuliah) {
-            $activeTahun = TahunAkademik::where('status_aktif', 1)->first();
-            $idTahun = $activeTahun ? $activeTahun->id_tahunakademik : null;
-
-            foreach ($request->mata_kuliah as $kodeMatkul) {
-                $mk = MataKuliah::where('kode_matkul', $kodeMatkul)->first();
-
-                PengampuMatkul::create([
-                    'id_dosen' => $dosen->id_dosen,
-                    'kode_matkul' => $kodeMatkul,
-                    'id_prodi' => $mk->id_prodi ?? null,
-                    'id_tahunakademik' => $idTahun,
-                ]);
-            }
-        }
 
         return redirect()
             ->route('dosen.index')
             ->with('success', 'Data dosen berhasil ditambahkan.');
     }
 
-    public function update(Request $request, $id_dosen)
+    public function update(Request $request, Dosen $dosen)
     {
         abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Dosen', 'edit'), 403, 'Unauthorized action.');
-
-        $dosen = Dosen::findOrFail($id_dosen);
 
         $request->validate([
             'nama_dosen' => 'required|string|max:100',
@@ -123,9 +102,6 @@ class DosenController extends Controller
             ],
 
             'id_prodi' => 'required|exists:program_studi,id_prodi',
-
-            'mata_kuliah' => 'nullable|array',
-            'mata_kuliah.*' => 'exists:mata_kuliah,kode_matkul',
         ]);
 
         $dosen->update([
@@ -135,26 +111,6 @@ class DosenController extends Controller
             'id_prodi' => $request->id_prodi,
         ]);
 
-        $activeTahun = TahunAkademik::where('status_aktif', 1)->first();
-        $idTahun = $activeTahun ? $activeTahun->id_tahunakademik : null;
-
-        PengampuMatkul::where('id_dosen', $dosen->id_dosen)
-            ->where('id_tahunakademik', $idTahun)
-            ->delete();
-
-        if ($request->mata_kuliah) {
-
-            foreach ($request->mata_kuliah as $kodeMatkul) {
-                $mk = MataKuliah::where('kode_matkul', $kodeMatkul)->first();
-
-                PengampuMatkul::create([
-                    'id_dosen' => $dosen->id_dosen,
-                    'kode_matkul' => $kodeMatkul,
-                    'id_prodi' => $mk->id_prodi ?? null,
-                    'id_tahunakademik' => $idTahun,
-                ]);
-            }
-        }
 
         return redirect()
             ->route('dosen.index', ['page' => $request->page])

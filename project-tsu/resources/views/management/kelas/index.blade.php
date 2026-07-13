@@ -22,10 +22,17 @@
     showAddModal: false,
     showEditModal: false,
     showExportMenu: false,
-    searchTerm: '',
-    selectedProdiFilter: 'all',
-    selectedNamaKelasFilter: 'all',
-    selectedSemesterFilter: 'all',
+    searchTerm: localStorage.getItem('kelas_searchTerm') || '',
+    selectedProdiFilter: localStorage.getItem('kelas_selectedProdiFilter') || 'all',
+    selectedNamaKelasFilter: localStorage.getItem('kelas_selectedNamaKelasFilter') || 'all',
+    selectedSemesterFilter: localStorage.getItem('kelas_selectedSemesterFilter') || 'all',
+
+    init() {
+        this.$watch('searchTerm', value => localStorage.setItem('kelas_searchTerm', value));
+        this.$watch('selectedProdiFilter', value => localStorage.setItem('kelas_selectedProdiFilter', value));
+        this.$watch('selectedNamaKelasFilter', value => localStorage.setItem('kelas_selectedNamaKelasFilter', value));
+        this.$watch('selectedSemesterFilter', value => localStorage.setItem('kelas_selectedSemesterFilter', value));
+    },
 
     filterKelasList() {
         if (typeof window.applyAllFilters === 'function') {
@@ -926,14 +933,17 @@ function deleteSelectedAll()
 
                     // Function to apply filters
                     window.applyAllFilters = function(alpineState = null) {
-                        const state = alpineState || (document.querySelector('[x-data]') ? document.querySelector('[x-data]').__x.$data : null);
-                        const search = (state && state.searchTerm) ? state.searchTerm.toLowerCase() : '';
+                        const search = alpineState ? alpineState.searchTerm.toLowerCase() : (localStorage.getItem('kelas_searchTerm') || '').toLowerCase();
                         
                         // Sync filter states if called from Alpine
-                        if (state) {
-                            if (state.selectedProdiFilter) activeFilters.prodi = state.selectedProdiFilter;
-                            if (state.selectedNamaKelasFilter) activeFilters.namaKelas = state.selectedNamaKelasFilter;
-                            if (state.selectedSemesterFilter) activeFilters.semester = state.selectedSemesterFilter;
+                        if (alpineState) {
+                            if (alpineState.selectedProdiFilter) activeFilters.prodi = alpineState.selectedProdiFilter;
+                            if (alpineState.selectedNamaKelasFilter) activeFilters.namaKelas = alpineState.selectedNamaKelasFilter;
+                            if (alpineState.selectedSemesterFilter) activeFilters.semester = alpineState.selectedSemesterFilter;
+                        } else {
+                            activeFilters.prodi = localStorage.getItem('kelas_selectedProdiFilter') || 'all';
+                            activeFilters.namaKelas = localStorage.getItem('kelas_selectedNamaKelasFilter') || 'all';
+                            activeFilters.semester = localStorage.getItem('kelas_selectedSemesterFilter') || 'all';
                         }
 
                         const rows = Array.from(tbody.querySelectorAll('tr.kelas-row'));

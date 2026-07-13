@@ -15,11 +15,19 @@
     allMatkuls: @js($matkuls),
     filteredMatkuls: @js($matkuls),
     
-    searchTerm: sessionStorage.getItem('matkul_searchTerm') || '',
-    selectedSemesterType: sessionStorage.getItem('matkul_selectedSemesterType') || 'ganjil',
-    selectedSemester: sessionStorage.getItem('matkul_selectedSemester') || '',
-    selectedKurikulum: sessionStorage.getItem('matkul_selectedKurikulum') || '',
-    selectedProdi: sessionStorage.getItem('matkul_selectedProdi') || '',
+    searchTerm: localStorage.getItem('matkul_searchTerm') || '',
+    selectedSemesterType: localStorage.getItem('matkul_selectedSemesterType') || 'ganjil',
+    selectedSemester: localStorage.getItem('matkul_selectedSemester') || '',
+    selectedKurikulum: localStorage.getItem('matkul_selectedKurikulum') || '',
+    selectedProdi: localStorage.getItem('matkul_selectedProdi') || '',
+
+    init() {
+        this.$watch('searchTerm', value => localStorage.setItem('matkul_searchTerm', value));
+        this.$watch('selectedSemesterType', value => localStorage.setItem('matkul_selectedSemesterType', value));
+        this.$watch('selectedSemester', value => localStorage.setItem('matkul_selectedSemester', value));
+        this.$watch('selectedKurikulum', value => localStorage.setItem('matkul_selectedKurikulum', value));
+        this.$watch('selectedProdi', value => localStorage.setItem('matkul_selectedProdi', value));
+    },
 
     allRooms: @js($ruangans),
     filteredRooms: @js($ruangans),
@@ -43,6 +51,7 @@
     editTipe: '',
     editKurikulum: '',
     editKonsentrasi: '',
+    editKonsentrasiLainnya: '',
     editSifat: 'W',
     editRuanganIds: [],
 
@@ -52,21 +61,6 @@
         if (typeof window.applyAllFilters === 'function') {
             window.applyAllFilters(this);
         }
-    },
-
-    init() {
-        this.$watch('searchTerm', value => sessionStorage.setItem('matkul_searchTerm', value));
-        this.$watch('selectedSemesterType', value => sessionStorage.setItem('matkul_selectedSemesterType', value));
-        this.$watch('selectedSemester', value => sessionStorage.setItem('matkul_selectedSemester', value));
-        this.$watch('selectedKurikulum', value => sessionStorage.setItem('matkul_selectedKurikulum', value));
-        this.$watch('selectedProdi', value => sessionStorage.setItem('matkul_selectedProdi', value));
-        
-        // Apply filters on initial load if there are saved values
-        this.$nextTick(() => {
-            if (this.searchTerm || this.selectedSemester || this.selectedKurikulum || this.selectedProdi || this.selectedSemesterType !== 'ganjil') {
-                this.filterMatkuls();
-            }
-        });
     },
 
     filterRooms(tipe) {
@@ -81,7 +75,7 @@
         }
     },
 
-    openEditModal(id_matakuliah, kode, nama, sks, jenis, semester, kurikulum, prodi, ruanganIds, konsentrasi, sifat) {
+    openEditModal(id, kode, nama, sks, jenis, semester, kurikulum, prodi, ruanganIds, konsentrasi, sifat) {
         this.editProdi = prodi;
         this.editKodeMatkul = kode;
         this.editNamaMatkul = nama;
@@ -89,11 +83,19 @@
         this.editTipe = jenis.charAt(0).toUpperCase() + jenis.slice(1);
         this.editSemester = semester;
         this.editKurikulum = kurikulum;
-        this.editKonsentrasi = konsentrasi || '';
+        
+        if (['AI', 'Programming and Software Development', 'IT Mobility and Security', ''].includes(konsentrasi)) {
+            this.editKonsentrasi = konsentrasi || '';
+            this.editKonsentrasiLainnya = '';
+        } else {
+            this.editKonsentrasi = 'Lainnya';
+            this.editKonsentrasiLainnya = konsentrasi;
+        }
+        
         this.editSifat = sifat || 'W';
         this.editRuanganIds = ruanganIds;
-        this.editSelectedRooms = Array.isArray(ruanganIds) ? ruanganIds.map(String) : [];
-        this.editUrl = '{{ route('matakuliah.index') }}/' + id_matakuliah;
+        this.editSelectedRooms = ruanganIds;
+        this.editUrl = '{{ route('matakuliah.index') }}/' + id;
         this.filterRooms(this.editTipe);
         this.showEditModal = true;
     }
@@ -278,7 +280,7 @@
                                             <td class="text-left py-4 px-5 text-sm">{{ $matkul->program_studi->nama_prodi ?? '-' }}</td>
                                             <td class="text-left py-4 px-5 text-sm font-semibold">{{ $matkul->sifat ?? 'W' }}</td>
                                             <td class="text-left py-4 px-5 text-sm">
-                                                {{ in_array($matkul->semester, [5, 6]) ? ($matkul->konsentrasi ?? '-') : '-' }}
+                                                {{ in_array($matkul->semester, [5, 6, 7]) ? ($matkul->konsentrasi ?? '-') : '-' }}
                                             </td>
                                             @if(Auth::user()->hasPermissionAccess('management_data', 'Mata Kuliah', 'edit'))
                                             <td class="text-left py-4 px-5 text-sm">
@@ -434,14 +436,21 @@
                                     <option value="P">Pilihan (P)</option>
                                 </select>
                             </div>
-                            <div x-show="addSemester == 5 || addSemester == 6" x-transition>
-                                <label for="konsentrasi" class="block text-sm font-medium text-gray-700 mb-1">Konsentrasi</label>
-                                <select id="konsentrasi" name="konsentrasi" :disabled="addSemester != 5 && addSemester != 6" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                    <option value="">-- Pilih Konsentrasi (Opsional) --</option>
-                                    <option value="AI">AI</option>
-                                    <option value="Programming and Software Development">Programming and Software Development</option>
-                                    <option value="IT Mobility and Security">IT Mobility and Security</option>
-                                </select>
+                            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4" x-show="addSemester >= 5 && addSemester <= 7" x-transition x-data="{ konsentrasiOption: '' }">
+                                <div>
+                                    <label for="konsentrasi" class="block text-sm font-medium text-gray-700 mb-1">Konsentrasi</label>
+                                    <select id="konsentrasi" :name="konsentrasiOption === 'Lainnya' ? '' : 'konsentrasi'" x-model="konsentrasiOption" :disabled="addSemester < 5 || addSemester > 7" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <option value="">-- Pilih Konsentrasi (Opsional) --</option>
+                                        <option value="AI">AI</option>
+                                        <option value="Programming and Software Development">Programming and Software Development</option>
+                                        <option value="IT Mobility and Security">IT Mobility and Security</option>
+                                        <option value="Lainnya">Lainnya...</option>
+                                    </select>
+                                </div>
+                                <div x-show="konsentrasiOption === 'Lainnya'" x-transition>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Masukkan konsentrasi lainnya</label>
+                                    <input type="text" :name="konsentrasiOption === 'Lainnya' ? 'konsentrasi' : ''" placeholder="Ketik konsentrasi lainnya..." class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" :required="konsentrasiOption === 'Lainnya'">
+                                </div>
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -615,14 +624,21 @@
                                     <option value="P">Pilihan (P)</option>
                                 </select>
                             </div>
-                            <div x-show="editSemester == 5 || editSemester == 6" x-transition>
-                                <label for="edit_konsentrasi" class="block text-sm font-medium text-gray-700 mb-1">Konsentrasi</label>
-                                <select id="edit_konsentrasi" name="konsentrasi" x-model="editKonsentrasi" :disabled="editSemester != 5 && editSemester != 6" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                    <option value="">-- Pilih Konsentrasi (Opsional) --</option>
-                                    <option value="AI">AI</option>
-                                    <option value="Programming and Software Development">Programming and Software Development</option>
-                                    <option value="IT Mobility and Security">IT Mobility and Security</option>
-                                </select>
+                            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4" x-show="editSemester >= 5 && editSemester <= 7" x-transition>
+                                <div>
+                                    <label for="edit_konsentrasi" class="block text-sm font-medium text-gray-700 mb-1">Konsentrasi</label>
+                                    <select id="edit_konsentrasi" :name="editKonsentrasi === 'Lainnya' ? '' : 'konsentrasi'" x-model="editKonsentrasi" :disabled="editSemester < 5 || editSemester > 7" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <option value="">-- Pilih Konsentrasi (Opsional) --</option>
+                                        <option value="AI">AI</option>
+                                        <option value="Programming and Software Development">Programming and Software Development</option>
+                                        <option value="IT Mobility and Security">IT Mobility and Security</option>
+                                        <option value="Lainnya">Lainnya...</option>
+                                    </select>
+                                </div>
+                                <div x-show="editKonsentrasi === 'Lainnya'" x-transition>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Masukkan konsentrasi lainnya</label>
+                                    <input type="text" :name="editKonsentrasi === 'Lainnya' ? 'konsentrasi' : ''" x-model="editKonsentrasiLainnya" placeholder="Ketik konsentrasi lainnya..." class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500" :required="editKonsentrasi === 'Lainnya'">
+                                </div>
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -662,7 +678,7 @@
                                                 <input
                                                     type="checkbox"
                                                     name="ruangan_ids[]"
-                                                    :value="String(ruangan.id_ruang)"
+                                                    :value="ruangan.id_ruang"
                                                     x-model="editSelectedRooms"
                                                     class="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                                                 >
@@ -756,12 +772,11 @@
 
                     // Function to apply filters
                     window.applyAllFilters = function(alpineState = null) {
-                        const state = alpineState || (document.querySelector('[x-data]') ? document.querySelector('[x-data]').__x.$data : null);
-                        const search = (state && state.searchTerm) ? state.searchTerm.toLowerCase() : '';
-                        const semType = (state && state.selectedSemesterType) ? state.selectedSemesterType : '';
-                        const sem = (state && state.selectedSemester) ? String(state.selectedSemester) : '';
-                        const kurikulum = (state && state.selectedKurikulum) ? String(state.selectedKurikulum) : '';
-                        const prodi = (state && state.selectedProdi) ? String(state.selectedProdi) : '';
+                        const search = alpineState ? alpineState.searchTerm.toLowerCase() : (localStorage.getItem('matkul_searchTerm') || '').toLowerCase();
+                        const semType = alpineState ? alpineState.selectedSemesterType : (localStorage.getItem('matkul_selectedSemesterType') || 'ganjil');
+                        const sem = alpineState ? String(alpineState.selectedSemester) : (localStorage.getItem('matkul_selectedSemester') || '');
+                        const kurikulum = alpineState ? String(alpineState.selectedKurikulum) : (localStorage.getItem('matkul_selectedKurikulum') || '');
+                        const prodi = alpineState ? String(alpineState.selectedProdi) : (localStorage.getItem('matkul_selectedProdi') || '');
 
                         const rows = Array.from(tbody.querySelectorAll('tr.matkul-row'));
                         let visibleIndex = 1;
@@ -1019,6 +1034,9 @@
                             }
                         });
                     });
+
+                    // Initial application of numbering and filters
+                    window.applyAllFilters();
                 }
             }
         });

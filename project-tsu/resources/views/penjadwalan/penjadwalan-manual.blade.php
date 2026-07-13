@@ -137,7 +137,7 @@
     x-data="{
         showTablePreview: false,
         sidebarOpen: true,
-        selectedDay: 'senin',
+        selectedDay: '{{ count($hari) > 0 ? strtolower($hari[0]->nama_hari) : 'senin' }}',
         showFilter: false,
         filterProdi: [],
         filterSemester: [],
@@ -158,6 +158,9 @@
 </script>
 <script id="all-ruangan-data" type="application/json">
     {!! $ruangan->map(fn($r) => ['id' => $r->id_ruang, 'nama' => $r->nama_ruang])->toJson() !!}
+</script>
+<script id="hari-slot-mapping" type="application/json">
+    {!! $hari->mapWithKeys(fn($h) => [strtolower($h->nama_hari) => $h->slotWaktus->pluck('id_slot')])->toJson() !!}
 </script>
 
 {{-- ============================================================ --}}
@@ -577,7 +580,7 @@
                             >
                                 <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
                                     <h3 class="font-bold text-gray-800 text-sm">Filter Kelas</h3>
-                                    <button @click="filterProdi = []; filterSemester = []; applyFilter()" class="text-xs text-red-500 hover:text-red-600 font-medium transition">Reset</button>
+                                    <button @click="filterProdi = []; filterSemester = []; applyFilter()" class="xs text-red-500 hover:text-red-600 font-medium transition">Reset</button>
                                 </div>
                                 <div class="px-5 py-4 space-y-5">
                                     <div>
@@ -677,36 +680,17 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 w-full flex flex-col overflow-hidden">
 
                 <div class="p-5 border-b border-gray-100">
-                    <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 w-full">
-                        <h2 class="text-lg font-bold text-gray-800 shrink-0">Workspace Jadwal</h2>
-                        
-                        <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full xl:w-auto ml-auto">
-                            <!-- Search Input & Nav -->
-                            <div class="flex items-center gap-2 w-full sm:w-auto">
-                                <div class="relative w-full sm:w-64 shrink-0">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                    </div>
-                                    <input type="text" id="workspaceSearch" oninput="filterWorkspaceSearch()" class="block w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-gray-50 focus:bg-white shadow-sm" placeholder="Cari dosen, kelas, matkul...">
-                                </div>
-                                
-                                <div id="searchResultNav" class="hidden items-center gap-1 bg-white border border-gray-200 rounded-xl px-2 py-1 shadow-sm shrink-0">
-                                    <span id="searchResultCount" class="text-xs font-semibold text-gray-600 px-1">0/0</span>
-                                    <button onclick="navigateSearchResult(-1)" class="p-1 text-gray-400 hover:text-teal-600 rounded hover:bg-gray-100 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-                                    <button onclick="navigateSearchResult(1)" class="p-1 text-gray-400 hover:text-teal-600 rounded hover:bg-gray-100 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar shrink-0 sm:ml-auto">
-                                @foreach ($hari as $h)
-                                @php $namaHari = strtolower($h->nama_hari); @endphp
-                                <button
-                                    @click="selectedDay = '{{ $namaHari }}'; filterCardsByDay('{{ $namaHari }}')"
-                                    :class="selectedDay === '{{ $namaHari }}' ? 'bg-teal-600 text-white shadow-md' : 'border border-gray-200 hover:bg-gray-50 text-gray-700 bg-white shadow-sm'"
-                                    class="px-3 sm:px-4 py-1.5 rounded-xl font-semibold transition capitalize whitespace-nowrap text-xs sm:text-sm"
-                                >{{ $h->nama_hari }}</button>
-                                @endforeach
-                            </div>
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-gray-800">Workspace Jadwal</h2>
+                        <div class="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
+                            @foreach ($hari as $h)
+                            @php $namaHari = strtolower($h->nama_hari); @endphp
+                            <button
+                                @click="selectedDay = '{{ $namaHari }}'; filterCardsByDay('{{ $namaHari }}')"
+                                :class="selectedDay === '{{ $namaHari }}' ? 'bg-teal-600 text-white' : 'border border-gray-200 hover:bg-gray-50 text-gray-700'"
+                                class="px-3 sm:px-6 py-1.5 sm:py-2 rounded-xl font-semibold transition capitalize whitespace-nowrap text-xs sm:text-sm"
+                            >{{ $h->nama_hari }}</button>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -719,17 +703,17 @@
                             {{ $loop->iteration === 6 ? 'bg-amber-50' : 'bg-white' }}">
 
                             {{-- Waktu mulai --}}
-                            <div class="text-lg font-bold text-gray-900">
+                            <div class="text-[14px] font-bold text-gray-900">
                                 {{ \Carbon\Carbon::parse($slot->waktu_mulai)->format('H:i') }}
                             </div>
 
                             {{-- Slot label --}}
-                            <div class="text-sm font-semibold text-gray-800 mt-1">
+                            <div class="text-[13px] text-gray-800 mt-1">
                                 {{ $loop->iteration === 6 ? '🕐 Istirahat' : 'Slot ' . $loop->iteration }}
                             </div>
 
                             {{-- Range waktu --}}
-                            <div class="text-[13px] font-medium text-gray-600 mt-0.5">
+                            <div class="text-[12px] text-gray-700">
                                 {{ \Carbon\Carbon::parse($slot->waktu_mulai)->format('H:i') }} - {{ \Carbon\Carbon::parse($slot->waktu_selesai)->format('H:i') }}
                             </div>
 
@@ -865,14 +849,11 @@
                 {{-- Filter chips --}}
                 <div class="flex flex-wrap gap-2">
                     {{-- Hari --}}
-                    <select id="pf-hari" onchange="applyPreviewFilter()"
-                        class="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 outline-none">
+                    <select id="pf-hari" onchange="applyPreviewFilter()" class="w-full bg-white border border-gray-200 text-gray-700 text-xs rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-teal-500 focus:border-teal-500 shadow-sm appearance-none cursor-pointer pr-7 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.293%207.293a1%201%200%20011.414%200L10%2010.586l3.293-3.293a1%201%200%20111.414%201.414l-4%204a1%201%200%2001-1.414%200l-4-4a1%201%200%20010-1.414z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[position:right_0.5rem_center] bg-no-repeat">
                         <option value="">Semua Hari</option>
-                        <option value="Senin">Senin</option>
-                        <option value="Selasa">Selasa</option>
-                        <option value="Rabu">Rabu</option>
-                        <option value="Kamis">Kamis</option>
-                        <option value="Jumat">Jumat</option>
+                        @foreach ($hari as $h)
+                        <option value="{{ ucfirst(strtolower($h->nama_hari)) }}">{{ ucfirst(strtolower($h->nama_hari)) }}</option>
+                        @endforeach
                     </select>
 
                     {{-- Prodi --}}
@@ -1011,8 +992,6 @@ function _updateWorkspaceMinWidth() {
         if (col + 1 > maxColumns) maxColumns = col + 1;
     });
 
-    // Hanya beri min-width kalau memang ada >1 kolom card yang numpuk.
-    // Kalau cuma 1 kolom, biarkan 100% adaptif (tidak perlu scroll horizontal).
     const neededWidth = maxColumns > 1
         ? (maxColumns * (CARD_WIDTH + CARD_GAP)) + 32
         : 0;
@@ -1088,8 +1067,8 @@ function _restoreWorkspace(snapshot) {
 
     updateCounter();
     applyFilter();
-    const activeDay = (typeof Alpine !== 'undefined' ? Alpine.$data(document.body)?.selectedDay : null) || 'senin';
-    filterCardsByDay(activeDay);
+    const days = {!! $hari->pluck('nama_hari')->map(fn($d) => strtolower($d))->toJson() !!};
+    filterCardsByDay(Alpine.$data(document.body)?.selectedDay || (days.length ? days[0] : 'senin'));
     renderTablePreview();
     updateBentrokButton();
     closeDetailPanel();
@@ -1258,72 +1237,19 @@ function tampilStateModal(state) {
 // ============================================================
 function getCourseColor(name) {
     const colors = [
-        { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-800', badge: 'bg-red-200 text-red-800' },
-        { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-900', badge: 'bg-red-300 text-red-900' },
-        { bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-700' },
-        { bg: 'bg-orange-100', border: 'border-orange-400', text: 'text-orange-800', badge: 'bg-orange-200 text-orange-800' },
-        { bg: 'bg-orange-50', border: 'border-orange-400', text: 'text-orange-800', badge: 'bg-orange-200 text-orange-800' },
-        { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-900', badge: 'bg-orange-300 text-orange-900' },
-        { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700' },
-        { bg: 'bg-amber-100', border: 'border-amber-400', text: 'text-amber-800', badge: 'bg-amber-200 text-amber-800' },
-        { bg: 'bg-amber-50', border: 'border-amber-400', text: 'text-amber-800', badge: 'bg-amber-200 text-amber-800' },
-        { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-900', badge: 'bg-amber-300 text-amber-900' },
-        { bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-700' },
-        { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-800', badge: 'bg-yellow-200 text-yellow-800' },
-        { bg: 'bg-yellow-50', border: 'border-yellow-400', text: 'text-yellow-800', badge: 'bg-yellow-200 text-yellow-800' },
-        { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-900', badge: 'bg-yellow-300 text-yellow-900' },
-        { bg: 'bg-lime-50', border: 'border-lime-300', text: 'text-lime-700', badge: 'bg-lime-100 text-lime-700' },
-        { bg: 'bg-lime-100', border: 'border-lime-400', text: 'text-lime-800', badge: 'bg-lime-200 text-lime-800' },
-        { bg: 'bg-lime-50', border: 'border-lime-400', text: 'text-lime-800', badge: 'bg-lime-200 text-lime-800' },
-        { bg: 'bg-lime-100', border: 'border-lime-500', text: 'text-lime-900', badge: 'bg-lime-300 text-lime-900' },
-        { bg: 'bg-green-50', border: 'border-green-300', text: 'text-green-700', badge: 'bg-green-100 text-green-700' },
-        { bg: 'bg-green-100', border: 'border-green-400', text: 'text-green-800', badge: 'bg-green-200 text-green-800' },
-        { bg: 'bg-green-50', border: 'border-green-400', text: 'text-green-800', badge: 'bg-green-200 text-green-800' },
-        { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-900', badge: 'bg-green-300 text-green-900' },
-        { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700' },
-        { bg: 'bg-emerald-100', border: 'border-emerald-400', text: 'text-emerald-800', badge: 'bg-emerald-200 text-emerald-800' },
-        { bg: 'bg-emerald-50', border: 'border-emerald-400', text: 'text-emerald-800', badge: 'bg-emerald-200 text-emerald-800' },
-        { bg: 'bg-emerald-100', border: 'border-emerald-500', text: 'text-emerald-900', badge: 'bg-emerald-300 text-emerald-900' },
-        { bg: 'bg-teal-50', border: 'border-teal-300', text: 'text-teal-700', badge: 'bg-teal-100 text-teal-700' },
-        { bg: 'bg-teal-100', border: 'border-teal-400', text: 'text-teal-800', badge: 'bg-teal-200 text-teal-800' },
-        { bg: 'bg-teal-50', border: 'border-teal-400', text: 'text-teal-800', badge: 'bg-teal-200 text-teal-800' },
-        { bg: 'bg-teal-100', border: 'border-teal-500', text: 'text-teal-900', badge: 'bg-teal-300 text-teal-900' },
-        { bg: 'bg-cyan-50', border: 'border-cyan-300', text: 'text-cyan-700', badge: 'bg-cyan-100 text-cyan-700' },
-        { bg: 'bg-cyan-100', border: 'border-cyan-400', text: 'text-cyan-800', badge: 'bg-cyan-200 text-cyan-800' },
-        { bg: 'bg-cyan-50', border: 'border-cyan-400', text: 'text-cyan-800', badge: 'bg-cyan-200 text-cyan-800' },
-        { bg: 'bg-cyan-100', border: 'border-cyan-500', text: 'text-cyan-900', badge: 'bg-cyan-300 text-cyan-900' },
-        { bg: 'bg-sky-50', border: 'border-sky-300', text: 'text-sky-700', badge: 'bg-sky-100 text-sky-700' },
-        { bg: 'bg-sky-100', border: 'border-sky-400', text: 'text-sky-800', badge: 'bg-sky-200 text-sky-800' },
-        { bg: 'bg-sky-50', border: 'border-sky-400', text: 'text-sky-800', badge: 'bg-sky-200 text-sky-800' },
-        { bg: 'bg-sky-100', border: 'border-sky-500', text: 'text-sky-900', badge: 'bg-sky-300 text-sky-900' },
-        { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-700' },
-        { bg: 'bg-blue-100', border: 'border-blue-400', text: 'text-blue-800', badge: 'bg-blue-200 text-blue-800' },
-        { bg: 'bg-blue-50', border: 'border-blue-400', text: 'text-blue-800', badge: 'bg-blue-200 text-blue-800' },
-        { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-900', badge: 'bg-blue-300 text-blue-900' },
-        { bg: 'bg-indigo-50', border: 'border-indigo-300', text: 'text-indigo-700', badge: 'bg-indigo-100 text-indigo-700' },
-        { bg: 'bg-indigo-100', border: 'border-indigo-400', text: 'text-indigo-800', badge: 'bg-indigo-200 text-indigo-800' },
-        { bg: 'bg-indigo-50', border: 'border-indigo-400', text: 'text-indigo-800', badge: 'bg-indigo-200 text-indigo-800' },
-        { bg: 'bg-indigo-100', border: 'border-indigo-500', text: 'text-indigo-900', badge: 'bg-indigo-300 text-indigo-900' },
-        { bg: 'bg-violet-50', border: 'border-violet-300', text: 'text-violet-700', badge: 'bg-violet-100 text-violet-700' },
-        { bg: 'bg-violet-100', border: 'border-violet-400', text: 'text-violet-800', badge: 'bg-violet-200 text-violet-800' },
-        { bg: 'bg-violet-50', border: 'border-violet-400', text: 'text-violet-800', badge: 'bg-violet-200 text-violet-800' },
-        { bg: 'bg-violet-100', border: 'border-violet-500', text: 'text-violet-900', badge: 'bg-violet-300 text-violet-900' },
-        { bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-700' },
+        { bg: 'bg-blue-100',   border: 'border-blue-400',   text: 'text-blue-800',   badge: 'bg-blue-200 text-blue-800' },
         { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-800', badge: 'bg-purple-200 text-purple-800' },
-        { bg: 'bg-purple-50', border: 'border-purple-400', text: 'text-purple-800', badge: 'bg-purple-200 text-purple-800' },
-        { bg: 'bg-purple-100', border: 'border-purple-500', text: 'text-purple-900', badge: 'bg-purple-300 text-purple-900' },
-        { bg: 'bg-fuchsia-50', border: 'border-fuchsia-300', text: 'text-fuchsia-700', badge: 'bg-fuchsia-100 text-fuchsia-700' },
-        { bg: 'bg-fuchsia-100', border: 'border-fuchsia-400', text: 'text-fuchsia-800', badge: 'bg-fuchsia-200 text-fuchsia-800' },
-        { bg: 'bg-fuchsia-50', border: 'border-fuchsia-400', text: 'text-fuchsia-800', badge: 'bg-fuchsia-200 text-fuchsia-800' },
-        { bg: 'bg-fuchsia-100', border: 'border-fuchsia-500', text: 'text-fuchsia-900', badge: 'bg-fuchsia-300 text-fuchsia-900' },
-        { bg: 'bg-pink-50', border: 'border-pink-300', text: 'text-pink-700', badge: 'bg-pink-100 text-pink-700' },
-        { bg: 'bg-pink-100', border: 'border-pink-400', text: 'text-pink-800', badge: 'bg-pink-200 text-pink-800' },
-        { bg: 'bg-pink-50', border: 'border-pink-400', text: 'text-pink-800', badge: 'bg-pink-200 text-pink-800' },
-        { bg: 'bg-pink-100', border: 'border-pink-500', text: 'text-pink-900', badge: 'bg-pink-300 text-pink-900' },
-        { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-700', badge: 'bg-rose-100 text-rose-700' },
-        { bg: 'bg-rose-100', border: 'border-rose-400', text: 'text-rose-800', badge: 'bg-rose-200 text-rose-800' },
-        { bg: 'bg-rose-50', border: 'border-rose-400', text: 'text-rose-800', badge: 'bg-rose-200 text-rose-800' },
-        { bg: 'bg-rose-100', border: 'border-rose-500', text: 'text-rose-900', badge: 'bg-rose-300 text-rose-900' }
+        { bg: 'bg-green-100',  border: 'border-green-400',  text: 'text-green-800',  badge: 'bg-green-200 text-green-800' },
+        { bg: 'bg-pink-100',   border: 'border-pink-400',   text: 'text-pink-800',   badge: 'bg-pink-200 text-pink-800' },
+        { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-800', badge: 'bg-yellow-200 text-yellow-800' },
+        { bg: 'bg-indigo-100', border: 'border-indigo-400', text: 'text-indigo-800', badge: 'bg-indigo-200 text-indigo-800' },
+        { bg: 'bg-red-100',    border: 'border-red-400',    text: 'text-red-800',    badge: 'bg-red-200 text-red-800' },
+        { bg: 'bg-orange-100', border: 'border-orange-400', text: 'text-orange-800', badge: 'bg-orange-200 text-orange-800' },
+        { bg: 'bg-teal-100',   border: 'border-teal-400',   text: 'text-teal-800',   badge: 'bg-teal-200 text-teal-800' },
+        { bg: 'bg-cyan-100',   border: 'border-cyan-400',   text: 'text-cyan-800',   badge: 'bg-cyan-200 text-cyan-800' },
+        { bg: 'bg-emerald-100',border: 'border-emerald-400',text: 'text-emerald-800',badge: 'bg-emerald-200 text-emerald-800' },
+        { bg: 'bg-rose-100',   border: 'border-rose-400',   text: 'text-rose-800',   badge: 'bg-rose-200 text-rose-800' },
+        { bg: 'bg-fuchsia-100',border: 'border-fuchsia-400',text: 'text-fuchsia-800',badge: 'bg-fuchsia-200 text-fuchsia-800' },
     ];
     let hash = 0;
     if (!name) name = 'Default';
@@ -1464,119 +1390,39 @@ function applyFilter() {
 // ============================================================
 // FILTER CARD WORKSPACE BERDASARKAN HARI
 // ============================================================
-window.workspaceSearchResults = [];
-window.workspaceSearchIndex = -1;
-
-function filterWorkspaceSearch() {
-    const term = (document.getElementById('workspaceSearch')?.value || '').toLowerCase();
-    const navDiv = document.getElementById('searchResultNav');
-    
-    window.workspaceSearchResults = [];
-    window.workspaceSearchIndex = -1;
-
-    if (term !== '') {
-        document.querySelectorAll('.jadwal-card').forEach(card => {
-            const textToSearch = [
-                card.dataset.kelas || '',
-                card.dataset.dosen || '',
-                card.dataset.nama || '',
-                card.dataset.kodeMk || ''
-            ].join(' ').toLowerCase();
-
-            if (textToSearch.includes(term)) {
-                window.workspaceSearchResults.push(card);
-            }
-        });
-    }
-
-    if (term !== '' && window.workspaceSearchResults.length > 0) {
-        navDiv.classList.remove('hidden');
-        navDiv.classList.add('flex');
-        window.workspaceSearchIndex = 0; 
-        updateSearchNavCount();
-    } else {
-        navDiv.classList.add('hidden');
-        navDiv.classList.remove('flex');
-    }
-
-    const activeDay = Alpine.$data(document.body)?.selectedDay;
-    filterCardsByDay(activeDay);
-
-    if (window.workspaceSearchIndex !== -1) {
-        jumpToSearchResult(window.workspaceSearchIndex);
-    }
-}
-
-function updateSearchNavCount() {
-    const total = window.workspaceSearchResults.length;
-    const current = total === 0 ? 0 : window.workspaceSearchIndex + 1;
-    document.getElementById('searchResultCount').textContent = `${current}/${total}`;
-}
-
-function navigateSearchResult(dir) {
-    if (!window.workspaceSearchResults || window.workspaceSearchResults.length === 0) return;
-    
-    window.workspaceSearchIndex += dir;
-    if (window.workspaceSearchIndex < 0) {
-        window.workspaceSearchIndex = window.workspaceSearchResults.length - 1;
-    } else if (window.workspaceSearchIndex >= window.workspaceSearchResults.length) {
-        window.workspaceSearchIndex = 0;
-    }
-    
-    updateSearchNavCount();
-    jumpToSearchResult(window.workspaceSearchIndex);
-}
-
-function jumpToSearchResult(index) {
-    const card = window.workspaceSearchResults[index];
-    if (!card) return;
-
-    const cardDay = card.dataset.day;
-    const alpineData = Alpine.$data(document.body);
-    if (alpineData && cardDay !== alpineData.selectedDay) {
-        alpineData.selectedDay = cardDay;
-        filterCardsByDay(cardDay);
-    } else {
-        filterCardsByDay(cardDay); // Force re-render to update focus ring
-    }
-
-    setTimeout(() => {
-        card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-    }, 100);
-}
-
 function filterCardsByDay(dayStr) {
     const days = {!! $hari->pluck('nama_hari')->map(fn($d) => strtolower($d))->toJson() !!};
-    const activeDay = dayStr || Alpine.$data(document.body)?.selectedDay || (days.length ? days[0] : 'senin');
-    const term = (document.getElementById('workspaceSearch')?.value || '').toLowerCase();
+    const activeDay = Alpine.$data(document.body)?.selectedDay || (days.length ? days[0] : 'senin');
     
     document.querySelectorAll('.jadwal-card').forEach(card => {
-        const textToSearch = [
-            card.dataset.kelas || '',
-            card.dataset.dosen || '',
-            card.dataset.nama || '',
-            card.dataset.kodeMk || ''
-        ].join(' ').toLowerCase();
-
-        const isDayMatch = card.dataset.day === activeDay;
-        const isSearchMatch = term === '' || textToSearch.includes(term);
-        const isFocused = window.workspaceSearchResults && window.workspaceSearchResults[window.workspaceSearchIndex] === card;
-        const show = isDayMatch;
-
+        const show = card.dataset.day === activeDay;
         card.style.display       = show ? 'flex' : 'none';
         card.style.pointerEvents = show ? 'auto' : 'none';
+    });
 
-        if (show) {
-            if (term !== '' && !isSearchMatch) {
-                card.style.opacity = '0.15';
-                card.classList.remove('ring-4', 'ring-teal-500', 'shadow-lg');
-            } else if (term !== '' && isSearchMatch) {
-                card.style.opacity = '1';
-                card.classList.remove('ring-4', 'ring-teal-500', 'shadow-lg');
-            } else {
-                card.style.opacity = '1';
-                card.classList.remove('ring-4', 'ring-teal-500', 'shadow-lg');
-            }
+    // Load pivot mapping
+    const mappingEl = document.getElementById('hari-slot-mapping');
+    let mapping = {};
+    if (mappingEl) {
+        mapping = JSON.parse(mappingEl.innerText || '{}');
+    }
+    const validSlots = mapping[activeDay] || [];
+
+    // Gray out unavailable slots
+    document.querySelectorAll('[data-slot-line]').forEach(slot => {
+        const slotId = parseInt(slot.dataset.slotLine);
+        const isIstirahat = slot.dataset.isIstirahat === '1';
+        if (validSlots.includes(slotId) || isIstirahat) {
+            slot.style.backgroundColor = '';
+            slot.dataset.allowed = '1';
+            // Also reset parent visual
+            slot.parentElement.style.opacity = '1';
+            slot.parentElement.classList.remove('bg-gray-100');
+        } else {
+            slot.style.backgroundColor = '#f9fafb';
+            slot.dataset.allowed = '0';
+            slot.parentElement.style.opacity = '0.6';
+            slot.parentElement.classList.add('bg-gray-100');
         }
     });
 }
@@ -1794,7 +1640,7 @@ function resetPreviewFilter() {
 function renderTablePreview() {
     const tbody = document.getElementById('tbody-preview');
     if (!tbody) return;
-    const days  = ['senin', 'selasa', 'rabu', 'kamis', 'jumat'];
+    const days = {!! $hari->pluck('nama_hari')->map(fn($d) => strtolower($d))->toJson() !!};
     const cards = [...document.querySelectorAll('.jadwal-card')].sort((a, b) => {
         const dDiff = days.indexOf(a.dataset.day) - days.indexOf(b.dataset.day);
         if (dDiff !== 0) return dDiff;
@@ -1892,7 +1738,8 @@ function createCard(data, skipSave = false) {
     card.setAttribute('draggable', 'true');
     card.setAttribute('data-kelas-id', kelasId);
 
-    const activeDay = Alpine.$data(document.body)?.selectedDay || 'senin';
+    const days = {!! $hari->pluck('nama_hari')->map(fn($d) => strtolower($d))->toJson() !!};
+    const activeDay = Alpine.$data(document.body)?.selectedDay || (days.length ? days[0] : 'senin');
     const isVisible = day === activeDay;
 
     Object.assign(card.dataset, {
@@ -2031,7 +1878,7 @@ function enableMerge(card) {
         card.dataset.kelasList   = JSON.stringify(merged);
         card.dataset.kelasIdList = JSON.stringify(mergedId);
 
-        const color = getCourseColor(merged[0]);
+        const color = getCourseColor(card.dataset.nama);
         card.innerHTML = `
             <div>
                 <div class="flex items-start justify-between">
@@ -2141,8 +1988,9 @@ function refreshWorkspaceDariOptimasi(jadwalTerbaru) {
     _historyPushRaw('add', 'Hasil optimasi otomatis diterapkan', _snapshotWorkspace());
 
     updateCounter();
-    applyFilter();
-    filterCardsByDay(Alpine.$data(document.body).selectedDay || 'senin');
+    updateBentrokButton();
+    const days = {!! $hari->pluck('nama_hari')->map(fn($d) => strtolower($d))->toJson() !!};
+    filterCardsByDay(Alpine.$data(document.body).selectedDay || (days.length ? days[0] : 'senin'));
     renderTablePreview();
     updateBentrokButton();
     showToast('✓ Workspace diperbarui sesuai hasil optimasi.', 'green');
@@ -2189,7 +2037,12 @@ document.addEventListener('DOMContentLoaded', () => {
         slot.addEventListener('dragover', e => e.preventDefault());
         slot.addEventListener('drop', e => {
             e.preventDefault();
-            const fromWorkspace = e.dataTransfer.getData('from_workspace');
+            
+            if (slot.dataset.allowed === '0') {
+                showToast('Slot waktu ini tidak aktif untuk hari yang dipilih!', 'red');
+                return;
+            }
+                        const fromWorkspace = e.dataTransfer.getData('from_workspace');
             const sks       = parseInt(e.dataTransfer.getData('sks'));
             const nama      = e.dataTransfer.getData('nama');
             const kelas     = e.dataTransfer.getData('kelas');
@@ -2237,7 +2090,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (kelasList.length > 1) {
                 card.dataset.kelasList   = JSON.stringify(kelasList);
                 card.dataset.kelasIdList = JSON.stringify(kelasIdList);
-                const color = getCourseColor(kelasList[0]);
+                const color = getCourseColor(nama);
                 card.innerHTML = `
                     <div>
                         <div class="flex items-start justify-between">
@@ -2271,17 +2124,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const days = {!! $hari->pluck('nama_hari')->map(fn($d) => strtolower($d))->toJson() !!};
     SLOT_VALID.sort((a, b) => a - b);
     setActiveTab('belum');
     updateCounter();
-    filterCardsByDay('senin');
+    filterCardsByDay(days.length ? days[0] : 'senin');
     loadExistingJadwals();
 });
 
 // ============================================================
 // RESET WORKSPACE
 // ============================================================
-async function resetWorkspace() {
+function resetWorkspace() {
     const cards = [...document.querySelectorAll('.jadwal-card')];
     if (!cards.length) { showToast('Workspace sudah kosong.', 'green'); return; }
     if (!confirm(`Hapus semua ${cards.length} jadwal dari workspace dan database? Tindakan ini tidak bisa dibatalkan.`)) return;
@@ -2292,12 +2146,7 @@ async function resetWorkspace() {
     const btn = document.querySelector('[onclick="resetWorkspace()"]');
     if (btn) { btn.disabled = true; btn.innerText = 'Mereset...'; }
 
-    let gagal = 0;
-    for (const card of cards) {
-        try { await hapusJadwal(card); }
-        catch(e) { gagal++; console.error('Gagal hapus jadwal:', e); }
-    }
-
+    // Langsung bersihkan DOM secara instan
     _historyPaused = true;
     document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
     document.querySelectorAll('.kelas-item').forEach(el => setSidebarStatus(el.dataset.id, 'belum'));
@@ -2309,11 +2158,37 @@ async function resetWorkspace() {
     updateBentrokButton();
     closeDetailPanel();
 
-    if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Reset Jadwal`;
-    }
-    showToast(gagal === 0 ? '✓ Semua jadwal berhasil direset!' : `Reset selesai, ${gagal} gagal dihapus dari DB.`, gagal === 0 ? 'green' : 'red');
+    showToast('Memproses penghapusan di latar belakang...', 'blue');
+
+    // Proses penghapusan ke database secara bulk tanpa memblokir UI
+    fetch('/jadwal/hapus-semua', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': CSRF_TOKEN
+        },
+        body: JSON.stringify({ tahun_akademik_id: TAHUN_AKADEMIK })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Reset Jadwal`;
+        }
+        if (data.success) {
+            showToast('✓ Semua jadwal berhasil direset dari database!', 'green');
+        } else {
+            showToast('Gagal mereset database.', 'red');
+        }
+    })
+    .catch(err => {
+        console.error('Reset bulk error:', err);
+        showToast('Terjadi kesalahan jaringan saat reset.', 'red');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Reset Jadwal`;
+        }
+    });
 
     // Simpan state kosong sebagai titik redo
     _historyPushRaw('reset', 'Workspace kosong (setelah reset)', _snapshotWorkspace());

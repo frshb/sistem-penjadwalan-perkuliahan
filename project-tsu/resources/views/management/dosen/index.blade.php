@@ -18,8 +18,13 @@
     showEditModal: false,
     showExportMenu: false,
 
-    searchTerm: '',
-    selectedProdi: 'all',
+    searchTerm: localStorage.getItem('dosen_searchTerm') || '',
+    selectedProdi: localStorage.getItem('dosen_selectedProdi') || 'all',
+
+    init() {
+        this.$watch('searchTerm', value => localStorage.setItem('dosen_searchTerm', value));
+        this.$watch('selectedProdi', value => localStorage.setItem('dosen_selectedProdi', value));
+    },
 
     filterDosens() {
         if (typeof window.applyAllFilters === 'function') {
@@ -38,14 +43,18 @@
 
     editUrl: '',
 
-    openEditModal(id_dosen, nidn, nuptk, nama, prodi) {
-        this.editProdi = prodi;
-        this.editNidn = nidn;
-        this.editNuptk = nuptk;
+    openEditModal(
+        nidn,
+        nuptk,
+        nama,
+        prodi
+    ) {
         this.editNama = nama;
+        this.editNuptk = nuptk;
+        this.editNidn = nidn;
         this.editProdi = prodi;
 
-        this.editUrl = '/management/dosen/' + id_dosen;
+        this.editUrl = '/management/dosen/' + nuptk;
 
         this.showEditModal = true;
     },
@@ -167,7 +176,6 @@
                                 @foreach ($prodis as $prodi)
                                     <option value="{{ $prodi->nama_prodi }}">{{ $prodi->nama_prodi }}</option>
                                 @endforeach
-                                <option value="Dosen Eksternal">Dosen Eksternal</option>
                             </select>
                         </div>
 
@@ -230,10 +238,9 @@
                                             <div class="flex space-x-2">
                                                 <button
                                                     @click="openEditModal(
-                                                        '{{ $dosen->id_dosen }}',
                                                         '{{ $dosen->nidn }}',
                                                         '{{ $dosen->nuptk }}',
-                                                        '{{ $dosen->nama_dosen }}',
+                                                        '{{ addslashes($dosen->nama_dosen) }}',
                                                         '{{ $dosen->id_prodi }}'
                                                     )"
                                                     class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors">
@@ -243,7 +250,7 @@
  
                                                 <button
                                                     @click="confirmDelete('{{ route('dosen.destroy',[
-                                                        $dosen->id_dosen
+                                                        $dosen->nuptk
                                                     ]) }}')"
                                                     class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors">
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -569,13 +576,14 @@
 
                     // Function to apply filters
                     window.applyAllFilters = function(alpineState = null) {
-                        const state = alpineState || (document.querySelector('[x-data]') ? document.querySelector('[x-data]').__x.$data : null);
-                        const search = (state && state.searchTerm) ? state.searchTerm.toLowerCase() : '';
-                        const prodi = (state && state.selectedProdi) ? String(state.selectedProdi) : 'all';
+                        const search = alpineState ? alpineState.searchTerm.toLowerCase() : (localStorage.getItem('dosen_searchTerm') || '').toLowerCase();
+                        const prodi = alpineState ? String(alpineState.selectedProdi) : (localStorage.getItem('dosen_selectedProdi') || 'all');
                         
                         // Sync prodi state with our local variable if called from Alpine
-                        if (state && state.selectedProdi) {
-                            activeProdiFilter = prodi;
+                        if (alpineState && alpineState.selectedProdi) {
+                            activeProdiFilter = alpineState.selectedProdi;
+                        } else if (!alpineState) {
+                            activeProdiFilter = localStorage.getItem('dosen_selectedProdi') || 'all';
                         }
 
                         const rows = Array.from(tbody.querySelectorAll('tr.dosen-row'));
@@ -588,8 +596,6 @@
                             
                             if (activeProdiFilter === 'all') {
                                 matchesProdi = true;
-                            } else if (activeProdiFilter === 'Dosen Eksternal') {
-                                matchesProdi = (rowProdi === 'Belum Dipilih' || rowProdi.toLowerCase().includes('eksternal'));
                             } else {
                                 matchesProdi = rowProdi.toLowerCase().includes(activeProdiFilter.toLowerCase());
                             }

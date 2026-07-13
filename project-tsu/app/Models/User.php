@@ -71,6 +71,7 @@ class User extends Authenticatable
 
     const ROLE_ADMIN     = 'admin';
     const ROLE_KAPRODI   = 'kaprodi';
+    const ROLE_SEKPRODI  = 'sekretaris prodi';
     const ROLE_DEKAN     = 'dekan';
     const ROLE_DOSEN     = 'dosen';
     const ROLE_MAHASISWA = 'mahasiswa';
@@ -103,6 +104,11 @@ class User extends Authenticatable
     public function isKaprodi(): bool
     {
         return $this->hasRole(self::ROLE_KAPRODI);
+    }
+
+    public function isSekretarisProdi(): bool
+    {
+        return $this->hasRole(self::ROLE_SEKPRODI);
     }
 
     public function isDosen(): bool

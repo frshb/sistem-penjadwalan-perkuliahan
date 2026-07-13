@@ -55,7 +55,7 @@
 
                 <!-- User Registration Card -->
                 @if(Auth::user()->isAdmin())
-                <a href="{{ route('settings.users.create') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
+                <a href="{{ route('settings.users.register') }}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-8 border border-gray-100 overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
 
                     <div class="relative z-10">

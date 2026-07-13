@@ -26,21 +26,12 @@
                             </button>
                             <h1 class="text-3xl font-bold text-gray-900 ml-3 tracking-tight">Registrasi Pengguna</h1>
                         </div>
-                        <p class="text-sm text-gray-500 mt-1 ml-[1.35rem]">Buat akun untuk Kaprodi, Dekan, atau Dosen</p>
+                        <p class="text-sm text-gray-500 mt-1 ml-[1.35rem]">Buat akun untuk Kaprodi, Sekretaris Prodi, Dekan, atau Dosen</p>
                     </div>
                     @include('components.header-profile')
                 </div>
 
-            <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 border border-gray-200 max-w-4xl" x-data="{ 
-                    selectedRole: '', 
-                    showProdi: false,
-                    showDosen: false,
-                    updateFields() {
-                        // Role IDs: Kaprodi=2, Dekan=3, Dosen=4
-                        this.showProdi = (this.selectedRole == '2');
-                        this.showDosen = (this.selectedRole == '2' || this.selectedRole == '3' || this.selectedRole == '4');
-                    }
-                }">
+            <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 border border-gray-200 w-full" x-data="registrationForm()">
 
                     @if(session('success'))
                         <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
@@ -90,12 +81,12 @@
                                         <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                                     </div>
                                 </div>
-                                <p class="text-xs text-gray-500 mt-1">Wajib dipilih untuk akun Kaprodi.</p>
+                                <p class="text-xs text-gray-500 mt-1">Wajib dipilih untuk akun Kaprodi dan Sekretaris Prodi.</p>
                             </div>
 
                             <!-- Dosen Link (Required for Dosen/Dekan, Optional for Kaprodi) -->
                             <div x-show="showDosen" x-transition class="md:col-span-2" style="display: none;">
-                                <label for="id_dosen" class="block text-sm font-medium text-gray-700 mb-2">Link Data Dosen <span class="text-red-500" x-show="selectedRole == '3' || selectedRole == '4'">*</span><span class="text-gray-400 font-normal" x-show="selectedRole == '2'">(Opsional)</span></label>
+                                <label for="id_dosen" class="block text-sm font-medium text-gray-700 mb-2">Link Data Dosen <span class="text-red-500" x-show="selectedRole == roleIds.dekan || selectedRole == roleIds.dosen || selectedRole == roleIds.sekprodi">*</span><span class="text-gray-400 font-normal" x-show="selectedRole == roleIds.kaprodi">(Opsional)</span></label>
                                 <div class="relative">
                                     <select id="id_dosen" name="id_dosen" class="w-full rounded-lg border-gray-300 focus:border-teal-500 focus:ring focus:ring-teal-200 transition shadow-sm p-3 appearance-none">
                                         <option value="">-- Tidak Terhubung ke Data Dosen --</option>
@@ -140,7 +131,78 @@
                         </div>
                     </form>
                 </div>
+
+                <!-- Daftar Akun Terdaftar -->
+                <div class="mt-8 bg-white rounded-xl shadow-lg p-6 sm:p-10 border border-gray-200 w-full">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Daftar Akun Terdaftar</h2>
+                    <div class="overflow-x-auto rounded-xl border border-gray-200 overflow-hidden">
+                        <table class="w-full text-left border-collapse whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-teal-800 text-white">
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider">No</th>
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider">Username</th>
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider">Role</th>
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider">Program Studi</th>
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider">Dosen Terkait</th>
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                @forelse($users as $index => $user)
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-4 text-gray-700">{{ $index + 1 }}</td>
+                                        <td class="px-6 py-4 text-gray-700">{{ $user->username }}</td>
+                                        <td class="px-6 py-4 text-gray-700">{{ $user->role->nama_role ?? '-' }}</td>
+                                        <td class="px-6 py-4 text-gray-700">{{ $user->prodi->nama_prodi ?? '-' }}</td>
+                                        <td class="px-6 py-4 text-gray-700">
+                                            @if($user->dosen)
+                                                {{ $user->dosen->nama_dosen }} <span class="text-xs text-gray-500">({{ $user->dosen->nidn }})</span>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 text-center">
+                                            <div class="flex items-center justify-center space-x-2">
+                                                <a href="{{ route('settings.users.edit', $user->id_user) }}" class="inline-flex items-center px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white text-sm font-bold rounded-md shadow-sm transition-colors" title="Edit">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                                    Edit
+                                                </a>
+                                                <form action="{{ route('settings.users.destroy', $user->id_user) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus akun \'{{ $user->username }}\'?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-md shadow-sm transition-colors" title="Hapus">
+                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                        Hapus
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">Belum ada data akun terdaftar.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
         </main>
     </div>
+
+    <script>
+        function registrationForm() {
+            return {
+                selectedRole: '', 
+                showProdi: false,
+                showDosen: false,
+                roleIds: @json($roleIds),
+                updateFields() {
+                    this.showProdi = (this.selectedRole == this.roleIds.kaprodi || this.selectedRole == this.roleIds.sekprodi);
+                    this.showDosen = (this.selectedRole == this.roleIds.kaprodi || this.selectedRole == this.roleIds.sekprodi || this.selectedRole == this.roleIds.dekan || this.selectedRole == this.roleIds.dosen);
+                }
+            }
+        }
+    </script>
 </body>
 </html>
