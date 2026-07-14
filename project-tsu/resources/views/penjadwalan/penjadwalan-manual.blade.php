@@ -979,6 +979,7 @@ function _snapshotWorkspace() {
         jamMulai:    card.dataset.jamMulai,
         jamSelesai:  card.dataset.jamSelesai,
         jadwalIds:   card.dataset.jadwalIds   || '[]',
+        column:      card.dataset.column,
     }));
 }
 
@@ -1035,6 +1036,7 @@ function _restoreWorkspace(snapshot) {
             jadwalIds:  JSON.parse(s.jadwalIds || '[]'),
             prodi:      s.prodi,
             jenis:      s.jenis,
+            column:     s.column,
         }, true);
 
         const kelasList   = JSON.parse(s.kelasList   || '[]');
@@ -1436,8 +1438,8 @@ function removeCard(btn) {
     const kelas    = card.dataset.kelas || card.dataset.nama || 'jadwal';
     const day      = card.dataset.day || '';
 
-    // Snapshot SEBELUM hapus
-    _historyPushRaw('del', `Hapus: ${kelas} — ${day.charAt(0).toUpperCase() + day.slice(1)}`, _snapshotWorkspace());
+    // Hapus snapshot sebelum:
+    // _historyPushRaw('del', `Hapus: ${kelas} — ${day.charAt(0).toUpperCase() + day.slice(1)}`, _snapshotWorkspace());
 
     hapusJadwal(card);
     card.remove();
@@ -1451,6 +1453,8 @@ function removeCard(btn) {
     renderTablePreview();
     updateBentrokButton();
     if (activeDetailCard === card) closeDetailPanel();
+
+    _historyPushRaw('del', `Hapus: ${kelas} — ${day.charAt(0).toUpperCase() + day.slice(1)}`, _snapshotWorkspace());
 }
 
 // ============================================================
@@ -1525,8 +1529,8 @@ function splitCard(card) {
     if (kelasList.length <= 1) { showToast('Kelas ini tidak dalam kondisi gabungan.', 'red'); return; }
     if (!confirm(`Pisahkan ${kelasList.length} kelas (${kelasList.join(' + ')}) menjadi card terpisah?`)) return;
 
-    // Snapshot SEBELUM split
-    _historyPushRaw('split', `Pisah kelas: ${kelasList.join(' + ')}`, _snapshotWorkspace());
+    // Hapus snapshot sebelum:
+    // _historyPushRaw('split', `Pisah kelas: ${kelasList.join(' + ')}`, _snapshotWorkspace());
 
     const slotId    = parseInt(card.dataset.start);
     const day       = card.dataset.day;
@@ -1562,6 +1566,8 @@ function splitCard(card) {
     renderTablePreview();
     updateBentrokButton();
     showToast(`✓ ${kelasList.length} kelas berhasil dipisahkan!`, 'green');
+
+    _historyPushRaw('split', `Pisah kelas: ${kelasList.join(' + ')}`, _snapshotWorkspace());
 }
 
 // ============================================================
@@ -1569,8 +1575,6 @@ function splitCard(card) {
 // ============================================================
 function updateCardRuangan(ruanganId, ruanganNama) {
     if (!activeDetailCard) return;
-    // Snapshot SEBELUM ubah
-    _historyPushRaw('ruang', `Ruangan → ${ruanganNama || '-'} (${activeDetailCard.dataset.kelas || '-'})`, _snapshotWorkspace());
     activeDetailCard.dataset.ruangan   = ruanganNama;
     activeDetailCard.dataset.ruanganId = ruanganId;
     const el = activeDetailCard.querySelector('.ruangan-text');
@@ -1579,6 +1583,8 @@ function updateCardRuangan(ruanganId, ruanganNama) {
     updateBentrokButton();
     activeDetailCard.classList.add('ring-2', 'ring-amber-400');
     setTimeout(() => activeDetailCard.classList.remove('ring-2', 'ring-amber-400'), 1500);
+
+    _historyPushRaw('ruang', `Ruangan → ${ruanganNama || '-'} (${activeDetailCard.dataset.kelas || '-'})`, _snapshotWorkspace());
 }
 
 // ============================================================
@@ -1716,18 +1722,23 @@ function renderTablePreview() {
 
 function createCard(data, skipSave = false) {
     const { sks, nama, kelas, kelasId, dosen, kodeMk, ruangan, ruanganId,
-            slotId, day, jamMulai, jamSelesai, jadwalIds, prodi, jenis } = data;
+            slotId, day, jamMulai, jamSelesai, jadwalIds, prodi, jenis, column: forceColumn } = data;
     const color = getCourseColor(kelas);
 
     const sameDay = [...document.querySelectorAll('.jadwal-card')].filter(c => c.dataset.day === day);
     let column = 0;
-    while (true) {
-        const collision = sameDay.some(ex => {
-            const overlap = slotId < parseInt(ex.dataset.end) && (slotId + sks) > parseInt(ex.dataset.start);
-            return overlap && parseInt(ex.dataset.column || 0) === column;
-        });
-        if (!collision) break;
-        column++;
+    
+    if (forceColumn !== undefined) {
+        column = parseInt(forceColumn);
+    } else {
+        while (true) {
+            const collision = sameDay.some(ex => {
+                const overlap = slotId < parseInt(ex.dataset.end) && (slotId + sks) > parseInt(ex.dataset.start);
+                return overlap && parseInt(ex.dataset.column || 0) === column;
+            });
+            if (!collision) break;
+            column++;
+        }
     }
 
     const left = 16 + column * (CARD_WIDTH + CARD_GAP);
@@ -1851,6 +1862,7 @@ function enableCardDrag(card) {
         e.dataTransfer.setData('jadwal_ids',    card.dataset.jadwalIds   || '[]');
         e.dataTransfer.setData('jenis',         card.dataset.jenis       || 'Teori');
         e.dataTransfer.setData('prodi',         card.dataset.prodi       || '-');
+        e.dataTransfer.setData('column',        card.dataset.column      || '0');
     });
     card.addEventListener('click', e => {
         if (e.target.closest('button')) return;
@@ -1869,9 +1881,6 @@ function enableMerge(card) {
             alert('Hanya kelas dengan mata kuliah dan dosen yang sama yang bisa digabung.');
             return;
         }
-
-        // Snapshot SEBELUM merge
-        const snapshotBeforeMerge = _snapshotWorkspace();
 
         const merged   = [...new Set([...JSON.parse(src.dataset.kelasList   || '[]'), ...JSON.parse(card.dataset.kelasList   || '[]')])];
         const mergedId = [...new Set([...JSON.parse(src.dataset.kelasIdList || '[]'), ...JSON.parse(card.dataset.kelasIdList || '[]')])];
@@ -1899,9 +1908,9 @@ function enableMerge(card) {
             </div>`;
         src.remove();
 
-        _historyPushRaw('merge', `Gabung kelas: ${merged.join(' + ')}`, snapshotBeforeMerge);
         renderTablePreview();
         updateBentrokButton();
+        _historyPushRaw('merge', `Gabung kelas: ${merged.join(' + ')}`, _snapshotWorkspace());
     });
 }
 
@@ -1962,9 +1971,6 @@ function tampilkanHasilOptimasi(hasil) {
 }
 
 function refreshWorkspaceDariOptimasi(jadwalTerbaru) {
-    // Snapshot sebelum refresh
-    _historyPushRaw('add', 'Sebelum hasil optimasi diterapkan', _snapshotWorkspace());
-
     document.querySelectorAll('.jadwal-card').forEach(c => c.remove());
     document.querySelectorAll('.kelas-item').forEach(el => setSidebarStatus(el.dataset.id, 'belum'));
 
@@ -2042,7 +2048,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Slot waktu ini tidak aktif untuk hari yang dipilih!', 'red');
                 return;
             }
-                        const fromWorkspace = e.dataTransfer.getData('from_workspace');
+
+            const fromWorkspace = e.dataTransfer.getData('from_workspace');
             const sks       = parseInt(e.dataTransfer.getData('sks'));
             const nama      = e.dataTransfer.getData('nama');
             const kelas     = e.dataTransfer.getData('kelas');
@@ -2070,9 +2077,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const actionDesc = fromWorkspace
                 ? `Pindah: ${kelasList[0] || kelas} → ${day.charAt(0).toUpperCase() + day.slice(1)} Slot ${slotId}`
                 : `Tambah: ${kelas} — ${day.charAt(0).toUpperCase() + day.slice(1)} Slot ${slotId}`;
-
-            // ✅ Snapshot SEBELUM hapus card lama / buat card baru
-            const snapshotBefore = _snapshotWorkspace();
 
             if (fromWorkspace && draggedCard) {
                 hapusJadwal(draggedCard);
@@ -2112,8 +2116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>`;
             }
 
-            // ✅ Push history SEKALI dengan snapshot sebelum aksi
-            _historyPushRaw(actionType, actionDesc, snapshotBefore);
+            _historyPushRaw(actionType, actionDesc, _snapshotWorkspace());
 
             simpanJadwal(card);
             kelasIdList.forEach(kid => setSidebarStatus(kid, 'sudah'));
@@ -2140,8 +2143,7 @@ function resetWorkspace() {
     if (!cards.length) { showToast('Workspace sudah kosong.', 'green'); return; }
     if (!confirm(`Hapus semua ${cards.length} jadwal dari workspace dan database? Tindakan ini tidak bisa dibatalkan.`)) return;
 
-    // Snapshot SEBELUM reset (agar bisa di-undo)
-    _historyPushRaw('reset', `Reset workspace (${cards.length} jadwal)`, _snapshotWorkspace());
+
 
     const btn = document.querySelector('[onclick="resetWorkspace()"]');
     if (btn) { btn.disabled = true; btn.innerText = 'Mereset...'; }
@@ -2157,6 +2159,8 @@ function resetWorkspace() {
     renderTablePreview();
     updateBentrokButton();
     closeDetailPanel();
+    
+    _historyPushRaw('reset', `Reset workspace (${cards.length} jadwal)`, _snapshotWorkspace());
 
     showToast('Memproses penghapusan di latar belakang...', 'blue');
 
