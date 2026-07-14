@@ -643,7 +643,7 @@
                         data-kode-mk="{{ $item->matakuliah->kode_matkul ?? '-' }}"
                         data-kelas="{{ $item->nama_kelas }}"
                         data-dosen="{{ $item->dosen->nama_dosen ?? '-' }}"
-                        data-ruangans="{{ json_encode($item->matakuliah->ruangans->map(fn($r) => ['id' => $r->id_ruang, 'nama' => $r->nama_ruang])) }}"
+                        data-ruangans="{{ json_encode($item->matakuliah?->ruangans?->map(fn($r) => ['id' => $r->id_ruang, 'nama' => $r->nama_ruang]) ?? []) }}"
                         data-jenis="{{ $item->matakuliah->jenis ?? 'Teori' }}"
                     >
                         <div class="flex items-start justify-between">
