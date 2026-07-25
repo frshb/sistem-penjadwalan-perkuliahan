@@ -144,10 +144,14 @@ class GeneticScheduler
 
     // ── [L1][L2] Parameter constraint dari data, bukan hardcode ─────────────
     private int   $maxSlot          = 14;
-    private int   $eveningStartSlot = 12;
+    private int   $eveningStartSlot = 11;
     private array $breakSlots       = [];
     private array $validRuangIds    = [];  // HC10: semua id_ruang terdaftar
     private int   $morningEndSlot   = 6;   // SC15/SC16: batas slot pagi
+    private int   $maxSksDayDosen   = 8;   // HC14
+
+    // ── Constraints Toggles dari UI ──────────────────────────────────
+    private ?array $activeConstraints = null;
 
     /**
      * [BARU][HC16] Slot Sholat Jumat — dikeluarkan secara struktural dari
@@ -156,7 +160,7 @@ class GeneticScheduler
      * overlap slot ini pada hari ini — lihat overlapsBlockedFridaySlot().
      */
     private int $hariJumat       = 5; // id_hari untuk Jumat
-    private int $slotSholatJumat = 6; // id_slot yang wajib steril (≈ jam 12:00)
+    private int $slotSholatJumat = 6; // id_slot batas akhir steril Sholat Jumat (slot 5 dan 6 dilarang)
 
     /**
      * [BARU][P1] HC15 — Pasangan kelas paralel (matkul sama + dosen sama).
@@ -236,6 +240,7 @@ class GeneticScheduler
     public function setStagnationThreshold(int $val): void { $this->stagnationLevel1 = max(5, $val); }
     public function setTemp(int $temp): void { /* placeholder for future SA integration */ }
     public function setEarlyExitFitness(float $val): void { $this->earlyExitFitness = $val; }
+    public function setMaxSksDayDosen(int $val): void { $this->maxSksDayDosen = max(2, $val); }
     public function setCrossoverRate(float $rate): void {
         $this->crossoverRate = min(1.0, max(0.0, $rate));
         $this->originalCrossoverRate = $this->crossoverRate;
@@ -243,6 +248,47 @@ class GeneticScheduler
     public function setMutationRate(float $rate): void {
         $this->mutationRate = min(1.0, max(0.0, $rate));
         $this->originalMutationRate = $this->mutationRate;
+    }
+
+    private array $lockedRuangIndex = [];
+    private array $lockedDosenIndex = [];
+
+    public function setOccupiedJadwals($existingJadwals): void
+    {
+        $this->lockedRuangIndex = [];
+        $this->lockedDosenIndex = [];
+
+        if (!$existingJadwals) return;
+
+        foreach ($existingJadwals as $j) {
+            $hari = (int) $j->id_hari;
+            $slotMulai = (int) $j->id_slot_mulai;
+            $durasi = (int) ($j->durasi_sks ?? 1);
+            $ruangId = (int) ($j->id_ruang ?? 0);
+            $dosenId = (int) ($j->id_dosen ?: ($j->kelas?->pengampuKelas?->first()?->id_dosen ?? 0));
+
+            for ($s = $slotMulai; $s < $slotMulai + $durasi; $s++) {
+                if ($ruangId > 0 && $hari > 0) {
+                    $this->lockedRuangIndex[$ruangId][$hari][$s] = true;
+                }
+                if ($dosenId > 0 && $hari > 0) {
+                    $this->lockedDosenIndex[$dosenId][$hari][$s] = true;
+                }
+            }
+        }
+    }
+
+    public function setActiveConstraints(?array $constraints): void
+    {
+        $this->activeConstraints = $constraints;
+    }
+
+    public function isConstraintActive(string $code): bool
+    {
+        if ($this->activeConstraints === null) {
+            return true;
+        }
+        return in_array($code, $this->activeConstraints);
     }
 
     /**
@@ -385,6 +431,13 @@ class GeneticScheduler
                     $this->reportOptimalFound($generation, $bestChromosome, 'excellent');
                     break;
                 }
+
+                // [USER REQUEST] Early exit jika sudah tidak ada physical conflicts dan solusi sudah stagnan (tidak membaik).
+                // Artinya ini adalah solusi 'terbaik' yang bisa didapat secara alami oleh GA tanpa perlu memaksa sampai maxGenerations.
+                if ($bestChromosome->getConflicts() === 0 && $this->stagnationCounter >= ($this->stagnationLevel1 * 1.5)) {
+                    $this->reportOptimalFound($generation, $bestChromosome, 'acceptable');
+                    break;
+                }
             }
 
             // [H1] Local search pasca-GA
@@ -450,12 +503,13 @@ class GeneticScheduler
         $this->maxSlot = !empty($slotIds) ? (int) max($slotIds) : 14;
 
         // [L1] Jam istirahat diabaikan sesuai request user (penjadwalan tidak terikat jam istirahat)
-        $this->breakSlots = [];
+        // [HC-NEW] Slot 14 (**) dilarang ditempati (kecuali untuk kelas 5 SKS yang diatur di Gene)
+        $this->breakSlots = [14];
 
         // [L2] Satu loop — set eveningStartSlot DAN morningEndSlot sekaligus
         // Tidak ada duplikat; loop sebelumnya dihapus.
-        // [FIX] Hardcode eveningStartSlot ke 12 sesuai kebutuhan (kelas S di slot 12-16)
-        $this->eveningStartSlot = 12; // Hardcode: kelas sore mulai slot 12
+        // [FIX] eveningStartSlot diubah ke 11 agar kelas pagi maks slot 10, kelas sore mulai slot 11
+        $this->eveningStartSlot = 11;
         $this->morningEndSlot   = 1;  // fallback: slot pagi pertama
         foreach ($slots as $s) {
             $mulai = substr($s['waktu_mulai'] ?? '00:00', 0, 5);
@@ -562,6 +616,10 @@ class GeneticScheduler
     private function buildParallelPairs(): void
     {
         $this->parallelPairs = [];
+        
+        if (!$this->isConstraintActive('HC15')) {
+            return;
+        }
         $this->pairPartnerOf = [];
 
         // Group by "kode_matkul|id_dosen", hanya kelas non-S
@@ -676,7 +734,10 @@ class GeneticScheduler
             $this->validRuangIds,
             $this->morningEndSlot,
             8,
-            $this->parallelPairs
+            $this->parallelPairs,
+            $this->activeConstraints,
+            $this->lockedRuangIndex,
+            $this->lockedDosenIndex
         );
         return $c;
     }
@@ -711,8 +772,8 @@ class GeneticScheduler
             $validStartsA = [];
             for ($s = 1; $s <= $maxStartA; $s++) {
                 $slotBCandidate = $s + $durasiA + 1;
-                $aOverlap = $this->overlapsBlockedFridaySlot($hari, $s, $durasiA);
-                $bOverlap = $this->overlapsBlockedFridaySlot($hari, $slotBCandidate, $durasiB);
+                $aOverlap = $this->overlapsBlockedFridaySlot($hari, $s, $durasiA) || !$this->isSlotActive($hari, $s, $durasiA);
+                $bOverlap = $this->overlapsBlockedFridaySlot($hari, $slotBCandidate, $durasiB) || !$this->isSlotActive($hari, $slotBCandidate, $durasiB);
                 if (!$aOverlap && !$bOverlap) {
                     $validStartsA[] = $s;
                 }
@@ -828,27 +889,24 @@ class GeneticScheduler
         // Filter tambahan: slot harus dipetakan ke hari tersebut
         $mappedFilter = function (int $s) use ($durasi, $hari) {
             if ($hari === null) return true;
-            $validSlots = $this->hariSlotMap[$hari] ?? [];
-            for ($i = 0; $i < $durasi; $i++) {
-                if (!in_array($s + $i, $validSlots, true)) {
-                    return false;
-                }
-            }
-            return true;
+            return $this->isSlotActive($hari, $s, $durasi);
         };
 
         // Deteksi kelas sore: suffix -S/-S1/-S2/-SI, ATAU mengandung kata "sore"/"malam"
         $isKelasS = $this->detectKelasS($namaKelas);
 
+        // Enforce HC12 structurally:
         if ($isKelasS) {
+            // Untuk kelas 5 SKS malam, wajib mulai dari slot 14 (**)
+            if ($durasi >= 5) {
+                return 14;
+            }
             // Kelas malam: slot HARUS ≥ eveningStartSlot
             $pool = array_filter(
                 range($this->eveningStartSlot, $maxStart),
-                function ($s) use ($durasi, $fridayFilter, $mappedFilter) {
-                    for ($i = 0; $i < $durasi; $i++) {
-                        if (in_array($s + $i, $this->breakSlots, true)) {
-                            return false;
-                        }
+                function ($s) use ($durasi, $fridayFilter, $mappedFilter, $isKelasS) {
+                    if ($this->hasBreakOverlap($s, $durasi, $isKelasS)) {
+                        return false;
                     }
                     return $fridayFilter($s) && $mappedFilter($s);
                 }
@@ -858,11 +916,9 @@ class GeneticScheduler
             if (empty($pool)) {
                 $pool = array_filter(
                     range($this->eveningStartSlot, $this->maxSlot),
-                    function ($s) use ($durasi, $fridayFilter, $mappedFilter) {
-                        for ($i = 0; $i < $durasi; $i++) {
-                            if (in_array($s + $i, $this->breakSlots, true)) {
-                                return false;
-                            }
+                    function ($s) use ($durasi, $fridayFilter, $mappedFilter, $isKelasS) {
+                        if ($this->hasBreakOverlap($s, $durasi, $isKelasS)) {
+                            return false;
                         }
                         return $fridayFilter($s) && $mappedFilter($s);
                     }
@@ -883,11 +939,9 @@ class GeneticScheduler
             $upperBound = min($maxStart, $this->eveningStartSlot - $durasi);
             $pool = array_filter(
                 range(1, max(1, $upperBound)),
-                function ($s) use ($durasi, $fridayFilter, $mappedFilter) {
-                    for ($i = 0; $i < $durasi; $i++) {
-                        if (in_array($s + $i, $this->breakSlots, true)) {
-                            return false;
-                        }
+                function ($s) use ($durasi, $fridayFilter, $mappedFilter, $isKelasS) {
+                    if ($this->hasBreakOverlap($s, $durasi, $isKelasS)) {
+                        return false;
                     }
                     return $fridayFilter($s) && $mappedFilter($s);
                 }
@@ -897,12 +951,10 @@ class GeneticScheduler
             if (empty($pool)) {
                 $pool = array_filter(
                     range(1, $this->eveningStartSlot - $durasi),
-                    function ($s) use ($durasi, $fridayFilter, $mappedFilter) {
-                        for ($i = 0; $i < $durasi; $i++) {
-                            if (in_array($s + $i, $this->breakSlots, true)) {
+                    function ($s) use ($durasi, $fridayFilter, $mappedFilter, $isKelasS) {
+                            if ($this->hasBreakOverlap($s, $durasi, $isKelasS)) {
                                 return false;
                             }
-                        }
                         return $fridayFilter($s) && $mappedFilter($s);
                     }
                 );
@@ -911,12 +963,10 @@ class GeneticScheduler
             if (empty($pool)) {
                 $pool = array_filter(
                     range(1, $maxStart),
-                    function ($s) use ($durasi, $fridayFilter) {
-                        for ($i = 0; $i < $durasi; $i++) {
-                            if (in_array($s + $i, $this->breakSlots, true)) {
+                    function ($s) use ($durasi, $fridayFilter, $isKelasS) {
+                            if ($this->hasBreakOverlap($s, $durasi, $isKelasS)) {
                                 return false;
                             }
-                        }
                         return $fridayFilter($s);
                     }
                 );
@@ -942,8 +992,8 @@ class GeneticScheduler
     private function detectKelasS(string $namaKelas): bool
     {
         $nama = strtolower(trim($namaKelas));
-        // Suffix -S, -S1, -S2, -SI, -4S, -4S1, dll.
-        if (preg_match('/-\d*s[i\d]*$/i', $nama)) {
+        // Suffix -S, -S1, -S2, -SI, -4S, -4S1, -4S*, dll.
+        if (preg_match('/-\d*s[i\d]*[^\w]*$/i', $nama)) {
             return true;
         }
         // Mengandung kata "sore" atau "malam" (sebagai kata penuh)
@@ -969,7 +1019,46 @@ class GeneticScheduler
             return false;
         }
         $slotAkhir = $slotMulai + $durasi - 1;
-        return $slotMulai <= $this->slotSholatJumat && $slotAkhir >= $this->slotSholatJumat;
+        if ($slotMulai < 14 && $slotAkhir >= 14) {
+            $slotAkhir += 1;
+        }
+        // Slot 5 dan 6 pada hari Jumat tidak boleh ditempati (waktu Sholat Jumat)
+        return $slotMulai <= 6 && $slotAkhir >= 5;
+    }
+
+    /**
+     * [BARU][HC3] Cek apakah rentang slot menabrak breakSlots ATAU jam sholat Maghrib.
+     * Sholat Maghrib berada di antara slot 12 dan 13, kelas dilarang melewati batas tersebut.
+     */
+    private function hasBreakOverlap(int $slotMulai, int $durasi): bool
+    {
+        for ($i = 0; $i < $durasi; $i++) {
+            if (in_array($slotMulai + $i, $this->breakSlots, true)) {
+                return true;
+            }
+        }
+        $slotAkhir = $slotMulai + $durasi - 1;
+        if ($slotMulai <= 12 && $slotAkhir >= 13) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Mengecek apakah slot aktif pada hari tertentu berdasarkan konfigurasi user di $hariSlotMap.
+     */
+    private function isSlotActive(int $hari, int $slotMulai, int $durasi): bool
+    {
+        $validSlots = $this->hariSlotMap[$hari] ?? [];
+        if (empty($validSlots)) {
+            return false;
+        }
+        for ($i = 0; $i < $durasi; $i++) {
+            if (!in_array($slotMulai + $i, $validSlots, true)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -1045,8 +1134,11 @@ class GeneticScheduler
                 $this->breakSlots,
                 $this->validRuangIds,
                 $this->morningEndSlot,
-                8,  // maxSksDayDosen HC14
-                $this->parallelPairs
+                $this->maxSksDayDosen,
+                $this->parallelPairs,
+                $this->activeConstraints,
+                $this->lockedRuangIndex,
+                $this->lockedDosenIndex
             );
             $chromosome->calculateFitness($progress);
         }
@@ -1334,16 +1426,8 @@ class GeneticScheduler
 
             if (!empty($conflictIndices)) {
                 foreach ($conflictIndices as $j) {
-                    // [P3] Jangan pindahkan gene anggota pasangan HC15 sendirian
-                    // di sini — itu akan merusak gap-1 yang baru saja ditata oleh
-                    // repairParallelPairs() di atas. Jika gene ini masih konflik
-                    // dengan gene LAIN (bukan partnernya), biarkan partner-nya yang
-                    // (jika juga konflik) ditangani di siklus repair berikutnya,
-                    // atau diselesaikan oleh local search/deadlock-breaker nanti.
-                    if (isset($this->pairPartnerOf[$genes[$j]->kelasId])) {
-                        continue;
-                    }
-                    $fixed = $this->repairGene($genes[$j], $genes, $j);
+                    $isPaired = isset($this->pairPartnerOf[$genes[$j]->kelasId]);
+                    $fixed = $this->repairGene($genes[$j], $genes, $j, $isPaired);
                     if ($fixed) {
                         $repaired = true;
                     }
@@ -1425,8 +1509,9 @@ class GeneticScheduler
             foreach ($validHari as $hari) {
                 for ($slotA = 1; $slotA <= $maxStartA; $slotA++) {
                     $slotB = $slotA + $durasiA + 1;
-                    if ($this->overlapsBlockedFridaySlot($hari, $slotA, $durasiA)
-                        || $this->overlapsBlockedFridaySlot($hari, $slotB, $durasiB)) {
+                    // Cek overlap hari Jumat atau slot nonaktif
+                    if ($this->overlapsBlockedFridaySlot($hari, $slotA, $durasiA) || !$this->isSlotActive($hari, $slotA, $durasiA)
+                        || $this->overlapsBlockedFridaySlot($hari, $slotB, $durasiB) || !$this->isSlotActive($hari, $slotB, $durasiB)) {
                         continue;
                     }
                     $candidates[] = [$hari, $slotA, $slotB];
@@ -1443,38 +1528,43 @@ class GeneticScheduler
 
             shuffle($candidates);
 
+            $validRoomsA = $this->getValidRoomsForGene($geneA);
+            $validRoomsB = $this->getValidRoomsForGene($geneB);
+
             $bestCandidate   = null;
             $bestConflictCnt = PHP_INT_MAX;
 
             foreach ($candidates as [$hari, $slotA, $slotB]) {
-                // Hitung berapa banyak konflik baru yang muncul jika A & B dipindah ke sini
-                $origA = [$geneA->hariId, $geneA->slotMulai];
-                $origB = [$geneB->hariId, $geneB->slotMulai];
+                foreach ($validRoomsA as $rA) {
+                    foreach ($validRoomsB as $rB) {
+                        $origA = [$geneA->hariId, $geneA->slotMulai, $geneA->ruangId];
+                        $origB = [$geneB->hariId, $geneB->slotMulai, $geneB->ruangId];
 
-                $geneA->hariId = $hari; $geneA->slotMulai = $slotA;
-                $geneB->hariId = $hari; $geneB->slotMulai = $slotB;
+                        $geneA->hariId = $hari; $geneA->slotMulai = $slotA; $geneA->ruangId = $rA;
+                        $geneB->hariId = $hari; $geneB->slotMulai = $slotB; $geneB->ruangId = $rB;
 
-                $conflictCnt = 0;
-                $conflictCnt += ($this->geneConflictsWithIndex($geneA, $dosenIdx, $ruangIdx, $kelasIdx) > 0) ? 1 : 0;
-                $conflictCnt += ($this->geneConflictsWithIndex($geneB, $dosenIdx, $ruangIdx, $kelasIdx) > 0) ? 1 : 0;
+                        $conflictCnt = 0;
+                        $conflictCnt += ($this->geneConflictsWithIndex($geneA, $dosenIdx, $ruangIdx, $kelasIdx) > 0) ? 1 : 0;
+                        $conflictCnt += ($this->geneConflictsWithIndex($geneB, $dosenIdx, $ruangIdx, $kelasIdx) > 0) ? 1 : 0;
 
-                // Restore sementara untuk lanjut mengevaluasi kandidat lain
-                $geneA->hariId = $origA[0]; $geneA->slotMulai = $origA[1];
-                $geneB->hariId = $origB[0]; $geneB->slotMulai = $origB[1];
+                        $geneA->hariId = $origA[0]; $geneA->slotMulai = $origA[1]; $geneA->ruangId = $origA[2];
+                        $geneB->hariId = $origB[0]; $geneB->slotMulai = $origB[1]; $geneB->ruangId = $origB[2];
 
-                if ($conflictCnt < $bestConflictCnt) {
-                    $bestConflictCnt = $conflictCnt;
-                    $bestCandidate   = [$hari, $slotA, $slotB];
-                    if ($conflictCnt === 0) {
-                        break; // Sudah sempurna, tidak perlu cari lagi
+                        if ($conflictCnt < $bestConflictCnt) {
+                            $bestConflictCnt = $conflictCnt;
+                            $bestCandidate   = [$hari, $slotA, $slotB, $rA, $rB];
+                            if ($conflictCnt === 0) {
+                                break 3; // Sudah sempurna, tidak perlu cari lagi
+                            }
+                        }
                     }
                 }
             }
 
             if ($bestCandidate !== null) {
-                [$hari, $slotA, $slotB] = $bestCandidate;
-                $geneA->hariId = $hari; $geneA->slotMulai = $slotA;
-                $geneB->hariId = $hari; $geneB->slotMulai = $slotB;
+                [$hari, $slotA, $slotB, $rA, $rB] = $bestCandidate;
+                $geneA->hariId = $hari; $geneA->slotMulai = $slotA; $geneA->ruangId = $rA;
+                $geneB->hariId = $hari; $geneB->slotMulai = $slotB; $geneB->ruangId = $rB;
                 $anyRepaired = true;
             }
         }
@@ -1499,7 +1589,7 @@ class GeneticScheduler
      * @param  int    $selfIdx Indeks gene di $others (agar tidak dibandingkan dengan diri sendiri)
      * @return bool            True jika berhasil diperbaiki
      */
-    private function repairGene(Gene $gene, array $others, int $selfIdx): bool
+    private function repairGene(Gene $gene, array $others, int $selfIdx, bool $roomOnly = false): bool
     {
         $info     = $this->kelasData[$gene->kelasId] ?? null;
         if (!$info) {
@@ -1510,62 +1600,62 @@ class GeneticScheduler
         $maxStart = max(1, $this->maxSlot - $durasi + 1);
         $isKelasS = $gene->isKelasS;
 
-        $validHari = $this->getValidHariList($info['jenis'] ?? Gene::JENIS_TEORI);
+        if ($roomOnly) {
+            $candidates = [ [$gene->hariId, $gene->slotMulai] ];
+        } else {
+            $validHari = $this->getValidHariList($info['jenis'] ?? Gene::JENIS_TEORI);
 
-        // Bangun kandidat hari × slot sesuai constraint HC12
-        $candidates = [];
-        foreach ($validHari as $hari) {
-            for ($slot = 1; $slot <= $maxStart; $slot++) {
-                // Cek overlap break slots
-                $hasBreakOverlap = false;
-                for ($i = 0; $i < $durasi; $i++) {
-                    if (in_array($slot + $i, $this->breakSlots, true)) {
-                        $hasBreakOverlap = true;
-                        break;
-                    }
-                }
-                if ($hasBreakOverlap) {
-                    continue;
-                }
-                // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
-                if ($this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
-                    continue;
-                }
-                if ($isKelasS && $slot < $this->eveningStartSlot) {
-                    continue;   // HC12: kelas sore wajib di slot malam
-                }
-                if (!$isKelasS && ($slot + $durasi - 1) >= $this->eveningStartSlot) {
-                    continue;   // HC12: kelas reguler wajib selesai sebelum malam
-                }
-                $candidates[] = [$hari, $slot];
-            }
-        }
-
-        // [Bug3-fix] Jika pool kelas-S kosong, perluas ke seluruh slot malam
-        if (empty($candidates) && $isKelasS) {
+            // Bangun kandidat hari × slot sesuai constraint HC12
+            $candidates = [];
             foreach ($validHari as $hari) {
-                for ($slot = $this->eveningStartSlot; $slot <= $this->maxSlot; $slot++) {
-                    $hasBreakOverlap = false;
-                    for ($i = 0; $i < $durasi; $i++) {
-                        if (in_array($slot + $i, $this->breakSlots, true)) {
-                            $hasBreakOverlap = true;
-                            break;
-                        }
+                for ($slot = 1; $slot <= $maxStart; $slot++) {
+                    // Cek overlap break slots
+                    $hasBreakOverlap = $this->hasBreakOverlap($slot, $durasi);
+                    if ($hasBreakOverlap) {
+                        continue;
                     }
                     // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
-                    if (!$hasBreakOverlap && !$this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
-                        $candidates[] = [$hari, $slot];
+                    if ($this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                        continue;
+                    }
+                    // Cek apakah slot diaktifkan oleh user
+                    if (!$this->isSlotActive($hari, $slot, $durasi)) {
+                        continue;
+                    }
+                    if ($isKelasS && $slot < $this->eveningStartSlot) {
+                        continue;   // HC12: kelas sore wajib di slot malam
+                    }
+                    if (!$isKelasS && ($slot + $durasi - 1) >= $this->eveningStartSlot) {
+                        continue;   // HC12: kelas reguler wajib selesai sebelum malam
+                    }
+                    $candidates[] = [$hari, $slot];
+                }
+            }
+
+            // [Bug3-fix] Jika pool kelas-S kosong, perluas ke seluruh slot malam
+            if (empty($candidates) && $isKelasS) {
+                foreach ($validHari as $hari) {
+                    for ($slot = $this->eveningStartSlot; $slot <= $this->maxSlot; $slot++) {
+                        $hasBreakOverlap = $this->hasBreakOverlap($slot, $durasi);
+                        // [BARU][HC16] Exclude slot yang overlap Sholat Jumat dan pastikan slot aktif
+                        if (!$hasBreakOverlap && !$this->overlapsBlockedFridaySlot($hari, $slot, $durasi) && $this->isSlotActive($hari, $slot, $durasi)) {
+                            $candidates[] = [$hari, $slot];
+                        }
                     }
                 }
             }
+
+            if (empty($candidates)) {
+                return false;
+            }
+
+            // Acak urutan agar tidak bias
+            shuffle($candidates);
         }
 
-        if (empty($candidates)) {
-            return false;
-        }
+        // --- ROOM OPTIONS BUILDING ---
+        $validRooms = $this->getValidRoomsForGene($gene);
 
-        // Acak urutan agar tidak bias
-        shuffle($candidates);
 
         // Bangun index dari semua gen KECUALI gen yang di-repair
         $othersWithoutSelf = $others;
@@ -1576,6 +1666,8 @@ class GeneticScheduler
         foreach ($candidates as [$hari, $slot]) {
             $origHari = $gene->hariId;
             $origSlot = $gene->slotMulai;
+            $origRuang = $gene->ruangId;
+            
             $gene->hariId    = $hari;
             $gene->slotMulai = $slot;
 
@@ -1583,22 +1675,103 @@ class GeneticScheduler
                 return true;  // Repair sukses
             }
 
+            // Cek apakah dosen atau kelas bentrok di slot ini.
+            $isHardKonflik = false;
+            $did = $gene->dosenId;
+            $nk = $gene->namaKelas;
+            for ($s = $slot; $s < $slot + $durasi; $s++) {
+                 if ($did !== 0 && isset($dosenIdx[$did][$hari][$s])) { $isHardKonflik = true; break; }
+                 if ($nk !== '' && isset($kelasIdx[$nk][$hari][$s])) { $isHardKonflik = true; break; }
+            }
+
+            if (!$isHardKonflik) {
+                // Berarti HANYA ruangan yang bentrok. Coba ruangan lain dari validRooms.
+                foreach ($validRooms as $rId) {
+                    if ($rId === $origRuang) continue;
+                    $gene->ruangId = $rId;
+                    if ($this->geneConflictsWithIndex($gene, $dosenIdx, $ruangIdx, $kelasIdx) === 0) {
+                        $gene->kapasitasRuang = $this->ruanganList[$rId]['kapasitas'] ?? 0;
+                        $gene->tipeRuangan    = $this->ruanganList[$rId]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+                        $gene->namaRuang      = $this->ruanganList[$rId]['nama'] ?? '';
+                        return true; // Sukses ganti ruangan!
+                    }
+                }
+            }
+            
             $gene->hariId    = $origHari;
             $gene->slotMulai = $origSlot;
+            $gene->ruangId   = $origRuang;
         }
 
         // Pass 2 (khusus kelas-S): jika semua slot malam berkonflik, tetap
         // pindahkan ke slot malam untuk memenuhi HC12, walaupun masih ada
         // konflik dosen/ruangan. Konflik ini lebih mudah diselesaikan mutasi
         // berikutnya daripada melanggar HC12.
-        if ($isKelasS) {
+        if (!$roomOnly && $isKelasS) {
             [$bestHari, $bestSlot] = $candidates[0];
             $gene->hariId    = $bestHari;
             $gene->slotMulai = $bestSlot;
+            // Pilih ruangan acak yang valid
+            if (!empty($validRooms)) {
+                $rId = $validRooms[array_rand($validRooms)];
+                $gene->ruangId = $rId;
+                $gene->kapasitasRuang = $this->ruanganList[$rId]['kapasitas'] ?? 0;
+                $gene->tipeRuangan    = $this->ruanganList[$rId]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+                $gene->namaRuang      = $this->ruanganList[$rId]['nama'] ?? '';
+            }
             return true; // Pindah ke malam, konflik lain diselesaikan nanti
         }
 
         return false;
+    }
+
+    private function getValidRoomsForGene(Gene $gene): array
+    {
+        $info = $this->kelasData[$gene->kelasId] ?? null;
+        if (!$info) {
+            return array_keys($this->ruanganList);
+        }
+
+        $ruangOptions = $info['ruangan_options'];
+        if (empty($ruangOptions)) {
+            $ruangOptions = array_keys($this->ruanganList);
+        }
+        $kapKelas    = $info['kapasitas'];
+        $isPraktikum = ($info['jenis'] ?? Gene::JENIS_TEORI) === Gene::JENIS_PRAKTIKUM;
+        
+        $validRooms = [];
+        foreach ($ruangOptions as $rid) {
+            $r = $this->ruanganList[$rid] ?? null;
+            if (!$r) continue;
+            $kapOk = $r['kapasitas'] >= $kapKelas;
+            $tipe = $r['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+            $tipeOk = $isPraktikum
+                ? in_array($tipe, [Gene::TIPE_LAB, Gene::TIPE_HYBRID], true)
+                : in_array($tipe, [Gene::TIPE_REGULER, Gene::TIPE_HYBRID], true);
+            if ($kapOk && $tipeOk) $validRooms[] = $rid;
+        }
+        if (empty($validRooms)) {
+            foreach ($ruangOptions as $rid) {
+                $r = $this->ruanganList[$rid] ?? null;
+                if (!$r) continue;
+                $tipe = $r['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+                $tipeOk = $isPraktikum
+                    ? in_array($tipe, [Gene::TIPE_LAB, Gene::TIPE_HYBRID], true)
+                    : in_array($tipe, [Gene::TIPE_REGULER, Gene::TIPE_HYBRID], true);
+                if ($tipeOk) $validRooms[] = $rid;
+            }
+        }
+        if (empty($validRooms)) {
+            foreach ($ruangOptions as $rid) {
+                if (($this->ruanganList[$rid]['kapasitas'] ?? 0) >= $kapKelas) $validRooms[] = $rid;
+            }
+        }
+        if (empty($validRooms)) {
+            $validRooms = $ruangOptions;
+        }
+        
+        shuffle($validRooms);
+        return $validRooms;
     }
 
 
@@ -1745,8 +1918,8 @@ class GeneticScheduler
         $validStartsA = [];
         for ($s = 1; $s <= $maxStartA; $s++) {
             $slotBCandidate = $s + $durasiA + 1;
-            if (!$this->overlapsBlockedFridaySlot($hari, $s, $durasiA)
-                && !$this->overlapsBlockedFridaySlot($hari, $slotBCandidate, $durasiB)) {
+            if (!$this->overlapsBlockedFridaySlot($hari, $s, $durasiA) && $this->isSlotActive($hari, $s, $durasiA)
+                && !$this->overlapsBlockedFridaySlot($hari, $slotBCandidate, $durasiB) && $this->isSlotActive($hari, $slotBCandidate, $durasiB)) {
                 $validStartsA[] = $s;
             }
         }
@@ -1754,19 +1927,54 @@ class GeneticScheduler
         if (!empty($validStartsA)) {
             $slotMulaiA = $validStartsA[array_rand($validStartsA)];
         } else {
-            // Tidak ada kombinasi yang lolos filter Jumat di hari ini —
-            // pindahkan ke hari non-Jumat sebagai gantinya.
-            $nonFridayHari = array_values(array_diff($validHari, [$this->hariJumat]));
-            if (!empty($nonFridayHari)) {
-                $hari = $nonFridayHari[array_rand($nonFridayHari)];
+            // Tidak ada kombinasi valid di hari ini — pindahkan ke hari lain.
+            $otherDays = array_values(array_diff($validHari, [$hari]));
+            shuffle($otherDays);
+            $found = false;
+            foreach ($otherDays as $altHari) {
+                $altValidStarts = [];
+                for ($s = 1; $s <= $maxStartA; $s++) {
+                    $slotBCandidate = $s + $durasiA + 1;
+                    if (!$this->overlapsBlockedFridaySlot($altHari, $s, $durasiA) && $this->isSlotActive($altHari, $s, $durasiA)
+                        && !$this->overlapsBlockedFridaySlot($altHari, $slotBCandidate, $durasiB) && $this->isSlotActive($altHari, $slotBCandidate, $durasiB)) {
+                        $altValidStarts[] = $s;
+                    }
+                }
+                if (!empty($altValidStarts)) {
+                    $hari = $altHari;
+                    $slotMulaiA = $altValidStarts[array_rand($altValidStarts)];
+                    $found = true;
+                    break;
+                }
             }
-            $slotMulaiA = random_int(1, $maxStartA);
+            if (!$found) {
+                return; // Gagal mutasi pasangan ke slot valid manapun, skip.
+            }
         }
 
         $slotMulaiB = $slotMulaiA + $durasiA + 1;
 
         $geneA->hariId = $hari; $geneA->slotMulai = $slotMulaiA;
         $geneB->hariId = $hari; $geneB->slotMulai = $slotMulaiB;
+
+        // [BARU] Mutasi ruangan secara bersamaan agar bisa terlepas dari jebakan ruangan.
+        $validRoomsA = $this->getValidRoomsForGene($geneA);
+        $validRoomsB = $this->getValidRoomsForGene($geneB);
+
+        if (!empty($validRoomsA)) {
+            $rA = $validRoomsA[array_rand($validRoomsA)];
+            $geneA->ruangId = $rA;
+            $geneA->kapasitasRuang = $this->ruanganList[$rA]['kapasitas'] ?? 0;
+            $geneA->tipeRuangan    = $this->ruanganList[$rA]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+            $geneA->namaRuang      = $this->ruanganList[$rA]['nama'] ?? '';
+        }
+        if (!empty($validRoomsB)) {
+            $rB = $validRoomsB[array_rand($validRoomsB)];
+            $geneB->ruangId = $rB;
+            $geneB->kapasitasRuang = $this->ruanganList[$rB]['kapasitas'] ?? 0;
+            $geneB->tipeRuangan    = $this->ruanganList[$rB]['tipe_ruangan'] ?? Gene::TIPE_REGULER;
+            $geneB->namaRuang      = $this->ruanganList[$rB]['nama'] ?? '';
+        }
 
         $chromosome->markDirty();
     }
@@ -1938,7 +2146,10 @@ class GeneticScheduler
             $this->validRuangIds,
             $this->morningEndSlot,
             8,
-            $this->parallelPairs
+            $this->parallelPairs,
+            $this->activeConstraints,
+            $this->lockedRuangIndex,
+            $this->lockedDosenIndex
         );
 
         // [P3] Perbaiki pasangan HC15 dulu sebelum local search gene biasa
@@ -2157,13 +2368,7 @@ class GeneticScheduler
         foreach ($validHari as $hari) {
             for ($slot = 1; $slot <= $maxStart; $slot++) {
                 // Cek overlap break slots
-                $hasBreakOverlap = false;
-                for ($i = 0; $i < $durasi; $i++) {
-                    if (in_array($slot + $i, $this->breakSlots, true)) {
-                        $hasBreakOverlap = true;
-                        break;
-                    }
-                }
+                $hasBreakOverlap = $this->hasBreakOverlap($slot, $durasi, $isKelasS);
                 if ($hasBreakOverlap) {
                     continue;
                 }
@@ -2171,8 +2376,17 @@ class GeneticScheduler
                 if ($this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
                     continue;
                 }
-                if ($isKelasS && $slot < $this->eveningStartSlot) {
+                // Cek apakah slot diaktifkan oleh user
+                if (!$this->isSlotActive($hari, $slot, $durasi)) {
                     continue;
+                }
+                // HC12: Enforce unconditionally
+                if ($isKelasS) {
+                    if ($durasi >= 5) {
+                        if ($slot !== 14) continue;
+                    } else if ($slot < $this->eveningStartSlot) {
+                        continue;
+                    }
                 }
                 if (!$isKelasS && ($slot + $durasi - 1) >= $this->eveningStartSlot) {
                     continue;
@@ -2186,15 +2400,9 @@ class GeneticScheduler
         if (empty($candidates) && $isKelasS) {
             foreach ($validHari as $hari) {
                 for ($slot = $this->eveningStartSlot; $slot <= $this->maxSlot; $slot++) {
-                    $hasBreakOverlap = false;
-                    for ($i = 0; $i < $durasi; $i++) {
-                        if (in_array($slot + $i, $this->breakSlots, true)) {
-                            $hasBreakOverlap = true;
-                            break;
-                        }
-                    }
-                    // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
-                    if (!$hasBreakOverlap && !$this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                    $hasBreakOverlap = $this->hasBreakOverlap($slot, $durasi);
+                    // [BARU][HC16] Exclude slot yang overlap Sholat Jumat dan pastikan slot aktif
+                    if (!$hasBreakOverlap && !$this->overlapsBlockedFridaySlot($hari, $slot, $durasi) && $this->isSlotActive($hari, $slot, $durasi)) {
                         $candidates[] = [$hari, $slot];
                     }
                 }
@@ -2459,13 +2667,7 @@ class GeneticScheduler
                     }
 
                     // Cek overlap dengan breakSlots
-                    $hasBreakOverlap = false;
-                    for ($i = 0; $i < $durasi; $i++) {
-                        if (in_array($slot + $i, $this->breakSlots, true)) {
-                            $hasBreakOverlap = true;
-                            break;
-                        }
-                    }
+                    $hasBreakOverlap = $this->hasBreakOverlap($slot, $durasi);
                     if ($hasBreakOverlap) {
                         continue;
                     }
@@ -2491,6 +2693,9 @@ class GeneticScheduler
 
                         // [BARU][HC16] Exclude slot yang overlap Sholat Jumat
                         if ($this->overlapsBlockedFridaySlot($hari, $slot, $durasi)) {
+                            continue;
+                        }
+                        if (!$this->isSlotActive($hari, $slot, $durasi)) {
                             continue;
                         }
 
@@ -2846,8 +3051,8 @@ class GeneticScheduler
      */
     private function buildConflictIndex(array $genes): array
     {
-        $dosenIndex = [];
-        $ruangIndex = [];
+        $dosenIndex = $this->lockedDosenIndex;
+        $ruangIndex = $this->lockedRuangIndex;
         $kelasIndex = [];
 
         foreach ($genes as $gene) {
@@ -2918,6 +3123,22 @@ class GeneticScheduler
         $ruangSeen   = []; // [ruangId][hariId][slot] = firstGeneIdx
         $kelasSeen   = []; // [namaKelas][hariId][slot] = firstGeneIdx
 
+        // Pre-fill $dosenSeen & $ruangSeen dengan slot terkunci dari prodi lain
+        foreach ($this->lockedDosenIndex as $did => $haris) {
+            foreach ($haris as $hari => $slots) {
+                foreach ($slots as $slot => $val) {
+                    $dosenSeen[$did][$hari][$slot] = 'locked';
+                }
+            }
+        }
+        foreach ($this->lockedRuangIndex as $rid => $haris) {
+            foreach ($haris as $hari => $slots) {
+                foreach ($slots as $slot => $val) {
+                    $ruangSeen[$rid][$hari][$slot] = 'locked';
+                }
+            }
+        }
+
         // Hitung beban SKS per dosen per hari untuk HC14
         $dosenDaySks = []; // [dosenId][hariId] = SKS
         $dosenDayGenes = []; // [dosenId][hariId][] = geneIdx
@@ -2938,7 +3159,9 @@ class GeneticScheduler
                 if ($did !== 0) {
                     if (isset($dosenSeen[$did][$hari][$slot])) {
                         $conflicting[$idx] = true;
-                        $conflicting[$dosenSeen[$did][$hari][$slot]] = true;
+                        if ($dosenSeen[$did][$hari][$slot] !== 'locked') {
+                            $conflicting[$dosenSeen[$did][$hari][$slot]] = true;
+                        }
                     } else {
                         $dosenSeen[$did][$hari][$slot] = $idx;
                     }
@@ -2946,7 +3169,9 @@ class GeneticScheduler
                 if ($rid !== 0) {
                     if (isset($ruangSeen[$rid][$hari][$slot])) {
                         $conflicting[$idx] = true;
-                        $conflicting[$ruangSeen[$rid][$hari][$slot]] = true;
+                        if ($ruangSeen[$rid][$hari][$slot] !== 'locked') {
+                            $conflicting[$ruangSeen[$rid][$hari][$slot]] = true;
+                        }
                     } else {
                         $ruangSeen[$rid][$hari][$slot] = $idx;
                     }
@@ -2962,12 +3187,14 @@ class GeneticScheduler
             }
         }
 
-        // Tandai gen yang berkontribusi terhadap pelanggaran HC14 (SKS/hari > 8)
-        foreach ($dosenDaySks as $did => $hariSks) {
-            foreach ($hariSks as $hari => $totalSks) {
-                if ($totalSks > 8) {
-                    foreach ($dosenDayGenes[$did][$hari] as $idx) {
-                        $conflicting[$idx] = true;
+        // Tandai gen yang berkontribusi terhadap pelanggaran HC14 (SKS/hari > maxSksDayDosen)
+        if ($this->activeConstraints === null || in_array('HC14', $this->activeConstraints)) {
+            foreach ($dosenDaySks as $did => $hariSks) {
+                foreach ($hariSks as $hari => $totalSks) {
+                    if ($totalSks > $this->maxSksDayDosen) {
+                        foreach ($dosenDayGenes[$did][$hari] as $idx) {
+                            $conflicting[$idx] = true;
+                        }
                     }
                 }
             }

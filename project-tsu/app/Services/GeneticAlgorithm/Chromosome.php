@@ -68,13 +68,10 @@ class Chromosome
     // ── Bobot hard constraint ─────────────────────────────────────────
     private float $wHC1_dosen    = 5.0;
     private float $wHC2_ruangan  = 5.0;
-    private float $wHC6_dosen0   = 3.0;
-    private float $wHC10_noRoom  = 3.0;
     private float $wHC12_time    = 5.0;  // Dinaikkan dari 2.5 ke 5.0 agar lebih kuat
     private float $wHC13_type    = 2.5;
     private float $wHC14_sks_day = 4.0;
     private float $wHC15_pair    = 4.0;  // [BARU] Pasangan kelas paralel matkul+dosen sama
-    private float $wHC16_friday  = 6.0;  // [BARU] Slot Sholat Jumat (safety-net, seharusnya tidak terjadi)
 
     // ── Bobot soft constraint ─────────────────────────────────────────
     private float $wSC1_load     = 0.8;  // Distribusi beban dosen merata
@@ -82,18 +79,9 @@ class Chromosome
     private float $wSC3_max3     = 0.7;  // Dosen > 3 kelas/hari
     private float $wSC4_room_var = 0.5;  // Ruangan berbeda per dosen/hari
     private float $wSC5_fit      = 0.8;  // Selisih kapasitas ruangan
-    private float $wSC6_room_use = 0.8;  // Variansi penggunaan ruangan (dinaikkan dari 0.4)
-    // SC7 dihapus — bertolak dengan SC2
-    // SC9 dihapus — bertolak dengan SC16
-    // SC10 dihapus — bertolak dengan SC3
-    // SC12 dihapus sebagai soft — digantikan HC15 (hard, lihat atas)
-    private float $wSC11_balance  = 0.5;  // Selisih kelas antar hari
-    private float $wSC13_heavy    = 0.6;  // Matkul berat berturutan
-    private float $wSC15_heavy_am = 0.5;  // Matkul berat di slot pagi
-    private float $wSC17_start8   = 0.6;  // Jam 8 pagi (slot 1) diutamakan
 
     // ── Parameter constraint dari GeneticScheduler ───────────────────
-    private int   $eveningStartSlot = 12;
+    private int   $eveningStartSlot = 11;
     private array $breakSlots       = [];
     private array $validRuangIds    = [];
     private int   $morningEndSlot   = 6;
@@ -106,6 +94,12 @@ class Chromosome
      * Di-set dari GeneticScheduler::buildParallelPairs().
      */
     private array $parallelPairs = [];
+
+    // ── Constraints Toggles dari UI ──────────────────────────────────
+    private ?array $activeConstraints = null;
+
+    public array $lockedRuangIndex = [];
+    public array $lockedDosenIndex = [];
 
     // ── Fitness cache ─────────────────────────────────────────────────
     private bool   $fitnessIsDirty = true;
@@ -128,14 +122,20 @@ class Chromosome
         array $validRuangIds = [],
         int   $morningEndSlot = 6,
         int   $maxSksDayDosen = 8,
-        array $parallelPairs  = null
+        array $parallelPairs  = null,
+        array $activeConstraints = null,
+        array $lockedRuangIndex = [],
+        array $lockedDosenIndex = []
     ): void {
         $changed = $this->eveningStartSlot !== $eveningStartSlot
             || $this->breakSlots      !== $breakSlots
             || $this->validRuangIds   !== $validRuangIds
             || $this->morningEndSlot  !== $morningEndSlot
             || $this->maxSksDayDosen  !== $maxSksDayDosen
-            || ($parallelPairs !== null && $parallelPairs !== $this->parallelPairs);
+            || ($parallelPairs !== null && $parallelPairs !== $this->parallelPairs)
+            || ($activeConstraints !== null && $activeConstraints !== $this->activeConstraints)
+            || $this->lockedRuangIndex !== $lockedRuangIndex
+            || $this->lockedDosenIndex !== $lockedDosenIndex;
 
         if ($changed) {
             $this->eveningStartSlot = $eveningStartSlot;
@@ -146,6 +146,11 @@ class Chromosome
             if ($parallelPairs !== null) {
                 $this->parallelPairs = $parallelPairs;
             }
+            if ($activeConstraints !== null) {
+                $this->activeConstraints = $activeConstraints;
+            }
+            $this->lockedRuangIndex = $lockedRuangIndex;
+            $this->lockedDosenIndex = $lockedDosenIndex;
             $this->fitnessIsDirty   = true;
         }
     }
@@ -153,6 +158,14 @@ class Chromosome
     public function markDirty(): void
     {
         $this->fitnessIsDirty = true;
+    }
+
+    public function isConstraintActive(string $code): bool
+    {
+        if ($this->activeConstraints === null) {
+            return true;
+        }
+        return in_array($code, $this->activeConstraints);
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -178,21 +191,13 @@ class Chromosome
         $this->lastProgress = $generationProgress;
 
         // ── HC1/HC2: Konflik antar-gene — O(n) via slot index ────────────────
-        //
-        // Alih-alih membandingkan semua pasangan O(n²), bangun dua index:
-        //   dosenSlotMap[dosenId][hariId][slot] = kelasId (pertama yang ditemukan)
-        //   ruangSlotMap[ruangId][hariId][slot] = kelasId
-        //
-        // Untuk setiap gen, cek apakah slot yang dicakupnya sudah ada di index.
-        // Kompleksitas: O(n * SKS_rata) ≈ O(n * 3) = O(n).
-        //
         $this->dosenConflicts   = 0;
         $this->ruanganConflicts = 0;
         $this->kelasConflicts   = 0;
 
-        // Index: [entityId][hariId][slotId] = true jika sudah terisi
-        $dosenIndex = [];
-        $ruangIndex = [];
+        // Index: [entityId][hariId][slotId] = true jika sudah terisi (pre-filled dari prodi lain jika ada)
+        $dosenIndex = $this->lockedDosenIndex;
+        $ruangIndex = $this->lockedRuangIndex;
         $kelasIndex = []; // Untuk deteksi mahasiswa/kelas yang sama
 
         foreach ($this->genes as $gene) {
@@ -238,30 +243,19 @@ class Chromosome
         $softPenalty = 0.0;
 
         // Hard per-gene aggregates
-        $hc6Count  = 0;
-        $hc10Count = 0;
         $hc12Count = 0;
         $hc13Count = 0;
         $hcPraktikumHariCount = 0;
 
-        // Track regular classes per room per day for SC17
-        $roomHasRegularClass = [];
-
         // Soft aggregate structures
-        // dosenSchedule[dosenId][hariId] = [slotMulai, slotAkhir, ...] (SC2/SC7/SC12/SC13)
+        // dosenSchedule[dosenId][hariId] = [slotMulai, slotAkhir, ...] (SC2/SC13)
         $dosenSchedule = [];
-        // dosenDays[dosenId]   = set of hariId  (SC10)
-        $dosenDays     = [];
         // dosenDaySks[dosenId][hariId] = totalSks  (HC14)
         $dosenDaySks   = [];
         // dosenDayClasses[dosenId][hariId] = count  (SC3)
         $dosenDayClasses = [];
         // dosenDayRooms[dosenId][hariId] = set of ruangId  (SC4)
         $dosenDayRooms  = [];
-        // hariCount[hariId] = kelas count  (SC11)
-        $hariCount      = array_fill_keys($this->getHariIds(), 0);
-        // roomUsage[ruangId] = count  (SC6)
-        $roomUsage      = [];
 
         // [BARU] Index gene by kelasId, dibutuhkan untuk HC15 (lookup pasangan)
         $geneByKelasId = [];
@@ -269,8 +263,6 @@ class Chromosome
         foreach ($this->genes as $gene) {
             $geneByKelasId[$gene->kelasId] = $gene;
 
-            // HC6
-            if (!$gene->validateDosenExists()) { $hc6Count++; }
             // HC12/HC3
             if (!$gene->validateTimeConstraint($this->eveningStartSlot, $this->breakSlots)) { $hc12Count++; }
 
@@ -289,27 +281,15 @@ class Chromosome
 
             // Ruangan usage
             if ($rid > 0) {
-                $roomUsage[$rid] = ($roomUsage[$rid] ?? 0) + 1;
-                if (!$gene->isKelasS) {
-                    $roomHasRegularClass[$rid][$hari] = true;
-                }
-            }
-
-            // Hari count
-            if (isset($hariCount[$hari])) {
-                $hariCount[$hari]++;
             }
 
             // SC5 per-gene: room fit
-            $fitViol = $gene->validateRoomFit();
-            $softPenalty += $fitViol * $this->wSC5_fit;
-
-            // HC10: room exists in valid list
-            if (!empty($this->validRuangIds) && !$gene->validateRoomExists($this->validRuangIds)) {
-                $hc10Count++;
+            if ($this->isConstraintActive('SC5')) {
+                $fitViol = $gene->validateRoomFit();
+                $softPenalty += $fitViol * $this->wSC5_fit;
             }
 
-            // HC13: room type matching
+            // HC13: room type matching unconditionally
             if (!$gene->validateRoomType()) {
                 $hc13Count++;
             }
@@ -318,188 +298,129 @@ class Chromosome
             if (!$gene->validatePraktikumHari()) {
                 $hcPraktikumHariCount++;
             }
-
-            // SC9 dihapus — bertolak belakang dengan SC16:
-            // SC9 menghukum kelas di slot pertama (pagi awal),
-            // SC16 mendorong matkul ringan/sedang ke slot pagi.
-            // SC16 dipertahankan karena lebih bermakna secara pedagogis.
-
-            // SC15 per-gene: matkul berat di slot pagi
-            $softPenalty += $gene->validateCategorySlotPreference($this->morningEndSlot) * $this->wSC15_heavy_am;
         }
 
-        // Hard per-gene penalties
-        $hardPenalty += $hc6Count  * $this->wHC6_dosen0;
-        $hardPenalty += $hc10Count * $this->wHC10_noRoom;
-        $hardPenalty += $hc12Count * $this->wHC12_time;
-        $hardPenalty += $hc13Count * $this->wHC13_type;
-        $hardPenalty += $hcPraktikumHariCount * 5.0; // Bobot tinggi agar dihindari mati-matian
+        // Hard constraint penalties (purely physical overlaps)
         $hardPenalty += ($this->dosenConflicts   * $this->wHC1_dosen);
         $hardPenalty += ($this->ruanganConflicts * $this->wHC2_ruangan);
-        $hardPenalty += ($this->kelasConflicts   * 5.0); // Penalty yang sama dengan HC1/HC2
-        $this->hardViolations = $hc6Count + $hc10Count + $hc12Count + $hc13Count + $hcPraktikumHariCount;
-
+        $hardPenalty += ($this->kelasConflicts   * 5.0);
+        
+        // Administrative rules (HC13 and HCPraktikum) remain Soft Penalties.
+        // HC12 (Time constraint) and HC14 (Max SKS) are critical and MUST be Hard Penalties.
+        $hardPenalty += $hc12Count * 15.0; // heavy penalty for time constraint violation
+        $softPenalty += $hc13Count * $this->wHC13_type;
+        $softPenalty += $hcPraktikumHariCount * 5.0;
+        
         // ── HC14: Dosen > 8 SKS/hari ────────────────────────────────────
         $hc14Count = 0;
-        foreach ($dosenDaySks as $did => $hariSks) {
-            foreach ($hariSks as $hari => $totalSks) {
-                if ($totalSks > $this->maxSksDayDosen) {
-                    $hc14Count++;
-                    $hardPenalty += ($totalSks - $this->maxSksDayDosen) * $this->wHC14_sks_day;
+        if ($this->isConstraintActive('HC14')) {
+            foreach ($dosenDaySks as $did => $hariSks) {
+                foreach ($hariSks as $hari => $totalSks) {
+                    if ($totalSks > $this->maxSksDayDosen) {
+                        $hc14Count++;
+                        $hardPenalty += ($totalSks - $this->maxSksDayDosen) * 15.0; // heavy penalty for max SKS violation
+                    }
                 }
             }
         }
-        $this->hardViolations += $hc14Count;
 
-        // ── [BARU] HC15: Pasangan kelas paralel (matkul+dosen sama) ──────
-        // Wajib hari sama, berurutan A→gap1→B (urutan abjad nama_kelas).
-        $hc15Count     = 0;
-        $hc15Violation = 0.0; // akumulasi besaran pelanggaran untuk hard penalty
-        foreach ($this->parallelPairs as [$kelasIdA, $kelasIdB]) {
-            $geneA = $geneByKelasId[$kelasIdA] ?? null;
-            $geneB = $geneByKelasId[$kelasIdB] ?? null;
-            if (!$geneA || !$geneB) {
-                continue; // Salah satu kelas tidak ada di kromosom ini, skip
-            }
-            $viol = $geneA->validatePairSequencing($geneB, true);
-            if ($viol > 0) {
-                $hc15Count++;
-                $hc15Violation += $viol;
+        // ── HC15: Pasangan Kelas Paralel ─────────────────────────────────
+        $hc15Count = 0;
+        if ($this->isConstraintActive('HC15')) {
+            foreach ($this->parallelPairs as [$kelasIdA, $kelasIdB]) {
+                if (isset($geneByKelasId[$kelasIdA]) && isset($geneByKelasId[$kelasIdB])) {
+                    $geneA = $geneByKelasId[$kelasIdA];
+                    $geneB = $geneByKelasId[$kelasIdB];
+                    
+                    if ($geneA->hariId !== $geneB->hariId) {
+                        $hc15Count++;
+                        $hardPenalty += $this->wHC15_pair;
+                    } else {
+                        // Cek selisih gap (harus 1 slot kosong, artinya jarak antar mulai/selesai = 1)
+                        $startA = $geneA->slotMulai;
+                        $endA = $geneA->getSlotAkhir();
+                        $startB = $geneB->slotMulai;
+                        $endB = $geneB->getSlotAkhir();
+                        
+                        $gap = $startA < $startB ? ($startB - $endA - 1) : ($startA - $endB - 1);
+                        
+                        if ($gap !== 1) {
+                            $hc15Count++;
+                            $hardPenalty += $this->wHC15_pair;
+                        }
+                    }
+                }
             }
         }
-        if ($hc15Count > 0) {
-            $hardPenalty += $hc15Violation * $this->wHC15_pair;
-        }
-        $this->hardViolations += $hc15Count;
 
-        // ── [BARU] HC16: Slot Sholat Jumat (safety-net) ───────────────────
-        // Penegakan utama dilakukan struktural di GeneticScheduler (slot
-        // dikeluarkan dari pool kandidat). Pengecekan di sini adalah lapisan
-        // pengaman jika somehow ada gene yang lolos (misal dari crossover).
-        $hc16Count = 0;
-        foreach ($this->genes as $gene) {
-            if (!$gene->validateFridayPrayerSlot()) {
-                $hc16Count++;
-            }
-        }
-        if ($hc16Count > 0) {
-            $hardPenalty += $hc16Count * $this->wHC16_friday;
-        }
-        $this->hardViolations += $hc16Count;
+        // ── [BARU] HC16 dihapus, pengecekan murni struktural ───────────────────
 
         // ── SC1: Beban dosen merata (variansi kelas/hari per dosen) ─────
-        foreach ($dosenDayClasses as $did => $hariKelas) {
-            if (count($hariKelas) < 2) { continue; }
-            $vals    = array_values($hariKelas);
-            $mean    = array_sum($vals) / count($vals);
-            $var     = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $vals)) / count($vals);
-            $softPenalty += min($var * $this->wSC1_load, 3.0);
+        if ($this->isConstraintActive('SC1')) {
+            foreach ($dosenDayClasses as $did => $hariKelas) {
+                if (count($hariKelas) < 2) { continue; }
+                $vals    = array_values($hariKelas);
+                $mean    = array_sum($vals) / count($vals);
+                $var     = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $vals)) / count($vals);
+                $softPenalty += min($var * $this->wSC1_load, 3.0);
+            }
         }
 
         // ── SC2: Gap jam kosong dosen ────────────────────────────────────
         // [BARU] Bangun set pasangan kelasId (HC15) agar gap=1 slot di antara
         // pasangan ini TIDAK dihukum dua kali oleh SC2 (HC15 sudah menangani).
-        $hc15KelasIdSet = [];
-        foreach ($this->parallelPairs as [$kelasIdA, $kelasIdB]) {
-            $hc15KelasIdSet[$kelasIdA] = $kelasIdB;
-            $hc15KelasIdSet[$kelasIdB] = $kelasIdA;
-        }
+        if ($this->isConstraintActive('SC2')) {
+            $hc15KelasIdSet = [];
+            foreach ($this->parallelPairs as [$kelasIdA, $kelasIdB]) {
+                $hc15KelasIdSet[$kelasIdA] = $kelasIdB;
+                $hc15KelasIdSet[$kelasIdB] = $kelasIdA;
+            }
 
-        foreach ($dosenSchedule as $did => $hariSlots) {
-            foreach ($hariSlots as $hari => $slots) {
-                if (count($slots) < 2) { continue; }
-                usort($slots, fn($a, $b) => $a[0] <=> $b[0]);
-                $gap = 0;
-                for ($i = 1; $i < count($slots); $i++) {
-                    $between = $slots[$i][0] - $slots[$i-1][1] - 1;
-                    // [FIX] Resolusi konflik SC2 vs SC13: jika keduanya matkul berat dan gap=0,
-                    // jangan hitung sebagai gap violation (SC13 akan menangani ini)
-                    $prevHeavy = $slots[$i-1][2] === Gene::KATEGORI_BERAT;
-                    $currHeavy = $slots[$i][2] === Gene::KATEGORI_BERAT;
-                    if ($between === 0 && $prevHeavy && $currHeavy) {
-                        continue; // Skip gap penalty untuk matkul berat berturutan
+            foreach ($dosenSchedule as $did => $hariSlots) {
+                foreach ($hariSlots as $hari => $slots) {
+                    if (count($slots) < 2) { continue; }
+                    usort($slots, fn($a, $b) => $a[0] <=> $b[0]);
+                    $gap = 0;
+                    for ($i = 1; $i < count($slots); $i++) {
+                        $between = $slots[$i][0] - $slots[$i-1][1] - 1;
+                        // [FIX] Resolusi konflik SC2 vs SC13: jika keduanya matkul berat dan gap=0,
+                        // jangan hitung sebagai gap violation (SC13 akan menangani ini)
+                        $prevHeavy = $slots[$i-1][2] === Gene::KATEGORI_BERAT;
+                        $currHeavy = $slots[$i][2] === Gene::KATEGORI_BERAT;
+                        if ($between === 0 && $prevHeavy && $currHeavy) {
+                            continue; // Skip gap penalty untuk matkul berat berturutan
+                        }
+                        if ($between > 0) { $gap += $between; }
                     }
-                    if ($between > 0) { $gap += $between; }
+                    $softPenalty += min($gap * $this->wSC2_gap, 2.0);
                 }
-                $softPenalty += min($gap * $this->wSC2_gap, 2.0);
             }
         }
 
         // ── SC3: Dosen > 3 kelas/hari ────────────────────────────────────
-        foreach ($dosenDayClasses as $did => $hariKelas) {
-            foreach ($hariKelas as $hari => $cnt) {
-                if ($cnt > 3) {
-                    $softPenalty += ($cnt - 3) * $this->wSC3_max3;
+        if ($this->isConstraintActive('SC3')) {
+            foreach ($dosenDayClasses as $did => $hariKelas) {
+                foreach ($hariKelas as $hari => $cnt) {
+                    if ($cnt > 3) {
+                        $softPenalty += ($cnt - 3) * $this->wSC3_max3;
+                    }
                 }
             }
         }
 
         // ── SC4: Ruangan berbeda dosen per hari ───────────────────────────
-        foreach ($dosenDayRooms as $did => $hariRooms) {
-            foreach ($hariRooms as $hari => $rooms) {
-                $diff = count($rooms) - 1;
-                if ($diff > 0) {
-                    $softPenalty += $diff * $this->wSC4_room_var;
-                }
-            }
-        }
-
-        // ── SC6: Variansi penggunaan ruangan ──────────────────────────────
-        if (count($roomUsage) > 1) {
-            $vals = array_values($roomUsage);
-            $mean = array_sum($vals) / count($vals);
-            $var  = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $vals)) / count($vals);
-            $softPenalty += min(sqrt($var) * $this->wSC6_room_use, 2.0);
-        }
-
-        // SC7 dihapus — bertolak belakang dengan SC2:
-        // SC2 mendorong jadwal berturutan (minimasi gap),
-        // SC7 menghukum jadwal berturutan (perpindahan ruangan).
-        // SC2 dipertahankan karena lebih relevan untuk kenyamanan dosen.
-
-        // ── SC10: Minimasi hari kerja dosen ───────────────────────────────
-        // SC10 dihapus — bertolak belakang dengan SC3:
-        // SC3 mendorong ≤3 kelas/hari (berarti perlu lebih banyak hari),
-        // SC10 mendorong sedikit hari kerja (berarti kelas dipadatkan per hari).
-        // SC1 (beban merata) sudah menangani distribusi dengan lebih baik.
-
-        // ── SC11: Selisih jumlah kelas antar hari ─────────────────────────
-        $hariVals = array_values($hariCount);
-        if (count($hariVals) > 1) {
-            $hariMean = array_sum($hariVals) / count($hariVals);
-            $hariVar  = array_sum(array_map(fn($v) => ($v - $hariMean) ** 2, $hariVals)) / count($hariVals);
-            $softPenalty += min(sqrt($hariVar) * $this->wSC11_balance, 2.0);
-        }
-
-        // SC12 dihapus sebagai soft constraint — DIGANTIKAN oleh HC15 (hard, di atas).
-        // SC12 lama menghukum keberurutan tanpa jeda (bertolak belakang dengan SC2);
-        // sekarang pasangan kelas paralel matkul+dosen sama justru WAJIB berurutan
-        // dengan gap tepat 1 slot, ditegakkan sebagai hard constraint di HC15.
-
-        // ── SC13: Matkul berat berturutan satu hari ───────────────────────
-        foreach ($dosenSchedule as $did => $hariSlots) {
-            foreach ($hariSlots as $hari => $slots) {
-                if (count($slots) < 2) { continue; }
-                usort($slots, fn($a, $b) => $a[0] <=> $b[0]);
-                for ($i = 1; $i < count($slots); $i++) {
-                    $gap         = $slots[$i][0] - $slots[$i-1][1] - 1;
-                    $prevHeavy   = $slots[$i-1][2] === Gene::KATEGORI_BERAT;
-                    $currHeavy   = $slots[$i][2]   === Gene::KATEGORI_BERAT;
-                    if ($gap === 0 && $prevHeavy && $currHeavy) {
-                        $softPenalty += $this->wSC13_heavy;
+        if ($this->isConstraintActive('SC4')) {
+            foreach ($dosenDayRooms as $did => $hariRooms) {
+                foreach ($hariRooms as $hari => $rooms) {
+                    $diff = count($rooms) - 1;
+                    if ($diff > 0) {
+                        $softPenalty += $diff * $this->wSC4_room_var;
                     }
                 }
             }
         }
 
-        // ── SC17: Utamakan mulai jam 8 pagi (slot 1) jika ada kuliah reguler ──
-        foreach ($ruangIndex as $rid => $hariSlots) {
-            foreach ($hariSlots as $hari => $slots) {
-                if (isset($roomHasRegularClass[$rid][$hari]) && !isset($slots[1])) {
-                    $softPenalty += $this->wSC17_start8;
-                }
-            }
-        }
+        // ── SC6, SC11, SC13, SC15, SC17 dihapus sesuai instruksi ───────────────────
 
         // ── Final fitness ────────────────────────────────────────────────
         // Normalisasi penalti ke skala 0-1 menggunakan sigmoid-like clamp
@@ -525,94 +446,64 @@ class Chromosome
         // Akumulasi soft violations (unit count untuk reporting)
         // Hitung soft violations dari penalti yang sudah dikumpulkan
         $softViolationCount = 0;
-        // SC5: room fit violations & SC15: heavy subjects in morning & HC10/HC13 (single loop)
+        // SC5: room fit violations & HC10/HC13 (single loop)
         foreach ($this->genes as $gene) {
-            $softViolationCount += $gene->validateRoomFit();
-            $softViolationCount += $gene->validateCategorySlotPreference($this->morningEndSlot);
-
-            // Tambahkan HC10 dan HC13 karena sekarang diperlakukan sebagai soft constraint
-            if (!empty($this->validRuangIds) && !$gene->validateRoomExists($this->validRuangIds)) {
-                $softViolationCount++;
+            if ($this->isConstraintActive('SC5')) {
+                $softViolationCount += $gene->validateRoomFit();
             }
+
+            // HC13 enforced unconditionally
             if (!$gene->validateRoomType()) {
                 $softViolationCount++;
             }
         }
-        // SC17: slot 1 empty count
-        foreach ($ruangIndex as $rid => $hariSlots) {
-            foreach ($hariSlots as $hari => $slots) {
-                if (isset($roomHasRegularClass[$rid][$hari]) && !isset($slots[1])) {
-                    $softViolationCount++;
+        // Hitung actual count untuk soft constraints lainnya (SC1, SC2, SC3, SC4)
+        // SC1: variance penalty count (setiap dosen dengan variance > 0)
+        if ($this->isConstraintActive('SC1')) {
+            foreach ($dosenDayClasses as $hariKelas) {
+                if (count($hariKelas) >= 2) {
+                    $softViolationCount++; // Satu violation per dosen dengan distribusi tidak merata
                 }
             }
         }
-        // Hitung actual count untuk soft constraints lainnya (SC1, SC2, SC3, SC4, SC6, SC11, SC13)
-        // SC1: variance penalty count (setiap dosen dengan variance > 0)
-        foreach ($dosenDayClasses as $hariKelas) {
-            if (count($hariKelas) >= 2) {
-                $softViolationCount++; // Satu violation per dosen dengan distribusi tidak merata
-            }
-        }
         // SC2: gap count (setiap gap antara kelas)
-        foreach ($dosenSchedule as $hariSlots) {
-            foreach ($hariSlots as $slots) {
-                if (count($slots) >= 2) {
-                    usort($slots, fn($a, $b) => $a[0] <=> $b[0]);
-                    for ($i = 1; $i < count($slots); $i++) {
-                        $between = $slots[$i][0] - $slots[$i-1][1] - 1;
-                        if ($between > 0) { $softViolationCount += $between; }
+        if ($this->isConstraintActive('SC2')) {
+            foreach ($dosenSchedule as $hariSlots) {
+                foreach ($hariSlots as $slots) {
+                    if (count($slots) >= 2) {
+                        usort($slots, fn($a, $b) => $a[0] <=> $b[0]);
+                        for ($i = 1; $i < count($slots); $i++) {
+                            $between = $slots[$i][0] - $slots[$i-1][1] - 1;
+                            if ($between > 0) { $softViolationCount += $between; }
+                        }
                     }
                 }
             }
         }
         // SC3: kelas > 3 per hari
-        foreach ($dosenDayClasses as $hariKelas) {
-            foreach ($hariKelas as $cnt) {
-                if ($cnt > 3) {
-                    $softViolationCount += ($cnt - 3);
+        if ($this->isConstraintActive('SC3')) {
+            foreach ($dosenDayClasses as $hariKelas) {
+                foreach ($hariKelas as $cnt) {
+                    if ($cnt > 3) {
+                        $softViolationCount += ($cnt - 3);
+                    }
                 }
             }
         }
         // SC4: ruangan berbeda per hari
-        foreach ($dosenDayRooms as $hariRooms) {
-            foreach ($hariRooms as $rooms) {
-                $diff = count($rooms) - 1;
-                if ($diff > 0) {
-                    $softViolationCount += $diff;
-                }
-            }
-        }
-        // SC6: variansi penggunaan ruangan (satu violation jika variance > threshold)
-        if (count($roomUsage) > 1) {
-            $vals = array_values($roomUsage);
-            $mean = array_sum($vals) / count($vals);
-            $var  = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $vals)) / count($vals);
-            if ($var > 1.0) { $softViolationCount++; }
-        }
-        // SC11: selisih kelas antar hari (satu violation jika variance > threshold)
-        $hariVals = array_values($hariCount);
-        if (count($hariVals) > 1) {
-            $hariMean = array_sum($hariVals) / count($hariVals);
-            $hariVar  = array_sum(array_map(fn($v) => ($v - $hariMean) ** 2, $hariVals)) / count($hariVals);
-            if ($hariVar > 2.0) { $softViolationCount++; }
-        }
-        // SC13: matkul berat berturutan
-        foreach ($dosenSchedule as $hariSlots) {
-            foreach ($hariSlots as $slots) {
-                if (count($slots) < 2) { continue; }
-                usort($slots, fn($a, $b) => $a[0] <=> $b[0]);
-                for ($i = 1; $i < count($slots); $i++) {
-                    $gap         = $slots[$i][0] - $slots[$i-1][1] - 1;
-                    $prevHeavy   = $slots[$i-1][2] === Gene::KATEGORI_BERAT;
-                    $currHeavy   = $slots[$i][2]   === Gene::KATEGORI_BERAT;
-                    if ($gap === 0 && $prevHeavy && $currHeavy) {
-                        $softViolationCount++;
+        if ($this->isConstraintActive('SC4')) {
+            foreach ($dosenDayRooms as $hariRooms) {
+                foreach ($hariRooms as $rooms) {
+                    $diff = count($rooms) - 1;
+                    if ($diff > 0) {
+                        $softViolationCount += $diff;
                     }
                 }
             }
         }
 
-        $this->constraintViolations = $softViolationCount;
+        $this->hardViolations = $hc12Count + $hc14Count + $hc15Count;
+        $this->constraintViolations = $softViolationCount + $hc13Count + $hcPraktikumHariCount;
 
         $this->fitnessIsDirty = false;
     }

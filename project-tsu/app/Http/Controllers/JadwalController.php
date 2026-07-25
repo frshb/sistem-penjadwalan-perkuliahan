@@ -88,32 +88,31 @@ class JadwalController extends Controller
         $ruangan   = Ruangan::all();
 
         $jadwalQuery = Jadwal::with([
-            'kelas.matakuliah', 'kelas.dosen', 'kelas.prodi',
+            'kelas.matakuliah', 'kelas.pengampuKelas.dosen', 'kelas.prodi', 'dosen',
             'slotMulai', 'hari', 'ruangan',
         ])->where('id_tahunakademik', $idTahun);
-
-        if ($prodiId) {
-            $jadwalQuery->whereHas('kelas', fn($q) => $q->where('id_prodi', $prodiId));
-        }
 
         $jadwalTersimpan = $jadwalQuery->get();
 
         $jadwalJson = $jadwalTersimpan->map(fn($j) => [
-            'jadwal_id'  => $j->id_jadwal,
-            'kelas_id'   => $j->id_kelas,
-            'nama_kelas' => $j->kelas->nama_kelas               ?? '-',
-            'nama'       => $j->kelas->matakuliah->nama_matkul  ?? '-',
-            'kode_mk'    => $j->kelas->matakuliah->kode_matkul  ?? '-',
-            'dosen'      => $j->kelas->dosen->nama_dosen        ?? '-',
-            'ruangan'    => $j->ruangan?->nama_ruang             ?? '',
-            'ruangan_id' => $j->id_ruang,
-            'slot_id'    => $j->id_slot_mulai,
-            'sks'        => $j->durasi_sks,
-            'hari'       => strtolower($j->hari->nama_hari ?? 'senin'),
+            'jadwal_id'    => $j->id_jadwal,
+            'kelas_id'     => $j->id_kelas,
+            'nama_kelas'   => $j->kelas->nama_kelas               ?? '-',
+            'nama'         => $j->kelas->matakuliah->nama_matkul  ?? '-',
+            'kode_mk'      => $j->kelas->matakuliah->kode_matkul  ?? '-',
+            'dosen'        => $j->dosen?->nama_dosen ?? ($j->kelas?->pengampuKelas?->first()?->dosen?->nama_dosen ?? '-'),
+            'dosen_id'     => $j->id_dosen ?? ($j->kelas?->pengampuKelas?->first()?->id_dosen ?? null),
+            'prodi'        => $j->kelas->prodi->nama_prodi        ?? '-',
+            'prodi_id'     => $j->kelas->id_prodi                 ?? null,
+            'is_read_only' => $prodiId ? (($j->kelas->id_prodi ?? null) != $prodiId) : false,
+            'ruangan'      => $j->ruangan?->nama_ruang             ?? '',
+            'ruangan_id'   => $j->id_ruang,
+            'slot_id'      => $j->id_slot_mulai,
+            'sks'          => $j->durasi_sks,
+            'hari'         => strtolower($j->hari->nama_hari ?? 'senin'),
         ])->toJson();
 
-        $adaJadwalOtomatis = Jadwal::where('id_tahunakademik', $idTahun)
-            ->where('is_manual', 0)->exists();
+        $adaJadwalOtomatis = Jadwal::where('id_tahunakademik', $idTahun)->exists();
 
         return view('penjadwalan.penjadwalan-manual', compact(
             'tahunAkademik', 'kelas', 'hari', 'slotWaktu',
@@ -209,15 +208,18 @@ class JadwalController extends Controller
         ]);
 
         $idTahun = $request->tahun_akademik_id;
+        $prodiId = ProdiFilter::getProdiId();
         
-        // Return response immediately, execute delete in background
-        app()->terminating(function () use ($idTahun) {
+        if ($prodiId) {
+            $kelasIds = \App\Models\Kelas::where('id_prodi', $prodiId)->pluck('id_kelas');
+            Jadwal::where('id_tahunakademik', $idTahun)->whereIn('id_kelas', $kelasIds)->delete();
+        } else {
             Jadwal::where('id_tahunakademik', $idTahun)->delete();
-        });
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Proses penghapusan sedang berjalan di latar belakang.'
+            'message' => 'Jadwal berhasil direset.'
         ]);
     }
 
@@ -232,15 +234,13 @@ class JadwalController extends Controller
 
         $idTahun = (int) $request->tahun_akademik_id;
 
-        // Cek ada tidaknya jadwal otomatis
-        $adaOtomatis = Jadwal::where('id_tahunakademik', $idTahun)
-            ->where('is_manual', 0)
-            ->exists();
+        // Cek ada tidaknya jadwal
+        $adaOtomatis = Jadwal::where('id_tahunakademik', $idTahun)->exists();
 
         if (!$adaOtomatis) {
             return response()->json([
                 'success' => false,
-                'message' => 'Belum ada jadwal dari penjadwalan otomatis. Jalankan Algoritma Genetika terlebih dahulu.',
+                'message' => 'Belum ada jadwal pada tahun akademik ini. Buat jadwal atau jalankan Algoritma Genetika terlebih dahulu.',
             ], 422);
         }
 

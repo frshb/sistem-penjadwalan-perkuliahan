@@ -21,13 +21,48 @@
     sidebarOpen: true,
     showAddModal: false,
     showEditModal: false,
-    showExportMenu: false,
-    searchTerm: localStorage.getItem('kelas_searchTerm') || '',
-    selectedProdiFilter: localStorage.getItem('kelas_selectedProdiFilter') || 'all',
-    selectedNamaKelasFilter: localStorage.getItem('kelas_selectedNamaKelasFilter') || 'all',
-    selectedSemesterFilter: localStorage.getItem('kelas_selectedSemesterFilter') || 'all',
+    currentTaId: @js($tahunAkademik->id_tahunakademik),
+    currentUserId: @js(Auth::id()),
+
+    searchTerm: '',
+    selectedProdiFilter: 'all',
+    selectedNamaKelasFilter: 'all',
+    selectedSemesterFilter: 'all',
 
     init() {
+        const savedTa = localStorage.getItem('kelas_tahunakademik_id');
+        const savedUser = localStorage.getItem('kelas_user_id');
+
+        if (String(savedTa) !== String(this.currentTaId) || String(savedUser) !== String(this.currentUserId)) {
+            // Reset filters on Academic Year or User change
+            localStorage.removeItem('kelas_searchTerm');
+            localStorage.removeItem('kelas_selectedProdiFilter');
+            localStorage.removeItem('kelas_selectedNamaKelasFilter');
+            localStorage.removeItem('kelas_selectedSemesterFilter');
+            localStorage.setItem('kelas_tahunakademik_id', this.currentTaId);
+            localStorage.setItem('kelas_user_id', this.currentUserId);
+            this.searchTerm = '';
+            this.selectedProdiFilter = 'all';
+            this.selectedNamaKelasFilter = 'all';
+            this.selectedSemesterFilter = 'all';
+        } else {
+            // Restore filters during same session/academic year reload
+            this.searchTerm = localStorage.getItem('kelas_searchTerm') || '';
+
+            let savedProdi = localStorage.getItem('kelas_selectedProdiFilter') || 'all';
+            let validProdis = @js($prodis->pluck('nama_prodi')->push('all')->values()->toArray());
+            this.selectedProdiFilter = validProdis.includes(savedProdi) ? savedProdi : 'all';
+
+            let savedNamaKelas = localStorage.getItem('kelas_selectedNamaKelasFilter') || 'all';
+            let validNamaKelas = @js($kelas->pluck('nama_kelas')->unique()->push('all')->values()->toArray());
+            this.selectedNamaKelasFilter = validNamaKelas.includes(savedNamaKelas) ? savedNamaKelas : 'all';
+
+            let savedSemester = localStorage.getItem('kelas_selectedSemesterFilter') || 'all';
+            let validSemesters = @js(array_merge(['all'], array_map('strval', str_contains(strtolower($tahunAkademik->nama_tahunakademik), 'genap') ? [2,4,6,8] : [1,3,5,7])));
+            this.selectedSemesterFilter = validSemesters.includes(String(savedSemester)) ? String(savedSemester) : 'all';
+        }
+
+        // Keep localStorage updated on filter change
         this.$watch('searchTerm', value => localStorage.setItem('kelas_searchTerm', value));
         this.$watch('selectedProdiFilter', value => localStorage.setItem('kelas_selectedProdiFilter', value));
         this.$watch('selectedNamaKelasFilter', value => localStorage.setItem('kelas_selectedNamaKelasFilter', value));
@@ -114,6 +149,33 @@
     showGenerateModal: false,
     selectedGenerateProdi: '',
     selectedGenerateProdiName: '',
+    generateProdi: '',
+    generateKurikulum: '',
+    generateSemester: '',
+    generateMatkulList: [],
+    loadingGenerateMatkul: false,
+
+    async fetchGenerateMatkul() {
+        if (!this.generateProdi || !this.generateKurikulum || !this.generateSemester) {
+            this.generateMatkulList = [];
+            return;
+        }
+
+        this.loadingGenerateMatkul = true;
+        try {
+            const response = await fetch(`/management/kelas/matakuliah-by-filter?id_prodi=${this.generateProdi}&id_kurikulum=${this.generateKurikulum}&semester=${this.generateSemester}`);
+            if (response.ok) {
+                this.generateMatkulList = await response.json();
+            } else {
+                this.generateMatkulList = [];
+            }
+        } catch (error) {
+            console.error('Error fetching mata kuliah:', error);
+            this.generateMatkulList = [];
+        } finally {
+            this.loadingGenerateMatkul = false;
+        }
+    },
     semesterOptions: @js(
         str_contains(strtolower($tahunAkademik->nama_tahunakademik), 'genap')
             ? [2,4,6,8]
@@ -217,7 +279,7 @@
                 </div>
             </div>
 
-            @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
+            @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'))
             <button @click="showAddModal = true"
                     class="px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700">
                 Tambah Kelas
@@ -226,48 +288,111 @@
         </div>
     </div>
 
-    <!-- Statistics Banner -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Statistics Banner (Compact but Readable) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
         <!-- Card 1: TOTAL KELAS -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
-            <div class="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m-14 0V9a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10"></path></svg>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center transition hover:shadow-md xl:col-span-1">
+            <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3.5 shrink-0 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m-14 0V9a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10"></path></svg>
             </div>
             <div>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total Kelas</p>
+                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Total Kelas</p>
                 <h3 class="text-2xl font-black text-gray-800">{{ $stats['total_kelas'] ?? 0 }}</h3>
             </div>
         </div>
         
         <!-- Card 2: MATA KULIAH AKTIF -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
-            <div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mr-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center transition hover:shadow-md xl:col-span-1">
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mr-3.5 shrink-0 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
             </div>
             <div>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Mata Kuliah</p>
+                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Mata Kuliah</p>
                 <h3 class="text-2xl font-black text-gray-800">{{ $stats['total_matkul'] ?? 0 }}</h3>
             </div>
         </div>
 
-        <!-- Card 3: TOTAL SKS -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
-            <div class="w-12 h-12 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center mr-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <!-- Card 3: SKS vs Kapasitas -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 xl:col-span-2 flex flex-col justify-center transition hover:shadow-md">
+            <div class="flex items-center mb-2">
+                <div class="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center mr-2.5 shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="text-sm font-bold text-gray-800 tracking-wide uppercase">Total SKS</h3>
             </div>
-            <div>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Total SKS</p>
-                <h3 class="text-2xl font-black text-gray-800">{{ $stats['total_sks'] ?? 0 }}</h3>
+            
+            <div class="grid grid-cols-2 gap-2.5 w-full">
+                <!-- Pagi -->
+                <div class="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                    <span class="text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-1 block border-b border-slate-200 pb-0.5">Pagi</span>
+                    
+                    <!-- Teori -->
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-slate-700">Teori:</span>
+                        <div class="flex items-baseline space-x-1">
+                            <span class="text-lg font-extrabold {{ ($stats['sks_pagi_teori'] ?? 0) > ($stats['kapasitas_pagi_teori'] ?? 0) ? 'text-red-600' : 'text-slate-900' }}">{{ $stats['sks_pagi_teori'] ?? 0 }}</span>
+                            <span class="text-sm font-bold text-slate-400 mx-0.5">/</span>
+                            <span class="text-base font-bold text-slate-600">{{ $stats['kapasitas_pagi_teori'] ?? 0 }}</span>
+                            @if(($stats['sks_pagi_teori'] ?? 0) > ($stats['kapasitas_pagi_teori'] ?? 0))
+                                <span class="text-red-500 ml-1" title="Melebihi Kapasitas!"><svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <!-- Praktik -->
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-semibold text-slate-700">Praktik:</span>
+                        <div class="flex items-baseline space-x-1">
+                            <span class="text-lg font-extrabold {{ ($stats['sks_pagi_lab'] ?? 0) > ($stats['kapasitas_pagi_lab'] ?? 0) ? 'text-red-600' : 'text-slate-900' }}">{{ $stats['sks_pagi_lab'] ?? 0 }}</span>
+                            <span class="text-sm font-bold text-slate-400 mx-0.5">/</span>
+                            <span class="text-base font-bold text-slate-600">{{ $stats['kapasitas_pagi_lab'] ?? 0 }}</span>
+                            @if(($stats['sks_pagi_lab'] ?? 0) > ($stats['kapasitas_pagi_lab'] ?? 0))
+                                <span class="text-red-500 ml-1" title="Melebihi Kapasitas!"><svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Malam -->
+                <div class="bg-indigo-50/50 rounded-lg p-2 border border-indigo-100">
+                    <span class="text-[11px] font-bold text-indigo-700 uppercase tracking-widest mb-1 block border-b border-indigo-200 pb-0.5">Malam</span>
+                    
+                    <!-- Teori -->
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-semibold text-indigo-950">Teori:</span>
+                        <div class="flex items-baseline space-x-1">
+                            <span class="text-lg font-extrabold {{ ($stats['sks_malam_teori'] ?? 0) > ($stats['kapasitas_malam_teori'] ?? 0) ? 'text-red-600' : 'text-indigo-950' }}">{{ $stats['sks_malam_teori'] ?? 0 }}</span>
+                            <span class="text-sm font-bold text-indigo-300 mx-0.5">/</span>
+                            <span class="text-base font-bold text-indigo-700">{{ $stats['kapasitas_malam_teori'] ?? 0 }}</span>
+                            @if(($stats['sks_malam_teori'] ?? 0) > ($stats['kapasitas_malam_teori'] ?? 0))
+                                <span class="text-red-500 ml-1" title="Melebihi Kapasitas!"><svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <!-- Praktik -->
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-semibold text-indigo-950">Praktik:</span>
+                        <div class="flex items-baseline space-x-1">
+                            <span class="text-lg font-extrabold {{ ($stats['sks_malam_lab'] ?? 0) > ($stats['kapasitas_malam_lab'] ?? 0) ? 'text-red-600' : 'text-indigo-950' }}">{{ $stats['sks_malam_lab'] ?? 0 }}</span>
+                            <span class="text-sm font-bold text-indigo-300 mx-0.5">/</span>
+                            <span class="text-base font-bold text-indigo-700">{{ $stats['kapasitas_malam_lab'] ?? 0 }}</span>
+                            @if(($stats['sks_malam_lab'] ?? 0) > ($stats['kapasitas_malam_lab'] ?? 0))
+                                <span class="text-red-500 ml-1" title="Melebihi Kapasitas!"><svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Card 4: KELAS KOSONG -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center">
-            <div class="w-12 h-12 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mr-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center transition hover:shadow-md xl:col-span-1">
+            <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center mr-3.5 shrink-0 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
             <div>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Kelas Kosong (Dosen)</p>
+                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Kelas Kosong (Dosen)</p>
                 <h3 class="text-2xl font-black text-gray-800">{{ $stats['kelas_kosong'] ?? 0 }}</h3>
             </div>
         </div>
@@ -336,9 +461,9 @@
                     <select x-model="selectedSemesterFilter" @change="filterKelasList()"
                         class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none bg-white">
                         <option value="all">Semua Semester</option>
-                        <template x-for="sem in semesterOptions" :key="sem">
-                            <option :value="String(sem)" x-text="'Semester ' + sem"></option>
-                        </template>
+                        @foreach(str_contains(strtolower($tahunAkademik->nama_tahunakademik), 'genap') ? [2,4,6,8] : [1,3,5,7] as $sem)
+                            <option value="{{ $sem }}">Semester {{ $sem }}</option>
+                        @endforeach
                     </select>
                     <div class="absolute right-0 top-0 h-full px-3 text-gray-500 flex items-center justify-center pointer-events-none">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -353,7 +478,7 @@
         <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold text-gray-700">Daftar Kelas</h3>
-                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
+                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'))
                 <button
                     @click="
                         showGenerateModal = true;
@@ -414,7 +539,7 @@
                                         <span class="sort-icon text-teal-300 group-hover:text-white transition-colors duration-200 ml-2">⇅</span>
                                     </div>
                                 </th>
-                                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
+                                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'))
                                 <th class="w-48 text-left py-2 px-3 uppercase font-semibold text-xs">Aksi</th>
                                 @endif
                             </tr>
@@ -460,7 +585,7 @@
                                 <td class="text-left py-2 px-3 text-sm">
                                     {{ $k->kapasitas }}
                                 </td>
-                                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
+                                @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'))
                                 <td class="text-left py-2 px-3 text-sm">
                                     <div class="flex space-x-2">
                                         <button
@@ -468,11 +593,13 @@
                                             class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium">
                                             Edit
                                         </button>
-                                        <button
-                                            onclick="confirmDelete('{{ route('kelas.destroy', $k->id_kelas) }}')"
-                                            class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
-                                            Hapus
-                                        </button>
+                                        <form action="{{ route('kelas.destroy', $k->id_kelas) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus kelas ini? Tindakan ini tidak dapat dibatalkan.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" onclick="event.stopPropagation();" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium">
+                                                Hapus
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                                 @endif
@@ -491,15 +618,18 @@
             </div>
 
             <!-- BULK ACTION -->
-            @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas', 'edit'))
+            @if(Auth::user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'))
             <div class="flex items-center justify-between mt-4">
                 <div class="flex items-center space-x-2">
                     <button
                         type="button"
                         @click="
-                            let checkboxes = document.querySelectorAll('.checkbox-kelas');
-                            let allChecked = [...checkboxes].every(cb => cb.checked);
-                            checkboxes.forEach(cb => { cb.checked = !allChecked; });
+                            let rows = document.querySelectorAll('tr.kelas-row');
+                            let visibleCheckboxes = Array.from(rows).filter(r => r.style.display !== 'none').map(r => r.querySelector('.checkbox-kelas')).filter(cb => cb);
+                            if(visibleCheckboxes.length > 0) {
+                                let allChecked = visibleCheckboxes.every(cb => cb.checked);
+                                visibleCheckboxes.forEach(cb => { cb.checked = !allChecked; });
+                            }
                         "
                         class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
                         Pilih Semua
@@ -508,7 +638,7 @@
                         type="button"
                         onclick="deleteSelectedAll()"
                         class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                        Hapus Semua
+                        Hapus Terpilih
                     </button>
                 </div>
                 <span class="text-sm text-gray-500">
@@ -523,7 +653,7 @@
 
 <!-- MODAL TAMBAH -->
 <div x-show="showAddModal"
-     class="fixed inset-0 z-50 overflow-y-auto"
+     class="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm"
      style="display: none;">
 
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -662,7 +792,7 @@
 
 <!-- MODAL EDIT -->
 <div x-show="showEditModal"
-     class="fixed inset-0 z-50 overflow-y-auto"
+     class="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm"
      style="display: none;">
 
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -805,69 +935,202 @@
 
 <!-- MODAL GENERATE -->
 <div x-show="showGenerateModal"
-     class="fixed inset-0 z-50 overflow-y-auto"
+     class="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm"
      style="display:none;">
 
     <div class="flex items-center justify-center min-h-screen px-4">
 
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+        <div class="relative bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-full max-w-3xl overflow-hidden transform transition-all animate-bounce-in">
 
-            <div class="flex justify-between items-center border-b pb-3">
+            <!-- HEADER MODAL -->
+            <div class="bg-gradient-to-r from-teal-600 to-teal-800 px-8 py-6 flex justify-between items-center shadow-md">
                 <div>
-                    <h2 class="text-xl font-bold text-teal-800">Generate Kelas</h2>
-                    <p class="text-sm text-gray-500 mt-1" x-text="selectedGenerateProdiName"></p>
+                    <h2 class="text-2xl font-black text-white tracking-wide">Generate Kelas Otomatis</h2>
+                    <p class="text-teal-100 mt-1 font-medium text-base" x-text="selectedGenerateProdiName"></p>
                 </div>
-                <button @click="showGenerateModal = false">✕</button>
+                <button @click="showGenerateModal = false" class="text-teal-100 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition focus:outline-none focus:ring-2 focus:ring-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
 
             <form action="{{ route('kelas.generate') }}"
                   method="POST"
-                  class="mt-6 space-y-4">
+                  class="p-8 space-y-7">
 
                 @csrf
 
-                <input type="hidden" name="id_prodi" :value="selectedGenerateProdi">
                 <input type="hidden" name="id_tahunakademik" value="{{ $tahunAkademik->id_tahunakademik }}">
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Kurikulum</label>
-                    <select name="id_kurikulum"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                            required>
-                        <option value="">-- Pilih Kurikulum --</option>
-                        @foreach ($kurikulums as $kurikulum)
-                            <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
-                        @endforeach
-                    </select>
+                <!-- FILTER DROPDOWNS -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-base font-bold text-slate-700 mb-2">Program Studi</label>
+                        <select name="id_prodi"
+                                x-model="generateProdi"
+                                @change="fetchGenerateMatkul()"
+                                class="w-full px-4 py-3 text-base bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 font-medium text-slate-700 shadow-sm transition-all"
+                                required>
+                            <option value="">-- Pilih --</option>
+                            @foreach ($prodis as $prodi)
+                                <option value="{{ $prodi->id_prodi }}">{{ $prodi->nama_prodi }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-base font-bold text-slate-700 mb-2">Kurikulum</label>
+                        <select name="id_kurikulum"
+                                x-model="generateKurikulum"
+                                @change="fetchGenerateMatkul()"
+                                class="w-full px-4 py-3 text-base bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 font-medium text-slate-700 shadow-sm transition-all"
+                                required>
+                            <option value="">-- Pilih --</option>
+                            @foreach ($kurikulums as $kurikulum)
+                                <option value="{{ $kurikulum->id_kurikulum }}">{{ $kurikulum->nama_kurikulum }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-base font-bold text-slate-700 mb-2">Semester</label>
+                        <select name="semester"
+                                x-model="generateSemester"
+                                @change="fetchGenerateMatkul()"
+                                class="w-full px-4 py-3 text-base bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 font-medium text-slate-700 shadow-sm transition-all"
+                                required>
+                            <option value="">-- Pilih --</option>
+                            @foreach(str_contains(strtolower($tahunAkademik->nama_tahunakademik), 'genap') ? [2,4,6,8] : [1,3,5,7] as $sem)
+                                <option value="{{ $sem }}">Semester {{ $sem }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
+                <!-- DAFTAR MATA KULIAH -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-                    <select name="semester"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                            required>
-                        <option value="">-- Pilih Semester --</option>
-                        <template x-for="semester in semesterOptions">
-                            <option :value="semester" x-text="'Semester ' + semester"></option>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-base font-bold text-slate-800">Daftar Mata Kuliah</label>
+                        <span class="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">Centang untuk digenerate</span>
+                    </div>
+                    
+                    <div class="w-full px-4 py-4 border-2 border-slate-100 rounded-2xl max-h-[26rem] overflow-y-auto bg-slate-50/50 shadow-inner">
+                        <template x-if="loadingGenerateMatkul">
+                            <div class="flex flex-col items-center justify-center py-10">
+                                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mb-3"></div>
+                                <div class="text-base text-slate-500 font-medium">Sedang memuat data mata kuliah...</div>
+                            </div>
                         </template>
-                    </select>
+                        <template x-if="!loadingGenerateMatkul && generateMatkulList.length === 0">
+                            <div class="flex flex-col items-center justify-center py-10 bg-white rounded-xl border border-slate-200 border-dashed">
+                                <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                <div class="text-base text-slate-500 font-medium text-center max-w-sm">Silakan lengkapi filter (Prodi, Kurikulum, Semester) di atas untuk melihat daftar mata kuliah.</div>
+                            </div>
+                        </template>
+                        
+                        <template x-if="!loadingGenerateMatkul && generateMatkulList.length > 0">
+                            <div class="space-y-6">
+                                <!-- Mata Kuliah Wajib -->
+                                <div x-show="generateMatkulList.filter(m => m.sifat === 'W').length > 0" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                                    <div class="flex items-center gap-2 mb-4 px-1">
+                                        <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                        <h4 class="text-base font-black text-slate-800 uppercase tracking-wider">Mata Kuliah Wajib</h4>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <template x-for="matkul in generateMatkulList.filter(m => m.sifat === 'W')" :key="matkul.id_matakuliah">
+                                            <label class="flex items-start md:items-center gap-4 cursor-pointer p-4 bg-slate-50 hover:bg-teal-50 border-2 border-slate-100 hover:border-teal-400 rounded-xl transition-all group">
+                                                <div class="flex-shrink-0 pt-1 md:pt-0">
+                                                    <input type="checkbox" name="matkul_ids[]" :value="matkul.id_matakuliah" class="w-6 h-6 rounded-md text-teal-600 focus:ring-teal-500 border-slate-300 cursor-pointer shadow-sm group-hover:border-teal-400 transition-colors">
+                                                </div>
+                                                <div class="flex-1 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                                                    <span x-text="matkul.kode_matkul" class="font-bold text-sm bg-white border border-slate-200 px-2 py-1 rounded-md text-slate-600 tracking-wide shadow-sm self-start md:self-auto whitespace-nowrap"></span>
+                                                    <span x-text="matkul.nama_matkul" class="font-bold text-lg text-slate-800"></span>
+                                                    <div class="flex items-center gap-2 flex-wrap mt-1 md:mt-0">
+                                                        <span class="text-sm font-semibold text-teal-700 bg-teal-100/50 px-2 py-0.5 rounded border border-teal-200/50 whitespace-nowrap" x-text="matkul.sks + ' SKS'"></span>
+                                                        <template x-if="matkul.konsentrasi">
+                                                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md font-bold shadow-sm border border-blue-200 whitespace-nowrap" x-text="matkul.konsentrasi"></span>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Mata Kuliah Pilihan -->
+                                <div x-show="generateMatkulList.filter(m => m.sifat === 'P').length > 0" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                                    <div class="flex items-center gap-2 mb-4 px-1">
+                                        <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                        </div>
+                                        <h4 class="text-base font-black text-slate-800 uppercase tracking-wider">Mata Kuliah Pilihan</h4>
+                                    </div>
+                                    <div class="space-y-3">
+                                        <template x-for="matkul in generateMatkulList.filter(m => m.sifat === 'P')" :key="matkul.id_matakuliah">
+                                            <label class="flex items-start md:items-center gap-4 cursor-pointer p-4 bg-slate-50 hover:bg-amber-50 border-2 border-slate-100 hover:border-amber-400 rounded-xl transition-all group">
+                                                <div class="flex-shrink-0 pt-1 md:pt-0">
+                                                    <input type="checkbox" name="matkul_ids[]" :value="matkul.id_matakuliah" class="w-6 h-6 rounded-md text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer shadow-sm group-hover:border-amber-400 transition-colors">
+                                                </div>
+                                                <div class="flex-1 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                                                    <span x-text="matkul.kode_matkul" class="font-bold text-sm bg-white border border-slate-200 px-2 py-1 rounded-md text-slate-600 tracking-wide shadow-sm self-start md:self-auto whitespace-nowrap"></span>
+                                                    <span x-text="matkul.nama_matkul" class="font-bold text-lg text-slate-800"></span>
+                                                    <div class="flex items-center gap-2 flex-wrap mt-1 md:mt-0">
+                                                        <span class="text-sm font-semibold text-slate-600 bg-slate-200/50 px-2 py-0.5 rounded border border-slate-300/50 whitespace-nowrap" x-text="matkul.sks + ' SKS'"></span>
+                                                        <template x-if="matkul.konsentrasi">
+                                                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md font-bold shadow-sm border border-blue-200 whitespace-nowrap" x-text="matkul.konsentrasi"></span>
+                                                        </template>
+                                                        <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-md font-bold shadow-sm uppercase tracking-wide border border-amber-200 whitespace-nowrap">Pilihan</span>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 space-y-6">
+                    <div>
+                        <label class="block text-lg font-black text-indigo-900 mb-3">Tipe Kelas</label>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer p-3 bg-white border border-indigo-200 rounded-xl hover:border-indigo-400 transition-colors">
+                                <input type="radio" name="tipe_kelas" value="pagi" class="w-5 h-5 text-indigo-600 focus:ring-indigo-500 border-indigo-300" checked>
+                                <span class="font-bold text-slate-700">Kelas Pagi / Reguler</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer p-3 bg-white border border-indigo-200 rounded-xl hover:border-indigo-400 transition-colors">
+                                <input type="radio" name="tipe_kelas" value="malam" class="w-5 h-5 text-indigo-600 focus:ring-indigo-500 border-indigo-300">
+                                <span class="font-bold text-slate-700">Kelas Malam / Sore (Akhiran 'S')</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-lg font-black text-indigo-900 mb-2">Estimasi Jumlah Mahasiswa Per Angkatan</label>
+                        <p class="text-sm text-indigo-600 mb-4 font-medium">Sistem akan otomatis memecah jumlah ini ke dalam beberapa kelas dengan kapasitas masing-masing maksimal 25 mahasiswa.</p>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <input type="number"
+                               name="jumlah_mahasiswa"
+                               min="1"
+                               placeholder="Contoh: 50"
+                               class="w-full pl-12 pr-4 py-4 text-xl font-bold bg-white border-2 border-indigo-200 rounded-xl focus:ring-4 focus:ring-indigo-500/30 focus:border-indigo-500 text-indigo-900 shadow-sm transition-all placeholder-indigo-300"
+                               required>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Mahasiswa</label>
-                    <input type="number"
-                           name="jumlah_mahasiswa"
-                           min="1"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                           required>
-                </div>
-
-                <div class="flex justify-end space-x-3 pt-4">
-                    <button type="button" @click="showGenerateModal = false" class="px-4 py-2 bg-gray-200 rounded-lg">
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" @click="showGenerateModal = false" class="w-full sm:w-auto px-6 py-3.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition focus:outline-none focus:ring-4 focus:ring-slate-200">
                         Batal
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                        Generate
+                    <button type="submit" class="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold rounded-xl hover:from-teal-700 hover:to-teal-800 transition shadow-lg hover:shadow-teal-500/30 focus:outline-none focus:ring-4 focus:ring-teal-500/30 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        Mulai Generate
                     </button>
                 </div>
 
@@ -880,7 +1143,7 @@
 </div>
 <!-- AKHIR MODAL GENERATE -->
 
-<x-delete-confirm-popup />
+@include('components.delete-confirm-popup')
 
 <script>
 
@@ -933,18 +1196,21 @@ function deleteSelectedAll()
 
                     // Function to apply filters
                     window.applyAllFilters = function(alpineState = null) {
-                        const search = alpineState ? alpineState.searchTerm.toLowerCase() : (localStorage.getItem('kelas_searchTerm') || '').toLowerCase();
+                        const getSafeStr = (val) => (val && val !== 'null' && val !== 'undefined') ? String(val) : 'all';
                         
                         // Sync filter states if called from Alpine
                         if (alpineState) {
-                            if (alpineState.selectedProdiFilter) activeFilters.prodi = alpineState.selectedProdiFilter;
-                            if (alpineState.selectedNamaKelasFilter) activeFilters.namaKelas = alpineState.selectedNamaKelasFilter;
-                            if (alpineState.selectedSemesterFilter) activeFilters.semester = alpineState.selectedSemesterFilter;
+                            activeFilters.prodi = getSafeStr(alpineState.selectedProdiFilter);
+                            activeFilters.namaKelas = getSafeStr(alpineState.selectedNamaKelasFilter);
+                            activeFilters.semester = getSafeStr(alpineState.selectedSemesterFilter);
                         } else {
-                            activeFilters.prodi = localStorage.getItem('kelas_selectedProdiFilter') || 'all';
-                            activeFilters.namaKelas = localStorage.getItem('kelas_selectedNamaKelasFilter') || 'all';
-                            activeFilters.semester = localStorage.getItem('kelas_selectedSemesterFilter') || 'all';
+                            activeFilters.prodi = getSafeStr(localStorage.getItem('kelas_selectedProdiFilter'));
+                            activeFilters.namaKelas = getSafeStr(localStorage.getItem('kelas_selectedNamaKelasFilter'));
+                            activeFilters.semester = getSafeStr(localStorage.getItem('kelas_selectedSemesterFilter'));
                         }
+                        
+                        let searchRaw = alpineState ? alpineState.searchTerm : localStorage.getItem('kelas_searchTerm');
+                        const search = (searchRaw && searchRaw !== 'null' && searchRaw !== 'undefined') ? String(searchRaw).toLowerCase() : '';
 
                         const rows = Array.from(tbody.querySelectorAll('tr.kelas-row'));
                         let visibleIndex = 1;

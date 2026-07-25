@@ -47,7 +47,7 @@ class OptimizeJadwal
     /** Jam mulai sesi malam (menit dari 00:00) */
     private int $menitBatasMalam;
 
-    /** [HC16] id_hari untuk Jumat & id_slot yang wajib steril dari kelas apapun */
+    /** [HC16] id_hari untuk Jumat & id_slot batas steril Sholat Jumat (slot 5 dan 6 dilarang) */
     private int $hariJumat       = 5;
     private int $slotSholatJumat = 6;
 
@@ -59,6 +59,9 @@ class OptimizeJadwal
 
     /** Pemetaan Hari ke Slot { hariId => [slotId, slotId] } */
     private array $hariSlotMap = [];
+
+    /** [HC3] ID Slot yang merupakan jam istirahat (termasuk Maghrib slot 14) */
+    private array $breakSlotIds = [];
 
     public function __construct()
     {
@@ -75,6 +78,9 @@ class OptimizeJadwal
         foreach ($haris as $h) {
             $this->hariSlotMap[$h->id_hari] = $h->slotWaktus->pluck('id_slot')->toArray();
         }
+
+        // [HC3/HC-NEW] Slot 14 (Maghrib/**) dilarang ditempati
+        $this->breakSlotIds = [14];
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -95,7 +101,7 @@ class OptimizeJadwal
      */
     public function optimasi(int $idTahunAkademik): array
     {
-        // Ambil semua jadwal otomatis (is_manual = 0) untuk tahun akademik ini
+        // Ambil semua jadwal (otomatis maupun manual) untuk tahun akademik ini
         $jadwalList = Jadwal::with([
             'kelas.matakuliah',
             'kelas.dosen',
@@ -106,7 +112,6 @@ class OptimizeJadwal
             'ruangan',
         ])
         ->where('id_tahunakademik', $idTahunAkademik)
-        ->where('is_manual', 0)
         ->get();
 
         if ($jadwalList->isEmpty()) {
@@ -116,7 +121,7 @@ class OptimizeJadwal
                 'diperbaiki'         => 0,
                 'gagal'              => 0,
                 'detail_bentrok_sisa'=> [],
-                'pesan'              => 'Tidak ada jadwal dari penjadwalan otomatis.',
+                'pesan'              => 'Tidak ada jadwal pada tahun akademik ini.',
             ];
         }
 
@@ -139,108 +144,91 @@ class OptimizeJadwal
         $semuaSlot    = Slot_waktu::orderBy('jam_ke')->get();
         $semuaRuangan = Ruangan::all();
 
-        // Kumpulkan ID jadwal yang melanggar constraint apapun (tanpa duplikasi)
-        $idBentrok = collect($bentrokList)
-            ->pluck('jadwal_id')
-            ->unique()
-            ->values();
-
-        $diperbaiki = 0;
-        $gagal      = 0;
-        $sisaBentrok = [];
-
-        // [HC15] Tangani pasangan paralel LEBIH DULU & sekaligus (bukan satu-satu),
-        // karena memperbaiki satu sisi pasangan tanpa partner-nya akan merusak gap-1.
-        $jadwalTerkiniAwal = Jadwal::with([
+        // Lakukan iterasi perbaikan sampai 3 pass atau hingga bentrok habis
+        $maxPass = 3;
+        for ($pass = 1; $pass <= $maxPass; $pass++) {
+            $jadwalTerkini = Jadwal::with([
                 'kelas.matakuliah',
                 'kelas.dosen',
                 'kelas.matakuliah.ruangans',
                 'slotMulai',
                 'hari',
                 'ruangan',
-            ])
-            ->where('id_tahunakademik', $idTahunAkademik)
-            ->where('is_manual', 0)
-            ->get();
-        $pasanganList = $this->buildParallelPairs($jadwalTerkiniAwal);
-        $idJadwalTertanganiPasangan = [];
+            ])->where('id_tahunakademik', $idTahunAkademik)->get();
 
-        foreach ($pasanganList as [$jadwalA, $jadwalB]) {
-            // Refresh kondisi terkini (jadwal lain mungkin sudah berubah akibat
-            // perbaikan pasangan sebelumnya di loop ini), TANPA relasi penuh
-            // karena hanya dipakai untuk hitung bentrok/SKS, bukan ditampilkan.
-            $jadwalTerkini = Jadwal::where('id_tahunakademik', $idTahunAkademik)
-                ->where('is_manual', 0)
-                ->get();
-
-            if ($this->pasanganSudahValid($jadwalA, $jadwalB)) {
-                continue; // Sudah sesuai HC15, tidak perlu diperbaiki
+            // [HC15] Tangani pasangan paralel lebih dulu
+            $pasanganList = $this->buildParallelPairs($jadwalTerkini);
+            foreach ($pasanganList as [$jadwalA, $jadwalB]) {
+                $currentAll = Jadwal::where('id_tahunakademik', $idTahunAkademik)->get();
+                if (!$this->pasanganSudahValid($jadwalA, $jadwalB)) {
+                    $this->perbaikiPasangan($jadwalA, $jadwalB, $idTahunAkademik, $semuaSlot, $semuaRuangan, $currentAll);
+                }
             }
 
-            $berhasil = $this->perbaikiPasangan(
-                $jadwalA, $jadwalB, $idTahunAkademik, $semuaSlot, $semuaRuangan, $jadwalTerkini
-            );
-
-            $idJadwalTertanganiPasangan[] = $jadwalA->id_jadwal;
-            $idJadwalTertanganiPasangan[] = $jadwalB->id_jadwal;
-
-            if ($berhasil) {
-                $diperbaiki += 2;
-            } else {
-                $gagal += 2;
-                // $jadwalA/$jadwalB sudah punya semua relasi (dari $jadwalTerkiniAwal),
-                // jadi langsung dipakai tanpa query ulang.
-                $jadwalTerkiniRefresh = Jadwal::where('id_tahunakademik', $idTahunAkademik)
-                    ->where('is_manual', 0)->get();
-                $sisaBentrok[] = $this->formatDetailBentrok($jadwalA, $jadwalTerkiniRefresh);
-                $sisaBentrok[] = $this->formatDetailBentrok($jadwalB, $jadwalTerkiniRefresh);
-            }
-        }
-
-        // Coba perbaiki sisa pelanggaran satu per satu (di luar pasangan HC15 yang sudah ditangani)
-        foreach ($idBentrok as $jadwalId) {
-            if (in_array($jadwalId, $idJadwalTertanganiPasangan, true)) {
-                continue; // Sudah ditangani di tahap pasangan
-            }
-
-            // Refresh dari DB agar state selalu aktual setelah perbaikan sebelumnya
-            $jadwal = Jadwal::with([
+            // Refresh dan perbaiki jadwal individu yang melanggar
+            $jadwalTerkini = Jadwal::with([
                 'kelas.matakuliah',
                 'kelas.dosen',
                 'kelas.matakuliah.ruangans',
                 'slotMulai',
                 'hari',
-            ])->find($jadwalId);
+                'ruangan',
+            ])->where('id_tahunakademik', $idTahunAkademik)->get();
 
-            if (!$jadwal) continue;
-
-            // Cek apakah jadwal ini masih melanggar constraint apapun setelah perbaikan sebelumnya
-            $jadwalTerkini = Jadwal::where('id_tahunakademik', $idTahunAkademik)
-                ->where('is_manual', 0)
-                ->get();
-
-            $pelanggaran = $this->cekPelanggaranSatuJadwal($jadwal, $jadwalTerkini);
-            if (empty($pelanggaran)) {
-                $diperbaiki++;
-                continue;
+            $bentrokPass = $this->deteksiBentrok($jadwalTerkini);
+            if (empty($bentrokPass)) {
+                break; // Semua bentrok sudah bersih!
             }
 
-            // [HC6] Dosen kosong tidak bisa auto-fix — langsung masuk sisa manual
-            if (in_array('dosen_kosong', $pelanggaran, true)) {
-                $gagal++;
-                $sisaBentrok[] = $this->formatDetailBentrok($jadwal, $jadwalTerkini);
-                continue;
-            }
+            $idBentrokPass = collect($bentrokPass)->pluck('jadwal_id')->unique()->values();
+            foreach ($idBentrokPass as $jadwalId) {
+                $jadwal = Jadwal::with([
+                    'kelas.matakuliah',
+                    'kelas.dosen',
+                    'kelas.matakuliah.ruangans',
+                    'slotMulai',
+                    'hari',
+                ])->find($jadwalId);
 
-            $berhasil = $this->perbaikiJadwal($jadwal, $idTahunAkademik, $semuaSlot, $semuaRuangan, $pelanggaran);
+                if (!$jadwal) continue;
 
-            if ($berhasil) {
-                $diperbaiki++;
-            } else {
-                $gagal++;
-                $sisaBentrok[] = $this->formatDetailBentrok($jadwal, $jadwalTerkini);
+                $currentAll = Jadwal::where('id_tahunakademik', $idTahunAkademik)->get();
+                $pelanggaran = $this->cekPelanggaranSatuJadwal($jadwal, $currentAll);
+                if (empty($pelanggaran) || in_array('dosen_kosong', $pelanggaran, true)) {
+                    continue;
+                }
+
+                $this->perbaikiJadwal($jadwal, $idTahunAkademik, $semuaSlot, $semuaRuangan, $pelanggaran);
             }
         }
+
+        // Hitung evaluasi akhir setelah iterasi perbaikan selesai
+        $jadwalAkhir = Jadwal::with([
+            'kelas.matakuliah',
+            'kelas.dosen',
+            'kelas.prodi',
+            'kelas.matakuliah.ruangans',
+            'slotMulai',
+            'hari',
+            'ruangan',
+        ])
+        ->where('id_tahunakademik', $idTahunAkademik)
+        ->get();
+
+        $bentrokAkhirList = $this->deteksiBentrok($jadwalAkhir);
+        $bentrokAkhirCount = count($bentrokAkhirList);
+
+        $idBentrokAkhir = collect($bentrokAkhirList)->pluck('jadwal_id')->unique()->values();
+        $sisaBentrok = [];
+        foreach ($idBentrokAkhir as $jid) {
+            $jObj = $jadwalAkhir->where('id_jadwal', $jid)->first();
+            if ($jObj) {
+                $sisaBentrok[] = $this->formatDetailBentrok($jObj, $jadwalAkhir);
+            }
+        }
+
+        $diperbaiki = max(0, $bentrokAwal - $bentrokAkhirCount);
+        $gagal      = $bentrokAkhirCount;
 
         return [
             'total_jadwal'       => $jadwalList->count(),
@@ -358,18 +346,14 @@ class OptimizeJadwal
                 ];
             }
 
-            // [HC10] Ruangan harus terdaftar di pivot matkul_ruang (jika MK punya daftar ruangan)
-            $ruanganMk = $j->kelas->matakuliah->ruangans ?? collect();
-            if ($ruanganMk->isNotEmpty() && $j->id_ruang) {
-                $validIds = $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray();
-                if (!in_array((int) $j->id_ruang, $validIds, true)) {
-                    $bentrokList[] = [
-                        'jadwal_id'    => $j->id_jadwal,
-                        'jadwal_lawan' => null,
-                        'tipe'         => 'ruangan_tidak_valid',
-                        'keterangan'   => 'Ruangan ' . ($j->ruangan?->nama_ruang ?? '-') . ' tidak terdaftar untuk mata kuliah ini',
-                    ];
-                }
+            // [HC10] Ruangan harus ada di database
+            if (!$j->id_ruang || !Ruangan::find($j->id_ruang)) {
+                $bentrokList[] = [
+                    'jadwal_id'    => $j->id_jadwal,
+                    'jadwal_lawan' => null,
+                    'tipe'         => 'ruangan_tidak_valid',
+                    'keterangan'   => 'Ruangan tidak valid atau belum dipilih',
+                ];
             }
 
             // [HC12] Slot waktu sesuai jenis kelas (reguler vs malam -S)
@@ -381,9 +365,20 @@ class OptimizeJadwal
                     'keterangan'   => 'Kelas ' . ($j->kelas->nama_kelas ?? '-') . ' ditempatkan di slot waktu yang tidak sesuai jenisnya (pagi/malam)',
                 ];
             }
+            $slotRange = range((int) $j->id_slot_mulai, (int) $j->id_slot_mulai + (int) $j->durasi_sks - 1);
+            if ($this->melewatiIstirahat($slotRange)) {
+                $bentrokList[] = [
+                    'jadwal_id'    => $j->id_jadwal,
+                    'jadwal_lawan' => null,
+                    'tipe'         => 'slot_waktu_salah',
+                    'keterangan'   => 'Kelas ' . ($j->kelas->nama_kelas ?? '-') . ' melewati jam istirahat',
+                ];
+            }
 
-            // [HC13] Tipe ruangan harus sesuai jenis matkul
-            if ($j->ruangan && !$this->tipeRuanganSesuai($j->kelas->matakuliah->jenis ?? 'teori', $j->ruangan->tipe_ruangan ?? 'reguler')) {
+            // [HC13] Tipe ruangan harus sesuai jenis matkul (hanya jika ruangan tidak terdaftar di pivot MK)
+            $ruanganMk = $j->kelas->matakuliah->ruangans ?? collect();
+            $isDiPivot = $ruanganMk->isNotEmpty() && $j->id_ruang && in_array((int) $j->id_ruang, $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray(), true);
+            if (!$isDiPivot && $j->ruangan && !$this->tipeRuanganSesuai($j->kelas->matakuliah->jenis ?? 'teori', $j->ruangan->tipe_ruangan ?? 'reguler')) {
                 $bentrokList[] = [
                     'jadwal_id'    => $j->id_jadwal,
                     'jadwal_lawan' => null,
@@ -469,7 +464,7 @@ class OptimizeJadwal
      * terhadap kondisi $semuaJadwal saat ini. Return array tipe pelanggaran
      * (string), kosong jika tidak ada pelanggaran.
      */
-    private function cekPelanggaranSatuJadwal(Jadwal $jadwal, Collection $semuaJadwal): array
+    protected function cekPelanggaranSatuJadwal(Jadwal $jadwal, Collection $semuaJadwal): array
     {
         $pelanggaran = [];
 
@@ -491,7 +486,9 @@ class OptimizeJadwal
             if ($jadwal->id_ruang && $lain->id_ruang && $jadwal->id_ruang === $lain->id_ruang) {
                 $pelanggaran[] = 'bentrok_ruangan';
             }
-            if ($jadwal->id_kelas === $lain->id_kelas) {
+            $namaA = $jadwal->kelas->nama_kelas ?? '';
+            $namaB = $lain->kelas->nama_kelas ?? '';
+            if ($namaA !== '' && $namaA === $namaB) {
                 $pelanggaran[] = 'bentrok_kelas';
             }
         }
@@ -501,23 +498,25 @@ class OptimizeJadwal
             $pelanggaran[] = 'dosen_kosong';
         }
 
-        // [HC10] Ruangan tidak valid
-        $ruanganMk = $jadwal->kelas->matakuliah->ruangans ?? collect();
-        if ($ruanganMk->isNotEmpty() && $jadwal->id_ruang) {
-            $validIds = $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray();
-            if (!in_array((int) $jadwal->id_ruang, $validIds, true)) {
-                $pelanggaran[] = 'ruangan_tidak_valid';
-            }
+        // [HC10] Ruangan harus valid di database (sesuai spesifikasi di Gene.php & GeneticScheduler.php)
+        if (!$jadwal->id_ruang || !Ruangan::find($jadwal->id_ruang)) {
+            $pelanggaran[] = 'ruangan_tidak_valid';
         }
 
         // [HC12] Slot waktu salah
         if ($jadwal->slotMulai && !$this->slotSesuaiJenisKelas($jadwal->slotMulai, $jadwal->kelas->nama_kelas ?? '')) {
             $pelanggaran[] = 'slot_waktu_salah';
         }
+        $slotRange = range((int) $jadwal->id_slot_mulai, (int) $jadwal->id_slot_mulai + (int) $jadwal->durasi_sks - 1);
+        if ($this->melewatiIstirahat($slotRange)) {
+            $pelanggaran[] = 'slot_waktu_salah';
+        }
 
-        // [HC13] Tipe ruangan salah
+        // [HC13] Tipe ruangan salah (hanya jika ruangan tidak terdaftar khusus di pivot MK)
+        $ruanganMk = $jadwal->kelas->matakuliah->ruangans ?? collect();
         $ruanganObj = $jadwal->id_ruang ? Ruangan::find($jadwal->id_ruang) : null;
-        if ($ruanganObj && !$this->tipeRuanganSesuai($jadwal->kelas->matakuliah->jenis ?? 'teori', $ruanganObj->tipe_ruangan ?? 'reguler')) {
+        $isDiPivot = $ruanganMk->isNotEmpty() && $jadwal->id_ruang && in_array((int) $jadwal->id_ruang, $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray(), true);
+        if (!$isDiPivot && $ruanganObj && !$this->tipeRuanganSesuai($jadwal->kelas->matakuliah->jenis ?? 'teori', $ruanganObj->tipe_ruangan ?? 'reguler')) {
             $pelanggaran[] = 'tipe_ruangan_salah';
         }
 
@@ -567,13 +566,22 @@ class OptimizeJadwal
      *      → coba ganti ruangan saja dulu (hari/slot tetap), baru fallback
      *        cari slot+hari+ruangan baru jika tidak ada ruangan pengganti yang aman.
      */
-    private function perbaikiJadwal(
+    protected function perbaikiJadwal(
         Jadwal $jadwal,
         int $idTahunAkademik,
         Collection $semuaSlot,
         Collection $semuaRuangan,
         array $pelanggaran
     ): bool {
+        // [HC15] Jika jadwal adalah bagian dari pasangan paralel, perbaiki sebagai pasangan agar tetap berurutan dan di hari yang sama
+        $currentAll = Jadwal::with(['kelas.matakuliah.ruangans', 'kelas.dosen', 'ruangan'])->where('id_tahunakademik', $idTahunAkademik)->get();
+        $pasanganList = $this->buildParallelPairs($currentAll);
+        foreach ($pasanganList as [$jA, $jB]) {
+            if ($jA->id_jadwal === $jadwal->id_jadwal || $jB->id_jadwal === $jadwal->id_jadwal) {
+                return $this->perbaikiPasangan($jA, $jB, $idTahunAkademik, $semuaSlot, $semuaRuangan, $currentAll);
+            }
+        }
+
         $sks         = $jadwal->durasi_sks;
         $hariAsal    = $jadwal->id_hari;
         $dosenId     = $jadwal->id_dosen;
@@ -589,8 +597,15 @@ class OptimizeJadwal
             fn($r) => $this->tipeRuanganSesuai($jenisMatkul, $r->tipe_ruangan ?? 'reguler')
         );
         if ($poolRuanganValid->isEmpty()) {
-            // Tidak ada ruangan dengan tipe yang cocok — pakai pool asli sebagai fallback
             $poolRuanganValid = $poolRuanganMk;
+        }
+
+        // Pool fallback semua ruangan yang tipenya cocok
+        $poolSemuaValid = $semuaRuangan->filter(
+            fn($r) => $this->tipeRuanganSesuai($jenisMatkul, $r->tipe_ruangan ?? 'reguler')
+        );
+        if ($poolSemuaValid->isEmpty()) {
+            $poolSemuaValid = $semuaRuangan;
         }
 
         // ── Pelanggaran yang HANYA soal ruangan (hari/slot tetap valid) ───────
@@ -634,7 +649,6 @@ class OptimizeJadwal
                     $idTahunAkademik, $jadwal->id_jadwal,
                     $poolRuanganValid
                 );
-
                 if (!$ruangan) continue;
 
                 // Update jadwal ke slot + ruangan baru
@@ -758,6 +772,13 @@ class OptimizeJadwal
             for ($slotA = 1; $slotA <= $maxStartA; $slotA++) {
                 $slotB = $slotA + $durasiA + 1;
 
+                // [HC3] Pastikan tidak melewati slot jam istirahat
+                $slotRangeA = range($slotA, $slotA + $durasiA - 1);
+                $slotRangeB = range($slotB, $slotB + $durasiB - 1);
+                if ($this->melewatiIstirahat($slotRangeA) || $this->melewatiIstirahat($slotRangeB)) {
+                    continue;
+                }
+
                 // [HC16] Pastikan A maupun B tidak overlap slot Sholat Jumat
                 if ($this->overlapsSlotSholatJumat($hariId, $slotA, $durasiA)
                     || $this->overlapsSlotSholatJumat($hariId, $slotB, $durasiB)) {
@@ -765,7 +786,6 @@ class OptimizeJadwal
                 }
 
                 // [HC14] Pastikan dosen tidak melebihi 8 SKS/hari di hari ini
-                // (hitung total SKS dosen di hari ini TANPA A & B, lalu tambah durasiA+durasiB)
                 $totalSksLain = $jadwalTerkini
                     ->where('id_dosen', $dosenId)
                     ->where('id_hari', $hariId)
@@ -780,15 +800,20 @@ class OptimizeJadwal
                     ->where('id_hari', $hariId)
                     ->whereNotIn('id_jadwal', [$jadwalA->id_jadwal, $jadwalB->id_jadwal]);
 
-                $slotRangeA = range($slotA, $slotA + $durasiA - 1);
-                $slotRangeB = range($slotB, $slotB + $durasiB - 1);
-
-                $dosenBentrok = $jadwalLainHariIni->first(function ($lain) use ($dosenId, $slotRangeA, $slotRangeB) {
-                    if (!$lain->id_dosen || $lain->id_dosen !== $dosenId) return false;
+                $namaA = $jadwalA->kelas->nama_kelas ?? '';
+                $namaB = $jadwalB->kelas->nama_kelas ?? '';
+                $bentrokLain = $jadwalLainHariIni->first(function ($lain) use ($dosenId, $slotRangeA, $slotRangeB, $namaA, $namaB) {
                     $lainRange = range($lain->id_slot_mulai, $lain->id_slot_mulai + $lain->durasi_sks - 1);
-                    return array_intersect($lainRange, $slotRangeA) || array_intersect($lainRange, $slotRangeB);
+                    $overlapA = !empty(array_intersect($lainRange, $slotRangeA));
+                    $overlapB = !empty(array_intersect($lainRange, $slotRangeB));
+                    if (!$overlapA && !$overlapB) return false;
+                    if ($dosenId && $lain->id_dosen && $lain->id_dosen === $dosenId) return true;
+                    $namaLain = $lain->kelas->nama_kelas ?? '';
+                    if ($overlapA && $namaLain !== '' && $namaLain === $namaA) return true;
+                    if ($overlapB && $namaLain !== '' && $namaLain === $namaB) return true;
+                    return false;
                 });
-                if ($dosenBentrok) continue;
+                if ($bentrokLain) continue;
 
                 // Cari ruangan bebas untuk A
                 $ruanganTerpakaiSlotA = $jadwalLainHariIni
@@ -798,10 +823,13 @@ class OptimizeJadwal
                     ))
                     ->pluck('id_ruang')->unique()->toArray();
                 $ruanganA = $poolA->whereNotIn('id_ruang', $ruanganTerpakaiSlotA)->first();
+                if (!$ruanganA && $poolA !== $semuaRuangan) {
+                    $poolSemuaA = $semuaRuangan->filter(fn($r) => $this->tipeRuanganSesuai($jadwalA->kelas->matakuliah->jenis ?? 'teori', $r->tipe_ruangan ?? 'reguler'));
+                    $ruanganA = ($poolSemuaA->isNotEmpty() ? $poolSemuaA : $semuaRuangan)->whereNotIn('id_ruang', $ruanganTerpakaiSlotA)->first();
+                }
                 if (!$ruanganA) continue;
 
-                // Cari ruangan bebas untuk B (jangan sampai sama dengan ruangan A jika overlap slot,
-                // tapi karena ada gap 1 slot, A & B tidak overlap waktu — boleh ruangan sama)
+                // Cari ruangan bebas untuk B
                 $ruanganTerpakaiSlotB = $jadwalLainHariIni
                     ->filter(fn($lain) => array_intersect(
                         range($lain->id_slot_mulai, $lain->id_slot_mulai + $lain->durasi_sks - 1),
@@ -809,6 +837,10 @@ class OptimizeJadwal
                     ))
                     ->pluck('id_ruang')->unique()->toArray();
                 $ruanganB = $poolB->whereNotIn('id_ruang', $ruanganTerpakaiSlotB)->first();
+                if (!$ruanganB && $poolB !== $semuaRuangan) {
+                    $poolSemuaB = $semuaRuangan->filter(fn($r) => $this->tipeRuanganSesuai($jadwalB->kelas->matakuliah->jenis ?? 'teori', $r->tipe_ruangan ?? 'reguler'));
+                    $ruanganB = ($poolSemuaB->isNotEmpty() ? $poolSemuaB : $semuaRuangan)->whereNotIn('id_ruang', $ruanganTerpakaiSlotB)->first();
+                }
                 if (!$ruanganB) continue;
 
                 // Semua aman — terapkan
@@ -825,7 +857,7 @@ class OptimizeJadwal
     // ─────────────────────────────────────────────────────────────
     //  CARI SLOT KOSONG (HC1/HC2/HC8/HC12/HC16 aman)
     // ─────────────────────────────────────────────────────────────
-    private function cariSlotKosong(
+    protected function cariSlotKosong(
         int $hariId,
         int $sks,
         ?int $dosenId,
@@ -848,10 +880,12 @@ class OptimizeJadwal
                 ->unique()->toArray()
             : [];
 
-        // Slot yang sudah dipakai kelas ini
-        $slotKelasTerpakai = $jadwalHariIni->where('id_kelas', $kelasId)
-            ->flatMap(fn($j) => range($j->id_slot_mulai, $j->id_slot_mulai + $j->durasi_sks - 1))
-            ->unique()->toArray();
+        // Slot yang sudah dipakai kelas ini (berdasarkan nama_kelas)
+        $slotKelasTerpakai = $jadwalHariIni->filter(function ($j) use ($namaKelas) {
+            return ($j->kelas->nama_kelas ?? '') === $namaKelas;
+        })
+        ->flatMap(fn($j) => range($j->id_slot_mulai, $j->id_slot_mulai + $j->durasi_sks - 1))
+        ->unique()->toArray();
 
         $hasil = [];
 
@@ -891,7 +925,7 @@ class OptimizeJadwal
     // ─────────────────────────────────────────────────────────────
     //  CARI RUANGAN BEBAS
     // ─────────────────────────────────────────────────────────────
-    private function cariRuanganBebas(
+    protected function cariRuanganBebas(
         int $hariId,
         int $slotMulai,
         int $sks,
@@ -914,7 +948,14 @@ class OptimizeJadwal
             ->unique()
             ->toArray();
 
-        return $poolRuangan->whereNotIn('id_ruang', $ruanganTerpakai)->first();
+        $ruangan = $poolRuangan->whereNotIn('id_ruang', $ruanganTerpakai)->first();
+        if (!$ruangan && $poolRuangan->count() < Ruangan::count()) {
+            $jadwalObj = Jadwal::with('kelas.matakuliah')->find($jadwalIdDikecualikan);
+            $jenis = $jadwalObj?->kelas?->matakuliah?->jenis ?? 'teori';
+            $poolSemua = Ruangan::all()->filter(fn($r) => $this->tipeRuanganSesuai($jenis, $r->tipe_ruangan ?? 'reguler'));
+            $ruangan = ($poolSemua->isNotEmpty() ? $poolSemua : Ruangan::all())->whereNotIn('id_ruang', $ruanganTerpakai)->first();
+        }
+        return $ruangan;
     }
 
     /**
@@ -943,7 +984,7 @@ class OptimizeJadwal
     // ─────────────────────────────────────────────────────────────
 
     /** Urutan hari: coba hari asal dulu, lalu hari lain */
-    private function urutanHari(int $hariAsal, string $namaKelas): array
+    protected function urutanHari(int $hariAsal, string $namaKelas): array
     {
         $semua = $this->activeHariIds;
         // Kelas S (malam) bebas di semua hari
@@ -954,7 +995,10 @@ class OptimizeJadwal
     /** Cek apakah range slot mencakup slot istirahat */
     private function melewatiIstirahat(array $slotRange): bool
     {
-        return $this->slotIstirahat > 0 && in_array($this->slotIstirahat, $slotRange);
+        if (empty($this->breakSlotIds)) {
+            return $this->slotIstirahat > 0 && in_array($this->slotIstirahat, $slotRange, true);
+        }
+        return (bool) array_intersect($slotRange, $this->breakSlotIds);
     }
 
     /**
@@ -969,7 +1013,8 @@ class OptimizeJadwal
             return false;
         }
         $slotAkhir = $slotMulai + $durasi - 1;
-        return $slotMulai <= $this->slotSholatJumat && $slotAkhir >= $this->slotSholatJumat;
+        // Slot 5 dan 6 pada hari Jumat tidak boleh ditempati (waktu Sholat Jumat)
+        return $slotMulai <= 6 && $slotAkhir >= 5;
     }
 
     /**
@@ -983,8 +1028,11 @@ class OptimizeJadwal
         $jenis = strtolower(trim($jenisMatkul));
         $tipe  = strtolower(trim($tipeRuangan));
 
-        if ($jenis === 'praktikum') {
-            return in_array($tipe, ['lab', 'hybrid'], true);
+        if ($jenis === 'praktikum' || $jenis === 'praktik' || $jenis === 'teori-praktik') {
+            return in_array($tipe, ['lab', 'reguler', 'hybrid'], true);
+        }
+        if ($jenis === 'studio') {
+            return in_array($tipe, ['studio', 'hybrid'], true);
         }
         return in_array($tipe, ['reguler', 'hybrid'], true);
     }
@@ -996,7 +1044,7 @@ class OptimizeJadwal
     private function detectKelasS(string $namaKelas): bool
     {
         $nama = strtolower(trim($namaKelas));
-        if (preg_match('/-\d*s[i\d]*$/i', $nama)) {
+        if (preg_match('/-\d*s[i\d]*[^\w]*$/i', $nama)) {
             return true;
         }
         if (preg_match('/\bsore\b|\bmalam\b/', $nama)) {
@@ -1051,8 +1099,10 @@ class OptimizeJadwal
             if ($jadwal->id_ruang && $lain->id_ruang && $jadwal->id_ruang === $lain->id_ruang) {
                 $alasan[] = 'Ruangan bentrok dengan kelas ' . ($lain->kelas->nama_kelas ?? '-');
             }
-            if ($jadwal->id_kelas === $lain->id_kelas) {
-                $alasan[] = 'Kelas dobel slot';
+            $namaA = $jadwal->kelas->nama_kelas ?? '';
+            $namaB = $lain->kelas->nama_kelas ?? '';
+            if ($namaA !== '' && $namaA === $namaB) {
+                $alasan[] = 'Mahasiswa bentrok dengan mata kuliah ' . ($lain->kelas->matakuliah->nama_matkul ?? '-');
             }
         }
 
@@ -1060,17 +1110,19 @@ class OptimizeJadwal
         if (!$jadwal->id_dosen) {
             $alasan[] = 'Belum punya dosen pengampu';
         }
-        $ruanganMk = $jadwal->kelas->matakuliah->ruangans ?? collect();
-        if ($ruanganMk->isNotEmpty() && $jadwal->id_ruang) {
-            $validIds = $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray();
-            if (!in_array((int) $jadwal->id_ruang, $validIds, true)) {
-                $alasan[] = 'Ruangan tidak terdaftar untuk mata kuliah ini';
-            }
+        if (!$jadwal->id_ruang || !Ruangan::find($jadwal->id_ruang)) {
+            $alasan[] = 'Ruangan tidak valid atau belum dipilih';
         }
         if ($jadwal->slotMulai && !$this->slotSesuaiJenisKelas($jadwal->slotMulai, $jadwal->kelas->nama_kelas ?? '')) {
             $alasan[] = 'Slot waktu tidak sesuai jenis kelas (pagi/malam)';
         }
-        if ($jadwal->ruangan && !$this->tipeRuanganSesuai($jadwal->kelas->matakuliah->jenis ?? 'teori', $jadwal->ruangan->tipe_ruangan ?? 'reguler')) {
+        $slotRange = range((int) $jadwal->id_slot_mulai, (int) $jadwal->id_slot_mulai + (int) $jadwal->durasi_sks - 1);
+        if ($this->melewatiIstirahat($slotRange)) {
+            $alasan[] = 'Melewati slot jam istirahat';
+        }
+        $ruanganMk = $jadwal->kelas->matakuliah->ruangans ?? collect();
+        $isDiPivot2 = $ruanganMk->isNotEmpty() && $jadwal->id_ruang && in_array((int) $jadwal->id_ruang, $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray(), true);
+        if (!$isDiPivot2 && $jadwal->ruangan && !$this->tipeRuanganSesuai($jadwal->kelas->matakuliah->jenis ?? 'teori', $jadwal->ruangan->tipe_ruangan ?? 'reguler')) {
             $alasan[] = 'Tipe ruangan tidak sesuai jenis mata kuliah';
         }
         if ($this->overlapsSlotSholatJumat((int) $jadwal->id_hari, (int) $jadwal->id_slot_mulai, (int) $jadwal->durasi_sks)) {
@@ -1083,6 +1135,14 @@ class OptimizeJadwal
                 ->sum('durasi_sks');
             if ($totalSksHariIni > $this->maxSksDosenPerHari) {
                 $alasan[] = 'Dosen mengajar lebih dari ' . $this->maxSksDosenPerHari . ' SKS di hari ini';
+            }
+        }
+        $pasanganList = $this->buildParallelPairs($semuaJadwal);
+        foreach ($pasanganList as [$jadwalA, $jadwalB]) {
+            if ($jadwalA->id_jadwal === $jadwal->id_jadwal || $jadwalB->id_jadwal === $jadwal->id_jadwal) {
+                if (!$this->pasanganSudahValid($jadwalA, $jadwalB)) {
+                    $alasan[] = 'Kelas paralel harus di hari sama, berurutan, dengan jeda 1 slot kosong';
+                }
             }
         }
 

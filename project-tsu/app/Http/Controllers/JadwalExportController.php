@@ -9,6 +9,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\JadwalExport;
 
+use App\Helpers\ProdiFilter;
+
 class JadwalExportController extends Controller
 {
     /**
@@ -49,9 +51,10 @@ class JadwalExportController extends Controller
     /**
      * Ambil data jadwal yang sudah di-join relasi.
      */
-        private function getJadwalData($tahunAkademikId): \Illuminate\Support\Collection
+    private function getJadwalData($tahunAkademikId): \Illuminate\Support\Collection
     {
-        return Jadwal::with([
+        $prodiId = ProdiFilter::getProdiId();
+        $query = Jadwal::with([
                 'kelas.matakuliah',
                 'kelas.prodi',
                 'kelas.dosen',
@@ -59,8 +62,13 @@ class JadwalExportController extends Controller
                 'hari',
                 'ruangan',
             ])
-            ->where('id_tahunakademik', $tahunAkademikId) // ← fix
-            ->get()
+            ->where('id_tahunakademik', $tahunAkademikId);
+
+        if ($prodiId) {
+            $query->whereHas('kelas', fn($q) => $q->where('id_prodi', $prodiId));
+        }
+
+        return $query->get()
             ->map(function ($j) {
                 $slotId      = $j->id_slot_mulai; // ← fix nama kolom
                 $sks         = $j->durasi_sks;    // ← fix nama kolom

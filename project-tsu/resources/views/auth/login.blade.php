@@ -117,5 +117,10 @@
 
         </div>
     </div>
+    <script>
+        // Hapus semua filter dan state yang tersimpan di localStorage
+        // agar tidak terbawa saat user login dengan akun/role yang berbeda.
+        localStorage.clear();
+    </script>
 </body>
 </html>

@@ -230,13 +230,13 @@
                     <!-- Tab Selector -->
                     <div class="mt-4 flex items-center gap-4 text-xs font-bold uppercase tracking-wider border-t border-gray-100 pt-3">
                         <button id="tab-belum" onclick="setActivePlotTab('belum')" class="pb-2 border-b-2 border-teal-500 text-teal-600 flex items-center gap-1.5 transition cursor-pointer">
-                            Belum Terplot
+                            Belum Terplot <span id="cnt-belum" class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
                         </button>
                         <button id="tab-terplot" onclick="setActivePlotTab('terplot')" class="pb-2 text-gray-500 hover:text-teal-600 flex items-center gap-1.5 transition cursor-pointer">
-                            Terplot
+                            Terplot <span id="cnt-terplot" class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
                         </button>
                         <button id="tab-semua" onclick="setActivePlotTab('all')" class="pb-2 text-gray-500 hover:text-teal-600 flex items-center gap-1.5 transition cursor-pointer">
-                            Semua
+                            Semua <span id="cnt-total" class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
                         </button>
                     </div>
                 </div>
@@ -718,8 +718,12 @@
     });
 
     // ── Simpan AJAX ──────────────────────────────────────────────
+    window.isProcessingClass = window.isProcessingClass || {};
+
     function simpan(dragData, dosenId, zone) {
         if (!dragData.id_kelas) return;
+        if (window.isProcessingClass[dragData.id_kelas]) return; // Prevent double submit
+        window.isProcessingClass[dragData.id_kelas] = true;
 
         fetch('{{ route("dosen-pengampu.simpan", [], false) }}', {
             method: 'POST',
@@ -734,15 +738,14 @@
         .then(function(data) {
             if (!data.success) { alert(data.message || 'Gagal menyimpan.'); return; }
 
-            if (dragData.is_reassign) {
-                document.querySelectorAll('.assigned-card[data-kelas-id="' + dragData.id_kelas + '"]').forEach(function(oldCard) {
-                    var oldDosenCard = oldCard.closest('.dosen-card');
-                    oldCard.remove();
-                    if (oldDosenCard) {
-                        updateSks(oldDosenCard);
-                    }
-                });
-            }
+            // Selalu hapus card lama jika ada, untuk mencegah duplikasi visual
+            document.querySelectorAll('.assigned-card[data-kelas-id="' + dragData.id_kelas + '"]').forEach(function(oldCard) {
+                var oldDosenCard = oldCard.closest('.dosen-card');
+                oldCard.remove();
+                if (oldDosenCard) {
+                    updateSks(oldDosenCard);
+                }
+            });
 
             zone.appendChild(buildCard(
                 dragData.id_kelas,
@@ -761,6 +764,9 @@
         .catch(function(err) {
             console.error('Simpan error:', err);
             alert('Terjadi kesalahan jaringan.');
+        })
+        .finally(function() {
+            window.isProcessingClass[dragData.id_kelas] = false;
         });
     }
 

@@ -296,6 +296,6 @@
     </div>
 
 
-    <x-delete-confirm-popup />
+    @include('components.delete-confirm-popup')
     </body>
 </html>

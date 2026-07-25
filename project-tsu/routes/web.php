@@ -151,6 +151,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/management/kelas/export/excel', [KelasController::class, 'exportExcel'])->name('kelas.export.excel');
         Route::get('/management/kelas/export/pdf', [KelasController::class, 'exportPdf'])->name('kelas.export.pdf');
         Route::resource('/management/kelas', KelasController::class)->except(['show', 'index']);
+        Route::get('/management/kelas/matakuliah-by-filter', [KelasController::class, 'getMataKuliahByFilter'])->name('kelas.matakuliah-by-filter');
         Route::post('/management/kelas/generate', [KelasController::class, 'generate'])->name('kelas.generate');
         Route::post('/management/kelas/bulk-delete', [KelasController::class, 'bulkDelete'])->name('kelas.bulk-delete');
     });

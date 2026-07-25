@@ -24,18 +24,51 @@
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
                 </div>
 
-                @if(!Auth::user()->isAdmin() && !Auth::user()->isDosen() && isset($activeYear))
-                <div class="mb-8 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-l-4 border-emerald-500 rounded-r-xl shadow-sm flex items-start space-x-3.5 transform transition-all duration-300 hover:shadow-md">
-                    <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg flex-shrink-0 animate-pulse">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                        </svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-base font-bold text-emerald-900 mb-0.5">Penjadwalan Tahun Akademik Aktif Telah Dibuka!</h4>
-                        <p class="text-sm text-emerald-700 leading-relaxed font-medium">
-                            Saat ini tahun akademik <span class="font-bold text-emerald-800">{{ $activeYear->nama_tahunakademik }}</span> telah aktif dan penyusunan jadwal perkuliahan resmi dibuka. Silakan periksa detail mata kuliah dan kelas yang diampu.
-                        </p>
+                @if(!Auth::user()->isAdmin() && !Auth::user()->isDosen() && isset($activeYears) && $activeYears->count() > 0)
+                <div class="mb-8" x-data="{ 
+                        activeSlide: 0, 
+                        slidesCount: {{ $activeYears->count() }},
+                        startX: 0,
+                        touchThreshold: 50,
+                        handleTouchStart(e) { this.startX = e.changedTouches[0].screenX; },
+                        handleTouchEnd(e) {
+                            let endX = e.changedTouches[0].screenX;
+                            if (this.startX - endX > this.touchThreshold && this.activeSlide < this.slidesCount - 1) {
+                                this.activeSlide++;
+                            } else if (endX - this.startX > this.touchThreshold && this.activeSlide > 0) {
+                                this.activeSlide--;
+                            }
+                        }
+                    }">
+                    <div class="relative overflow-hidden w-full rounded-r-xl shadow-sm hover:shadow-md transition-all duration-300"
+                         @touchstart="handleTouchStart" 
+                         @touchend="handleTouchEnd">
+                        <div class="flex transition-transform duration-500 ease-in-out" 
+                             :style="'transform: translateX(-' + (activeSlide * 100) + '%)'">
+                            @foreach($activeYears as $ay)
+                            <div class="w-full flex-shrink-0 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-l-4 border-emerald-500 flex items-start space-x-3.5 pb-6">
+                                <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg flex-shrink-0 animate-pulse">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="text-base font-bold text-emerald-900 mb-0.5">Penjadwalan Tahun Akademik Aktif Telah Dibuka!</h4>
+                                    <p class="text-sm text-emerald-700 leading-relaxed font-medium">
+                                        Saat ini tahun akademik <span class="font-bold text-emerald-800">{{ $ay->nama_tahunakademik }}</span> telah aktif dan penyusunan jadwal perkuliahan resmi dibuka. Silakan periksa detail mata kuliah dan kelas yang diampu.
+                                    </p>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @if($activeYears->count() > 1)
+                        <div class="absolute bottom-2 left-0 right-0 flex justify-center space-x-2">
+                            @foreach($activeYears as $index => $ay)
+                            <div class="w-1.5 h-1.5 rounded-full transition-colors duration-300"
+                                 :class="activeSlide === {{ $index }} ? 'bg-emerald-600' : 'bg-emerald-200'"></div>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
                 </div>
                 @endif

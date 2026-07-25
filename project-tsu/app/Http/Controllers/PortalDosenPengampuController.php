@@ -56,7 +56,9 @@ class PortalDosenPengampuController extends Controller
         // Pengampu Query
         $pengampuQuery = PengampuKelas::with([
             'kelas.matakuliah.program_studi', 
-            'dosen.pengampus.kelas.matakuliah'
+            'dosen.pengampus' => function($q) use ($idTahun) {
+                $q->where('id_tahunakademik', $idTahun)->with('kelas.matakuliah');
+            }
         ])->where('id_tahunakademik', $idTahun);
         
         if ($prodiId) {
@@ -97,8 +99,9 @@ class PortalDosenPengampuController extends Controller
         }
         $pengampus = $pengampuQuery->get();
 
-        // Dosen Query (Prodi restricted if Kaprodi, sembunyikan dosen eksternal id_prodi = 99)
-        $dosenQuery = Dosen::with(['prodi'])
+        $dosenQuery = Dosen::with(['prodi', 'pengampus' => function($q) use ($idTahun) {
+            $q->where('id_tahunakademik', $idTahun)->with('kelas.matakuliah');
+        }])
             ->where(function($q) {
                 // Tampilkan dosen eksternal fakultas (99) atau null
                 $q->where('id_prodi', '!=', 0) // Dummy condition untuk jaga struktur orWhereNull

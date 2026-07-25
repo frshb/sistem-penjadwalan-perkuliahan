@@ -36,10 +36,10 @@
     {{-- ── Top Header ── --}}
     <div class="bg-white border-b border-slate-200 px-6 sm:px-10 py-5 sticky top-0 z-10">
         <div class="flex items-center gap-3">
-            <div class="flex flex-col">
-                <div class="w-1.5 h-4 bg-teal-700 rounded-t"></div>
-                <div class="w-1.5 h-2.5 bg-amber-400 rounded-b"></div>
-            </div>
+            <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
+                <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
+                <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+            </button>
             <div>
                 <h1 class="text-2xl font-bold text-slate-800 leading-tight">Buat Jadwal Otomatis</h1>
                 <p class="text-sm text-slate-500 mt-1">Sistem Cerdas Penyusun Jadwal Perkuliahan</p>
@@ -62,7 +62,6 @@
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                     <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Konfigurasi</h2>
-                    <span class="text-xs text-slate-400">Langkah 1 dari 1</span>
                 </div>
                 <div class="p-6 space-y-6">
 
@@ -172,83 +171,76 @@
             </div>
 
             {{-- Card: Constraint Aktif --}}
-            <div class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <button type="button" onclick="toggleCollapse('constraint')"
                     class="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span class="text-sm font-semibold text-slate-700">Constraint Aktif</span>
-                        <span class="bg-slate-100 text-slate-600 text-xs font-medium px-2 py-0.5 rounded-full">14 HC · 10 SC</span>
+                        <span class="bg-slate-100 text-slate-600 text-xs font-medium px-2 py-0.5 rounded-full">7 HC · 5 SC</span>
                     </div>
-                    <svg id="chevron-constraint" class="w-4 h-4 text-slate-400 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <svg id="chevron-constraint" class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                 </button>
-                <div id="collapse-constraint" class="collapse-body" style="max-height:none">
-                    <div class="px-5 pb-4 space-y-3">
+                <div id="collapse-constraint" class="collapse-body closed" style="max-height:0">
+                    <div class="px-5 pb-4 space-y-4">
 
-                        {{-- Hard Constraints - Compact Grid --}}
+                        {{-- Aturan Wajib (Required Hard Constraints) --}}
                         <div>
-                            <p class="text-xs font-semibold text-red-600 mb-2 flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                Hard Constraints
+                            <p class="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
+                                Aturan Fundamental (Terkunci)
                             </p>
-                            <div class="grid grid-cols-2 gap-1.5">
+                            <div class="grid grid-cols-1 gap-3">
                                 @foreach([
-                                    ['HC1', 'Dosen bentrok waktu'],
-                                    ['HC2', 'Ruangan bentrok waktu'],
-                                    ['HC3', 'Slot valid'],
-                                    ['HC4', '1 kelas 1 ruang'],
-                                    ['HC5', '1 dosen 1 matkul/slot'],
-                                    ['HC6', 'Dosen wajib ada'],
-                                    ['HC7', 'Durasi = SKS'],
-                                    ['HC8', 'No overlap'],
-                                    ['HC9', 'Slot ≤ tersedia'],
-                                    ['HC10', 'Ruangan terdaftar'],
-                                    ['HC11', 'Paralel no bentrok'],
-                                    ['HC12', 'Kelas sore di malam'],
-                                    ['HC13', 'Lab untuk praktikum'],
-                                    ['HC14', 'Dosen ≤ 8 SKS/hari'],
+                                    ['HC1', 'Dosen tidak boleh mengajar dua kelas di waktu bersamaan'],
+                                    ['HC2', 'Ruangan tidak boleh dipakai dua kelas di waktu bersamaan'],
+                                    ['HC3', 'Jadwal kelas tidak boleh menabrak jam istirahat dan jam sholat maghrib'],
+                                    ['HC12', 'Kelas khusus (Sore/Malam) dijadwalkan setelah maghrib, reguler sebelum maghrib'],
+                                    ['HC13', 'Mata kuliah praktikum wajib di Lab, teori wajib di ruang reguler'],
+                                    ['HC15', 'Mata kuliah paralel dengan dosen yang sama wajib dijadwalkan di hari yang sama, berurutan, dengan jeda 1 slot kosong']
                                 ] as [$kode, $label])
-                                <div class="flex items-center gap-1.5 text-xs text-slate-600 bg-red-50/50 rounded-md px-2 py-1.5 border border-red-100/50">
-                                    <span class="bg-red-500 text-white text-[10px] font-bold px-1 py-0.5 rounded flex-shrink-0">{{ $kode }}</span>
-                                    <span class="truncate">{{ $label }}</span>
-                                </div>
+                                <label class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg p-2.5 opacity-70 cursor-not-allowed">
+                                    <div class="flex items-center gap-3">
+                                        <span class="bg-slate-300 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded">{{ $kode }}</span>
+                                        <span class="text-xs text-slate-600 font-medium">{{ $label }}</span>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-not-allowed shrink-0">
+                                        <input type="checkbox" value="{{ $kode }}" class="sr-only toggle-constraint" checked disabled>
+                                        <div class="w-8 h-4 bg-teal-500 rounded-full"></div>
+                                        <div class="absolute left-1 top-0.5 w-3 h-3 bg-white rounded-full transition-transform translate-x-4"></div>
+                                    </div>
+                                </label>
                                 @endforeach
                             </div>
                         </div>
 
-                        {{-- Soft Constraints - Compact Grid --}}
+                        {{-- Aturan Adaptif (Optional Hard & Soft Constraints) --}}
                         <div>
-                            <p class="text-xs font-semibold text-blue-600 mb-2 flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                Soft Constraints
+                            <p class="text-xs font-semibold text-teal-700 mb-2 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                Aturan Adaptif (Bisa Dimatikan)
                             </p>
-                            <div class="grid grid-cols-2 gap-1.5">
+                            <div class="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                                 @foreach([
-                                    ['SC1', 'Beban dosen merata'],
-                                    ['SC2', 'Minimasi gap dosen'],
-                                    ['SC3', 'Dosen ≤ 3 kelas/hari'],
-                                    ['SC4', 'Minimasi ganti ruang'],
-                                    ['SC5', 'Kapasitas ruang pas'],
-                                    ['SC6', 'Penggunaan ruang merata'],
-                                    ['SC11', 'Kelas per hari merata'],
-                                    ['SC13', 'No matkul berat berurutan'],
-                                    ['SC15', 'Berat bukan slot pagi'],
-                                    ['SC17', 'Mulai jam 8 pagi (Slot 1)'],
-                                ] as [$kode, $label])
-                                <div class="flex items-center gap-1.5 text-xs text-slate-600 bg-blue-50/50 rounded-md px-2 py-1.5 border border-blue-100/50">
-                                    <span class="bg-blue-500 text-white text-[10px] font-bold px-1 py-0.5 rounded flex-shrink-0">{{ $kode }}</span>
-                                    <span class="truncate">{{ $label }}</span>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        {{-- Disabled Constraints - Minimal --}}
-                        <div class="pt-2 border-t border-slate-100">
-                            <p class="text-xs text-slate-400 mb-1.5">Dinonaktifkan (konflik)</p>
-                            <div class="flex flex-wrap gap-1">
-                                @foreach(['SC7', 'SC9', 'SC10', 'SC12'] as $kode)
-                                <span class="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{{ $kode }}</span>
+                                    // Optional HC
+                                    ['HC14', 'Beban maksimal mengajar dosen (diatur di Pengaturan Lanjutan)', true],
+                                    // Soft Constraints
+                                    ['SC1', 'Distribusi jumlah kelas per hari untuk setiap dosen harus merata', true],
+                                    ['SC2', 'Minimalkan jeda (waktu kosong) saat dosen mengajar dalam satu hari', true],
+                                    ['SC3', 'Maksimal jumlah kelas yang diajar dosen dalam satu hari adalah 3 kelas', true],
+                                    ['SC4', 'Minimalkan frekuensi dosen berpindah ruangan dalam hari yang sama', true],
+                                    ['SC5', 'Kapasitas ruangan harus pas/sesuai dengan jumlah mahasiswa di kelas', true],
+                                ] as [$kode, $label, $checked])
+                                <label class="flex items-center justify-between bg-white border border-slate-200 hover:border-teal-300 hover:bg-teal-50/30 transition-colors rounded-lg p-2.5 cursor-pointer">
+                                    <div class="flex items-center gap-3">
+                                        <span class="{{ str_starts_with($kode, 'HC') ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600' }} text-[10px] font-bold px-1.5 py-0.5 rounded">{{ $kode }}</span>
+                                        <span class="text-xs text-slate-700 font-medium">{{ $label }}</span>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer shrink-0">
+                                        <input type="checkbox" value="{{ $kode }}" class="sr-only peer toggle-constraint" {{ $checked ? 'checked' : '' }}>
+                                        <div class="w-8 h-4 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-teal-500"></div>
+                                    </div>
+                                </label>
                                 @endforeach
                             </div>
                         </div>
@@ -257,14 +249,23 @@
                 </div>
             </div>
 
-            {{-- Tombol Generate --}}
-            <button id="btn-generate" onclick="startGA()"
-                class="w-full py-4 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/25 flex items-center justify-center gap-3 transition-all duration-200 active:scale-[.98]">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
-                <span id="btn-label">Jalankan Algoritma Genetika</span>
-            </button>
+            {{-- Tombol Generate & Audit --}}
+            <div class="flex gap-3">
+                <button id="btn-audit" onclick="auditData()"
+                    class="w-1/3 py-4 bg-white border-2 border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-600 font-bold rounded-2xl flex items-center justify-center gap-2 transition-all duration-200 active:scale-[.98]">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                    <span id="btn-audit-label">Audit Data</span>
+                </button>
+                <button id="btn-generate" onclick="startGA()"
+                    class="w-2/3 py-4 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/25 flex items-center justify-center gap-3 transition-all duration-200 active:scale-[.98]">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span id="btn-label">Jalankan Algoritma</span>
+                </button>
+            </div>
             <input type="hidden" id="adv-early-exit" value="95">
         </div>
 
@@ -360,6 +361,22 @@
                                 class="w-full h-1.5 rounded-full accent-amber-500 cursor-pointer"
                                 oninput="document.getElementById('val-temp').textContent=this.value+'.0'">
                             <p class="text-[10px] text-slate-500 mt-1 leading-tight">Keberanian mencoba jadwal yang sedikit lebih jelek demi melompat ke hasil yang jauh lebih baik.</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2.5 mt-4 border-t border-slate-100 pt-3">
+                        {{-- Beban Mengajar Maksimal --}}
+                        <div class="bg-indigo-50/50 rounded-lg p-2.5 border border-indigo-100">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                    👨‍🏫 Maks Mengajar Dosen <span class="text-[10px] font-normal text-slate-400">(HC14)</span>
+                                </label>
+                                <span id="val-max-sks" class="text-[11px] font-black text-indigo-600">8 SKS</span>
+                            </div>
+                            <input type="range" id="adv-max-sks" min="2" max="16" step="1" value="8"
+                                class="w-full h-1.5 rounded-full accent-indigo-500 cursor-pointer"
+                                oninput="document.getElementById('val-max-sks').textContent=this.value+' SKS'">
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Batas maksimal beban SKS seorang dosen dalam satu hari.</p>
                         </div>
                     </div>
 
@@ -899,7 +916,7 @@ function drawChart() {
 }
 
 // ─────────────────────────────────────────────────
-// Start GA
+// Start GA (Tanpa Blocking Audit)
 // ─────────────────────────────────────────────────
 function startGA() {
     const tahun    = document.getElementById('inp-tahun').value;
@@ -919,61 +936,124 @@ function startGA() {
         return;
     }
 
-    // Ubah status tombol untuk menunjukkan sedang audit data
     const btn = document.getElementById('btn-generate');
     btn.disabled = true;
-    document.getElementById('btn-label').textContent = 'Menganalisis kelayakan data…';
+    document.getElementById('btn-label').textContent = 'Mempersiapkan...';
+    
+    const activeConstraints = Array.from(document.querySelectorAll('.toggle-constraint:checked')).map(cb => cb.value).join(',');
+    runGAProcess(tahun, populasi, generasi, crossover, mutation, elite, stagnation, temp, earlyExit, activeConstraints);
+}
 
-    // Panggil Pre-run Feasibility Audit
+// ─────────────────────────────────────────────────
+// Audit Kelayakan Data Standalone
+// ─────────────────────────────────────────────────
+function auditData() {
+    const tahun = document.getElementById('inp-tahun').value;
+    if (!tahun) {
+        shakeEl('inp-tahun');
+        return;
+    }
+
+    const btn = document.getElementById('btn-audit');
+    const oldText = document.getElementById('btn-audit-label').textContent;
+    btn.disabled = true;
+    document.getElementById('btn-audit-label').textContent = 'Mengaudit...';
+
     fetch(`{{ url('/jadwal-otomatis/audit') }}?tahun_akademik_id=${tahun}`)
         .then(res => res.json())
         .then(data => {
-            if (!data.feasible && data.issues && data.issues.some(i => i.type === 'fatal')) {
-                // Ada isu fatal, blokir jalannya GA
-                let msg = '<div class="text-left space-y-2 text-sm mt-2">';
+            btn.disabled = false;
+            document.getElementById('btn-audit-label').textContent = oldText;
+
+            let msg = '';
+            
+            // Render Stats
+            if (data.stats) {
+                const renderShiftStats = (s, title) => {
+                    if (s.total_sks === 0) return '';
+                    
+                    const pTeoriText = ((s.teori_sks / (s.teori_capacity || 1)) * 100).toFixed(1);
+                    const pLabText = ((s.lab_sks / (s.lab_capacity || 1)) * 100).toFixed(1);
+                    const pTotalText = ((s.total_sks / (s.total_capacity || 1)) * 100).toFixed(1);
+                    
+                    const pTeoriBar = Math.min(100, pTeoriText);
+                    const pLabBar = Math.min(100, pLabText);
+                    const pTotalBar = Math.min(100, pTotalText);
+
+                    return `
+                    <div class="mb-4 space-y-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                        <h4 class="font-bold text-slate-800 text-sm mb-1">${title}</h4>
+                        
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1 ${s.teori_sks > s.teori_capacity ? 'text-rose-600' : 'text-slate-600'}">
+                                <span>Ruang Kelas Biasa (Teori)</span>
+                                <span>Butuh ${s.teori_sks} SKS / Ada ${s.teori_capacity} SKS (${pTeoriText}%)</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden mb-1">
+                                <div class="h-2.5 rounded-full ${s.teori_sks > s.teori_capacity ? 'bg-rose-500' : 'bg-blue-500'}" style="width: ${pTeoriBar}%"></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 leading-snug mt-1">
+                                *<b>${s.teori_ruangan} Ruang Teori</b> <i>(× ${s.slots_per_week} slot = ${s.teori_capacity} SKS)</i>.
+                            </p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1 ${s.lab_sks > s.lab_capacity ? 'text-rose-600' : 'text-slate-600'}">
+                                <span>Laboratorium (Praktik)</span>
+                                <span>Butuh ${s.lab_sks} SKS / Ada ${s.lab_capacity} SKS (${pLabText}%)</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden mb-1">
+                                <div class="h-2.5 rounded-full ${s.lab_sks > s.lab_capacity ? 'bg-rose-500' : 'bg-blue-500'}" style="width: ${pLabBar}%"></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 leading-snug mt-1">
+                                *<b>${s.lab_ruangan} Laboratorium</b> <i>(× ${s.slots_per_week} slot = ${s.lab_capacity} SKS)</i>.
+                            </p>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100 mt-2">
+                            <div class="flex justify-between text-xs font-bold mb-1 ${s.total_sks > s.total_capacity ? 'text-rose-700' : 'text-slate-700'}">
+                                <span>Total Keterisian</span>
+                                <span>Butuh ${s.total_sks} SKS / Ada ${s.total_capacity} SKS (${pTotalText}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                };
+
+                msg += renderShiftStats(data.stats.pagi, "Analisis Kapasitas Kelas Pagi (Reguler)");
+                msg += renderShiftStats(data.stats.malam, "Analisis Kapasitas Kelas Malam (Sore)");
+            }
+
+            // Render Issues
+            if (data.issues && data.issues.length > 0) {
+                msg += '<div class="text-left space-y-2 text-sm mt-4 border-t pt-3">';
                 data.issues.forEach(i => {
                     if (i.type === 'fatal') {
                         msg += `<div class="p-3 rounded-xl bg-rose-50 text-rose-800 border border-rose-200/60 font-medium">❌ ${i.message}</div>`;
-                    }
-                });
-                msg += '</div>';
-
-                showAuditModal('Gagal Audit Kelayakan', msg, false);
-                resetGenerateButton();
-                return;
-            }
-
-            if (data.issues && data.issues.some(i => i.type === 'warning')) {
-                // Ada isu warning, tanyakan persetujuan user
-                let msg = '<div class="text-left space-y-2 text-sm mt-2">';
-                data.issues.forEach(i => {
-                    if (i.type === 'warning') {
+                    } else if (i.type === 'warning') {
                         msg += `<div class="p-3 rounded-xl bg-amber-50 text-amber-800 border border-amber-200/60 font-medium">⚠️ ${i.message}</div>`;
                     }
                 });
                 msg += '</div>';
-                
-                showAuditModal('Peringatan Audit Kelayakan', msg, true, () => {
-                    runGAProcess(tahun, populasi, generasi, crossover, mutation, elite, stagnation, temp, earlyExit);
-                });
-                resetGenerateButton();
-                return;
+            } else if (data.feasible) {
+                msg += `<div class="p-4 rounded-xl bg-green-50 text-green-800 border border-green-200/60 font-medium mt-4">✅ Data sangat baik! Kemungkinan algoritma genetika akan dengan mudah menemukan jadwal optimal.</div>`;
             }
 
-            // Layak & tanpa issue, jalankan GA langsung
-            runGAProcess(tahun, populasi, generasi, crossover, mutation, elite, stagnation, temp, earlyExit);
+            const title = data.feasible ? 'Hasil Audit Kelayakan Data' : 'Peringatan: Overload Terdeteksi';
+            showAuditModal(title, msg, false);
         })
         .catch(err => {
             console.error('Audit error:', err);
-            // Fallback: jalankan saja GA jika audit endpoint gagal demi toleransi kesalahan
-            runGAProcess(tahun, populasi, generasi, crossover, mutation, elite, stagnation, temp, earlyExit);
+            btn.disabled = false;
+            document.getElementById('btn-audit-label').textContent = oldText;
+            alert('Gagal melakukan audit, silakan coba lagi.');
         });
 }
 
 function resetGenerateButton() {
     const btn = document.getElementById('btn-generate');
     btn.disabled = false;
-    document.getElementById('btn-label').textContent = 'Jalankan Algoritma Genetika';
+    document.getElementById('btn-label').textContent = 'Jalankan Algoritma';
 }
 
 function showAuditModal(title, contentHtml, showConfirm = false, onConfirm = null) {
@@ -986,7 +1066,7 @@ function showAuditModal(title, contentHtml, showConfirm = false, onConfirm = nul
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300';
     
     const confirmButtonHtml = showConfirm 
-        ? `<button type="button" id="btn-modal-confirm" class="flex-1 px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-2xl transition shadow-lg shadow-teal-600/20">Tetap Lanjutkan</button>`
+        ? `<button type="button" id="btn-modal-confirm" class="flex-1 px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-2xl transition shadow-lg shadow-teal-600/20 text-xs">Tetap Lanjutkan</button>`
         : '';
         
     const closeButtonLabel = showConfirm ? 'Batal' : 'Tutup';
@@ -1045,7 +1125,7 @@ function showAuditModal(title, contentHtml, showConfirm = false, onConfirm = nul
     }
 }
 
-function runGAProcess(tahun, populasi, generasi, crossover = null, mutation = null, elite = null, stagnation = null, temp = null, earlyExit = null) {
+function runGAProcess(tahun, populasi, generasi, crossover = null, mutation = null, elite = null, stagnation = null, temp = null, earlyExit = null, activeConstraints = null) {
     maxGen = parseInt(generasi);
     bestFitnessPrev = 0; prevFitness = 0;
     fitnessHistory = [];
@@ -1081,6 +1161,7 @@ function runGAProcess(tahun, populasi, generasi, crossover = null, mutation = nu
     if (stagnation !== null) url += `&stagnation=${stagnation}`;
     if (temp !== null)       url += `&temp=${temp}`;
     if (earlyExit !== null)  url += `&early_exit=${earlyExit}`;
+    if (activeConstraints !== null) url += `&active_constraints=${encodeURIComponent(activeConstraints)}`;
     activeES = new EventSource(url);
 
     activeES.onmessage = function(e) {

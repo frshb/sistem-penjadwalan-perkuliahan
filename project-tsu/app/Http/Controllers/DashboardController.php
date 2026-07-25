@@ -16,7 +16,8 @@ class DashboardController extends Controller
         $authUser = Auth::user();
         
 
-        $activeYear = \App\Models\TahunAkademik::where('status_aktif', 1)->first();
+        $activeYears = \App\Models\TahunAkademik::where('status_aktif', 1)->get();
+        $activeYear = $activeYears->first();
 
         $sksBeban = 0;
         if ($authUser->id_dosen && $activeYear) {
@@ -120,6 +121,6 @@ class DashboardController extends Controller
             ->values()
             ->take(5);
 
-        return view('dashboard.index', compact('user', 'kalenderAkademik', 'activeYear', 'jadwalDosen'));
+        return view('dashboard.index', compact('user', 'kalenderAkademik', 'activeYear', 'activeYears', 'jadwalDosen'));
     }
 }

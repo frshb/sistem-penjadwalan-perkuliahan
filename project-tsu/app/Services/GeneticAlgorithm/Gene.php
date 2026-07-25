@@ -156,9 +156,9 @@ class Gene
         // HC12: deteksi kelas sore dari suffix nama ATAU kata "sore"/"malam"
         // Suffix: -S, -S1, -S2, -SI, -4S, dst. (case-insensitive)
         // Format: A2-S, A2-S1, A2-4S, dll.
-        // Kata: "sore" atau "malam" sebagai kata penuh dalam nama kelas
         $namaNorm = strtolower(trim($namaKelas));
-        $this->isKelasS = (bool) preg_match('/-\d*s[i\d]*$/i', $namaNorm) // -S, -SI, -4S, -S1, -4S1
+        // Kelas sore jika berakhiran 'S' atau mengandung kata 'sore'/'malam'
+        $this->isKelasS = (bool) preg_match('/s[^\w]*$/i', $namaNorm)
             || (bool) preg_match('/\bsore\b|\bmalam\b/', $namaNorm);
     }
 
@@ -256,28 +256,41 @@ class Gene
             return true; // Bukan hari Jumat, tidak relevan
         }
         $slotAkhir = $this->getSlotAkhir();
-        // Pelanggaran jika rentang gene overlap slot sholat (tidak boleh "melompati")
-        return !($this->slotMulai <= $slotSholatJumat && $slotAkhir >= $slotSholatJumat);
+        // Slot 5 dan 6 pada hari Jumat tidak boleh ditempati (waktu Sholat Jumat)
+        return !($this->slotMulai <= 6 && $slotAkhir >= 5);
     }
 
     /**
      * HC12 — Kelas sore hanya boleh di slot sore/malam.
      * HC3  — Slot tidak di breakSlots.
      */
-    public function validateTimeConstraint(int $eveningStartSlot = 12, array $breakSlots = []): bool
+    public function validateTimeConstraint(int $eveningStartSlot, array $breakSlots): bool
     {
-        // HC3: slot break selalu melanggar jika ada slot kelas yang bertabrakan dengan break slots
+        // 1. Tidak boleh beririsan dengan breakSlots
         $slotAkhir = $this->getSlotAkhir();
-        for ($slot = $this->slotMulai; $slot <= $slotAkhir; $slot++) {
-            if (in_array($slot, $breakSlots, true)) {
+        for ($s = $this->slotMulai; $s <= $slotAkhir; $s++) {
+            if (in_array($s, $breakSlots, true)) {
+                // Pengecualian: Kelas malam >= 5 SKS boleh menggunakan slot 14 (**) agar muat
+                if ($s === 14 && $this->isKelasS && $this->durasi >= 5) {
+                    continue;
+                }
                 return false;
             }
         }
 
         // HC12: gunakan isKelasS yang sudah di-fix (mencakup suffix -S dan kata sore/malam)
         if ($this->isKelasS) {
-            // Kelas sore/malam: slotMulai harus ≥ eveningStartSlot
+            // Untuk kelas 5 SKS malam, wajib mulai dari slot 14 (**)
+            if ($this->durasi >= 5) {
+                return $this->slotMulai === 14;
+            }
+            // Kelas sore/malam biasa: slotMulai harus >= eveningStartSlot
             return $this->slotMulai >= $eveningStartSlot;
+        } else {
+            // Kelas reguler tidak boleh menjangkau eveningStartSlot
+            if ($slotAkhir >= $eveningStartSlot) {
+                return false;
+            }
         }
 
         // Kelas reguler: kelas harus selesai sebelum eveningStartSlot (tidak boleh overlap ke malam)
@@ -345,9 +358,7 @@ class Gene
         if ($this->kapasitasRuang < $this->kapasitasKelas) {
             return 2; // Terlalu kecil — penalti besar
         }
-        if ($this->kapasitasKelas > 0 && $this->kapasitasRuang > $this->kapasitasKelas * 3) {
-            return 1; // Terlalu besar — penalti kecil
-        }
+        // User requested not to penalize rooms that are larger than class capacity
         return 0;
     }
 
@@ -452,7 +463,7 @@ class Gene
      * @param int   $morningEndSlot     untuk SC15/SC16
      */
     public function getSoftViolations(
-        int   $eveningStartSlot = 12,
+        int   $eveningStartSlot = 13,
         array $breakSlots       = [],
         array $validRuangIds    = [],
         int   $morningEndSlot   = 6
@@ -499,7 +510,7 @@ class Gene
      * @deprecated Gunakan getSoftViolations() — lebih lengkap.
      * Dipertahankan untuk backward compatibility dengan kode lama.
      */
-    public function getConstraintViolations(int $eveningStartSlot = 12, array $breakSlots = []): int
+    public function getConstraintViolations(int $eveningStartSlot = 13, array $breakSlots = []): int
     {
         return $this->getSoftViolations($eveningStartSlot, $breakSlots);
     }

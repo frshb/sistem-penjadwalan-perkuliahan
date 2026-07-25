@@ -81,81 +81,147 @@
             </div>
         </div>
 
-        <!-- SECTION 1: TAHUN AKADEMIK AKTIF UTAMA -->
+        <!-- SECTION 1: TAHUN AKADEMIK AKTIF UTAMA (SMOOTH TRACK SLIDER / CAROUSEL) -->
         @php
-            $activeYear = $tahunAkademiks->firstWhere('status_aktif', 1);
+            $activeYears = $tahunAkademiks->where('status_aktif', 1)->values();
         @endphp
-        @if($activeYear)
-            <div class="mb-10">
-                <div class="flex items-center space-x-2 mb-4">
-                    <span class="flex h-2.5 w-2.5 relative">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                        Tahun Akademik Aktif Saat Ini (Rekomendasi Utama)
-                    </h3>
-                </div>
+        @if($activeYears->isNotEmpty())
+            <div class="mb-10"
+                 x-data="{
+                    activeSlide: 0,
+                    totalSlides: {{ $activeYears->count() }},
+                    startX: 0,
+                    endX: 0,
+                    handleTouchStart(e) {
+                        this.startX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+                    },
+                    handleTouchEnd(e) {
+                        this.endX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+                        this.handleSwipe();
+                    },
+                    handleSwipe() {
+                        const threshold = 35;
+                        if (this.startX - this.endX > threshold && this.activeSlide < this.totalSlides - 1) {
+                            this.activeSlide++;
+                        } else if (this.endX - this.startX > threshold && this.activeSlide > 0) {
+                            this.activeSlide--;
+                        }
+                    }
+                 }">
                 
-                <div class="bg-gradient-to-r from-teal-800 via-teal-900 to-emerald-950 rounded-3xl shadow-xl border border-teal-700 overflow-hidden relative group">
-                    <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-teal-700 rounded-full opacity-20 blur-2xl group-hover:scale-110 transition-all duration-500"></div>
-                    <div class="absolute -left-16 -top-16 w-64 h-64 bg-emerald-700 rounded-full opacity-10 blur-2xl"></div>
-                    
-                    <div class="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                        <div class="space-y-4 max-w-xl">
-                            <div>
-                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
-                                    Periode Utama Berjalan
-                                </span>
-                                <h4 class="text-2xl md:text-3xl font-extrabold text-white mt-2">
-                                    {{ $activeYear->nama_tahunakademik }}
-                                </h4>
-                                <p class="text-teal-200 text-sm mt-1">
-                                    Tahun Ajaran {{ $activeYear->tahun_ajaran }} • Gunakan periode ini untuk menyusun atau mengedit jadwal perkuliahan aktif yang sedang berjalan saat ini.
-                                </p>
-                            </div>
-                            
-                            <!-- Progress stats -->
-                            <div class="grid grid-cols-2 gap-4 bg-teal-950/40 p-4 rounded-2xl border border-teal-800/50">
-                                <div>
-                                    <p class="text-xs text-teal-300">Total Kelas Terdaftar</p>
-                                    <p class="text-lg font-bold text-white mt-0.5 flex items-center">
-                                        <svg class="w-4 h-4 mr-1.5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                        </svg>
-                                        {{ $activeYear->kelas_count }} Kelas
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-teal-300">Kelas Sudah Terjadwal</p>
-                                    <p class="text-lg font-bold text-white mt-0.5 flex items-center">
-                                        <svg class="w-4 h-4 mr-1.5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                        </svg>
-                                        {{ $activeYear->jadwals_count }} Terjadwal
-                                    </p>
-                                </div>
-                                <div class="col-span-2 mt-1">
-                                    <div class="flex justify-between text-xs text-teal-200 mb-1">
-                                        <span>Progres Penyusunan Jadwal</span>
-                                        <span class="font-bold text-white">{{ $activeYear->kelas_count > 0 ? round(($activeYear->jadwals_count / $activeYear->kelas_count) * 100) : 0 }}%</span>
-                                    </div>
-                                    <div class="w-full bg-teal-950/60 rounded-full h-2.5 overflow-hidden">
-                                        <div class="bg-gradient-to-r from-yellow-400 to-emerald-400 h-2.5 rounded-full transition-all duration-500" style="width: {{ $activeYear->kelas_count > 0 ? min(100, round(($activeYear->jadwals_count / $activeYear->kelas_count) * 100)) : 0 }}%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="flex h-2.5 w-2.5 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                            Tahun Akademik Aktif Saat Ini (Rekomendasi Utama)
+                        </h3>
+                    </div>
+
+                    @if($activeYears->count() > 1)
+                    <div class="flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                        <span>Geser untuk memilih periode aktif</span>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Track Slider Window (No FOUC/Flicker, Natural Sliding) -->
+                <div class="relative overflow-hidden rounded-3xl cursor-grab active:cursor-grabbing select-none"
+                     @touchstart="handleTouchStart($event)"
+                     @touchend="handleTouchEnd($event)"
+                     @mousedown="handleTouchStart($event)"
+                     @mouseup="handleTouchEnd($event)">
+
+                    <div class="flex w-full transition-transform duration-500 ease-out"
+                         :style="`transform: translateX(-${activeSlide * 100}%);`">
                         
-                        <div class="flex flex-col sm:flex-row md:flex-col lg:flex-row gap-3 min-w-[200px]">
-                            <a href="{{ route('jadwal.manual', ['tahun' => $activeYear->id_tahunakademik]) }}"
-                               class="inline-flex items-center justify-center px-6 py-4 bg-yellow-500 hover:bg-yellow-400 text-teal-950 font-bold rounded-2xl shadow-lg hover:shadow-yellow-500/20 transform hover:-translate-y-0.5 transition-all duration-200 text-center">
-                                Susun Jadwal
-                                <svg class="w-5 h-5 ml-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
-                            </a>
-                        </div>
+                        @foreach($activeYears as $index => $activeYear)
+                            <div class="w-full flex-shrink-0 min-w-full">
+                                <div class="bg-gradient-to-r from-teal-800 via-teal-900 to-emerald-950 rounded-3xl shadow-xl border border-teal-700 overflow-hidden relative group">
+                                    <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-teal-700 rounded-full opacity-20 blur-2xl group-hover:scale-110 transition-all duration-500"></div>
+                                    <div class="absolute -left-16 -top-16 w-64 h-64 bg-emerald-700 rounded-full opacity-10 blur-2xl"></div>
+
+                                    <div class="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                                        <div class="space-y-4 max-w-xl">
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
+                                                        Periode Utama Berjalan
+                                                    </span>
+                                                    @if($activeYears->count() > 1)
+                                                    <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-teal-700/60 text-teal-200 border border-teal-600">
+                                                        Periode #{{ $index + 1 }} dari {{ $activeYears->count() }}
+                                                    </span>
+                                                    @endif
+                                                </div>
+                                                <h4 class="text-2xl md:text-3xl font-extrabold text-white mt-2">
+                                                    {{ $activeYear->nama_tahunakademik }}
+                                                </h4>
+                                                <p class="text-teal-200 text-sm mt-1">
+                                                    Tahun Ajaran {{ $activeYear->tahun_ajaran }} • Gunakan periode ini untuk menyusun atau mengedit jadwal perkuliahan aktif yang sedang berjalan saat ini.
+                                                </p>
+                                            </div>
+
+                                            <!-- Progress stats -->
+                                            <div class="grid grid-cols-2 gap-4 bg-teal-950/40 p-4 rounded-2xl border border-teal-800/50">
+                                                <div>
+                                                    <p class="text-xs text-teal-300">Total Kelas Terdaftar</p>
+                                                    <p class="text-lg font-bold text-white mt-0.5 flex items-center">
+                                                        <svg class="w-4 h-4 mr-1.5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                                        </svg>
+                                                        {{ $activeYear->kelas_count }} Kelas
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs text-teal-300">Kelas Sudah Terjadwal</p>
+                                                    <p class="text-lg font-bold text-white mt-0.5 flex items-center">
+                                                        <svg class="w-4 h-4 mr-1.5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                        </svg>
+                                                        {{ $activeYear->jadwals_count }} Terjadwal
+                                                    </p>
+                                                </div>
+                                                <div class="col-span-2 mt-1">
+                                                    <div class="flex justify-between text-xs text-teal-200 mb-1">
+                                                        <span>Progres Penyusunan Jadwal</span>
+                                                        <span class="font-bold text-white">{{ $activeYear->kelas_count > 0 ? round(($activeYear->jadwals_count / $activeYear->kelas_count) * 100) : 0 }}%</span>
+                                                    </div>
+                                                    <div class="w-full bg-teal-950/60 rounded-full h-2.5 overflow-hidden">
+                                                        <div class="bg-gradient-to-r from-yellow-400 to-emerald-400 h-2.5 rounded-full transition-all duration-500" style="width: {{ $activeYear->kelas_count > 0 ? min(100, round(($activeYear->jadwals_count / $activeYear->kelas_count) * 100)) : 0 }}%"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-col sm:flex-row md:flex-col lg:flex-row gap-3 min-w-[200px]">
+                                            <a href="{{ route('jadwal.manual', ['tahun' => $activeYear->id_tahunakademik]) }}"
+                                               class="inline-flex items-center justify-center px-6 py-4 bg-yellow-500 hover:bg-yellow-400 text-teal-950 font-bold rounded-2xl shadow-lg hover:shadow-yellow-500/20 transform hover:-translate-y-0.5 transition-all duration-200 text-center">
+                                                Susun Jadwal
+                                                <svg class="w-5 h-5 ml-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
+
+                @if($activeYears->count() > 1)
+                <!-- Dot Indicators -->
+                <div class="flex justify-center items-center gap-2 mt-3">
+                    @foreach($activeYears as $index => $activeYear)
+                        <button @click="activeSlide = {{ $index }}"
+                                :class="activeSlide === {{ $index }} ? 'w-6 bg-teal-600' : 'w-2 bg-gray-300 hover:bg-gray-400'"
+                                class="h-2 rounded-full transition-all duration-300"
+                                title="{{ $activeYear->nama_tahunakademik }}"></button>
+                    @endforeach
+                </div>
+                @endif
             </div>
         @endif
 

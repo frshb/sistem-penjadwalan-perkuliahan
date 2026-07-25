@@ -204,7 +204,7 @@
 
                 @if(!$adaJadwalOtomatis)
                 <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium">
-                    ⚠ Belum ada jadwal dari penjadwalan otomatis. Jalankan Algoritma Genetika terlebih dahulu.
+                    ⚠ Belum ada jadwal pada tahun akademik ini. Buat jadwal manual atau jalankan Algoritma Genetika terlebih dahulu.
                 </div>
                 @endif
             </div>
@@ -693,6 +693,22 @@
                             @endforeach
                         </div>
                     </div>
+                    
+                    <!-- Search Workspace -->
+                    <div class="mt-3 relative flex items-center bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 transition-all focus-within:bg-white focus-within:border-teal-400 w-full sm:w-80">
+                        <svg class="w-4 h-4 text-gray-400 ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/></svg>
+                        <input type="text" id="workspace-search-input" oninput="window.workspaceSearch()" placeholder="Cari di jadwal..." class="w-full bg-transparent border-none focus:ring-0 text-sm py-1 outline-none px-2" autocomplete="off">
+                        
+                        <div id="workspace-search-nav" class="hidden items-center border-l border-gray-200 pl-2 space-x-1">
+                            <span id="workspace-search-count" class="text-[10px] font-bold text-teal-700 mr-1 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100 whitespace-nowrap">0/0</span>
+                            <button onclick="window.prevWorkspaceSearch()" class="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-teal-600 transition" title="Sebelumnya">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <button onclick="window.nextWorkspaceSearch()" class="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-teal-600 transition" title="Berikutnya">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="relative flex-1 overflow-auto">
@@ -709,11 +725,19 @@
 
                             {{-- Slot label --}}
                             <div class="text-[13px] text-gray-800 mt-1">
-                                {{ $loop->iteration === 6 ? '🕐 Istirahat' : 'Slot ' . $loop->iteration }}
+                                @if ($slot->id_slot === 6)
+                                    ☕ Istirahat
+                                @elseif ($slot->id_slot === 13)
+                                    *
+                                @elseif ($slot->id_slot === 14)
+                                    **
+                                @else
+                                    Slot {{ $slot->id_slot > 14 ? $slot->id_slot - 2 : $slot->id_slot }}
+                                @endif
                             </div>
 
                             {{-- Range waktu --}}
-                            <div class="text-[12px] text-gray-700">
+                            <div class="text-[11px] text-gray-500 mt-0.5">
                                 {{ \Carbon\Carbon::parse($slot->waktu_mulai)->format('H:i') }} - {{ \Carbon\Carbon::parse($slot->waktu_selesai)->format('H:i') }}
                             </div>
 
@@ -723,7 +747,7 @@
                             data-slot-line="{{ $slot->id_slot }}"
                             data-jam-mulai="{{ $slot->waktu_mulai }}"
                             data-jam-selesai="{{ $slot->waktu_selesai }}"
-                            data-is-istirahat="{{ $loop->iteration === 6 ? '1' : '0' }}"
+                            data-is-istirahat="{{ ($slot->id_slot === 6 || $slot->id_slot === 13 || $slot->id_slot === 14) ? '1' : '0' }}"
                         ></div>
                     </div>
                     @endforeach
@@ -1400,6 +1424,9 @@ function filterCardsByDay(dayStr) {
         const show = card.dataset.day === activeDay;
         card.style.display       = show ? 'flex' : 'none';
         card.style.pointerEvents = show ? 'auto' : 'none';
+        
+        // Non matching cards opacity
+        card.style.opacity = show ? '1' : '0.75';
     });
 
     // Load pivot mapping
@@ -2324,6 +2351,130 @@ function highlightBentrokPair(idx) {
     [pair.a, pair.b].forEach(card => { card.style.outline = '3px solid #ef4444'; card.style.zIndex = '50'; card.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
     setTimeout(() => { [pair.a, pair.b].forEach(card => { card.style.outline = ''; card.style.zIndex = '10'; }); }, 3000);
 }
+
+// ============================================================
+// WORKSPACE SEARCH
+// ============================================================
+window.workspaceSearchResults = [];
+window.currentWorkspaceSearchIndex = -1;
+
+window.workspaceSearch = function() {
+    const input = document.getElementById('workspace-search-input');
+    if (!input) return;
+    const query = (input.value || '').toLowerCase().trim();
+    const nav = document.getElementById('workspace-search-nav');
+    
+    // Reset previous search styles
+    document.querySelectorAll('.jadwal-card').forEach(card => {
+        card.style.opacity = '1';
+        card.style.zIndex = '10';
+        card.style.outline = 'none';
+        card.style.boxShadow = 'none';
+    });
+
+    if (!query) {
+        if (nav) {
+            nav.classList.add('hidden');
+            nav.classList.remove('flex');
+        }
+        window.workspaceSearchResults = [];
+        window.currentWorkspaceSearchIndex = -1;
+        return;
+    }
+
+    // Find matches
+    window.workspaceSearchResults = [];
+    document.querySelectorAll('.jadwal-card').forEach(card => {
+        const textToSearch = [
+            card.dataset.nama || '',
+            card.dataset.kelas || '',
+            card.dataset.dosen || '',
+            card.dataset.ruangan || '',
+            card.dataset.kodeMk || ''
+        ].join(' ').toLowerCase();
+
+        if (textToSearch.includes(query)) {
+            window.workspaceSearchResults.push(card);
+            card.style.opacity = '1';
+            card.style.zIndex = '50';
+            card.style.outline = 'none'; // Ensure no outline
+            card.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'; // Optional nice shadow
+        } else {
+            card.style.opacity = '0.75';
+            card.style.zIndex = '10';
+            card.style.outline = 'none';
+            card.style.boxShadow = 'none';
+        }
+    });
+
+    // Update UI
+    if (window.workspaceSearchResults.length > 0) {
+        if (nav) {
+            nav.classList.remove('hidden');
+            nav.classList.add('flex');
+        }
+        window.currentWorkspaceSearchIndex = 0;
+        window.highlightWorkspaceSearchCard();
+    } else {
+        if (nav) {
+            nav.classList.add('hidden');
+            nav.classList.remove('flex');
+        }
+        window.currentWorkspaceSearchIndex = -1;
+    }
+    window.updateWorkspaceSearchCounter();
+};
+
+window.highlightWorkspaceSearchCard = function() {
+    const activeCard = window.workspaceSearchResults[window.currentWorkspaceSearchIndex];
+    if (activeCard) {
+        // If the card is on a different day, switch day automatically
+        const targetDay = activeCard.dataset.day;
+        const alpineData = Alpine.$data(document.body);
+        if (alpineData && alpineData.selectedDay !== targetDay) {
+            alpineData.selectedDay = targetDay;
+            if (typeof filterCardsByDay === 'function') {
+                filterCardsByDay(targetDay);
+            }
+        }
+
+        // Use setTimeout to ensure DOM is updated after day change before scrolling
+        setTimeout(() => {
+            activeCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        }, 50);
+    }
+};
+
+window.nextWorkspaceSearch = function() {
+    if (window.workspaceSearchResults.length === 0) return;
+    window.currentWorkspaceSearchIndex++;
+    if (window.currentWorkspaceSearchIndex >= window.workspaceSearchResults.length) {
+        window.currentWorkspaceSearchIndex = 0;
+    }
+    window.highlightWorkspaceSearchCard();
+    window.updateWorkspaceSearchCounter();
+};
+
+window.prevWorkspaceSearch = function() {
+    if (window.workspaceSearchResults.length === 0) return;
+    window.currentWorkspaceSearchIndex--;
+    if (window.currentWorkspaceSearchIndex < 0) {
+        window.currentWorkspaceSearchIndex = window.workspaceSearchResults.length - 1;
+    }
+    window.highlightWorkspaceSearchCard();
+    window.updateWorkspaceSearchCounter();
+};
+
+window.updateWorkspaceSearchCounter = function() {
+    const counter = document.getElementById('workspace-search-count');
+    if (counter) {
+        if (window.workspaceSearchResults.length === 0) {
+            counter.innerText = '0/0';
+        } else {
+            counter.innerText = `${window.currentWorkspaceSearchIndex + 1}/${window.workspaceSearchResults.length}`;
+        }
+    }
+};
 
 </script>
 

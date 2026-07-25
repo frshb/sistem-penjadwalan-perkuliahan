@@ -244,7 +244,7 @@
                         <td class="px-4 py-3 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <button onclick="openDosenModal({{ $kelas->id_kelas }})" class="flex items-center justify-center bg-yellow-400 text-gray-900 px-3 py-1 rounded-md hover:bg-yellow-500 text-xs font-medium transition-colors" title="Edit Pengampu">
-                                    Edit
+                                    Sambungkan
                                 </button>
                                 @if($pengampu)
                                 <button onclick="removeDosen({{ $kelas->id_kelas }}, {{ $pengampu->id }}, event)" class="flex items-center justify-center bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-xs font-medium transition-colors" title="Reset/Lepas Dosen">

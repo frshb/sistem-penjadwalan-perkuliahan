@@ -15,6 +15,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
+use App\Helpers\ProdiFilter;
+
 class JadwalExport implements FromCollection, WithHeadings, WithStyles, WithTitle
 {
     public function __construct(private int $tahunAkademikId) {}
@@ -33,9 +35,10 @@ class JadwalExport implements FromCollection, WithHeadings, WithStyles, WithTitl
         ];
     }
 
-        public function collection()
+    public function collection()
     {
-        return Jadwal::with([
+        $prodiId = ProdiFilter::getProdiId();
+        $query = Jadwal::with([
                 'kelas.matakuliah',
                 'kelas.prodi',
                 'kelas.dosen',
@@ -43,8 +46,13 @@ class JadwalExport implements FromCollection, WithHeadings, WithStyles, WithTitl
                 'hari',
                 'ruangan',
             ])
-            ->where('id_tahunakademik', $this->tahunAkademikId) // ← fix
-            ->get()
+            ->where('id_tahunakademik', $this->tahunAkademikId);
+
+        if ($prodiId) {
+            $query->whereHas('kelas', fn($q) => $q->where('id_prodi', $prodiId));
+        }
+
+        return $query->get()
             ->map(function ($j) {
                 $slotId      = $j->id_slot_mulai; // ← fix
                 $sks         = $j->durasi_sks;    // ← fix

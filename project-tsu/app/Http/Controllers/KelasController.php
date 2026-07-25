@@ -57,7 +57,13 @@ class KelasController extends Controller
             });
         }
 
-        $kelas = $query->orderBy('semester')->orderBy('nama_kelas')->get();
+        $kelas = $query->get()
+            ->sortBy('nama_kelas', SORT_NATURAL | SORT_FLAG_CASE)
+            ->sortBy(function ($k) {
+                return $k->matakuliah->nama_matkul ?? '';
+            }, SORT_NATURAL | SORT_FLAG_CASE)
+            ->sortBy('semester')
+            ->values();
 
         $kelasByProdi = $kelas
             ->groupBy(fn($item) => $item->prodi->nama_prodi ?? 'Tanpa Prodi')
@@ -126,10 +132,79 @@ class KelasController extends Controller
         $tahunAkademiks = TahunAkademik::orderBy('tahun_ajaran', 'desc')->get();
         $tahunAkademik  = TahunAkademik::find($idTahun);
 
+        // Calculate capacities
+        $activePagiSlots = \App\Models\Slot_waktu::where('is_active', 1)->where('sesi', 'pagi')->count();
+        $activeMalamSlots = \App\Models\Slot_waktu::where('is_active', 1)->where('sesi', 'malam')->where('id_slot', '!=', 14)->count();
+        
+        $hariCount = \App\Models\Hari::where('is_active', 1)->count() ?: 5; // Fallback to 5 if empty
+        $slotsPerWeekPagi = ($hariCount * $activePagiSlots) - 1; // minus friday prayer slot
+        $slotsPerWeekMalam = $hariCount * $activeMalamSlots;
+        
+        // 1. Ambil data ruang unik dari kelas yang dijadwalkan (sesuai logika Audit)
+        $ruanganList = [];
+        foreach ($kelas as $k) {
+            $mk = $k->matakuliah ?? null;
+            if (!$mk) continue;
+            foreach ($mk->ruangans ?? [] as $r) {
+                $ruanganList[$r->id_ruang] = $r;
+            }
+        }
+
+        if (empty($ruanganList)) {
+            $ruanganList = \App\Models\Ruangan::all()->keyBy('id_ruang')->all();
+        }
+
+        $totalRuangan = count($ruanganList);
+        $totalLabRuangan = collect($ruanganList)->filter(fn($r) => strtolower(trim($r->tipe_ruangan ?? '')) === 'lab')->count();
+        $totalTeoriRuangan = $totalRuangan - $totalLabRuangan;
+
+        $kapasitasPagiTeori = $slotsPerWeekPagi * $totalTeoriRuangan;
+        $kapasitasPagiLab = $slotsPerWeekPagi * $totalLabRuangan;
+        $kapasitasMalamTeori = $slotsPerWeekMalam * $totalTeoriRuangan;
+        $kapasitasMalamLab = $slotsPerWeekMalam * $totalLabRuangan;
+
+        $sksPagiTeori = 0; $sksPagiLab = 0;
+        $sksMalamTeori = 0; $sksMalamLab = 0;
+
+        foreach ($kelas as $k) {
+            // Abaikan kelas yang tidak memiliki dosen (Kelas Kosong), persis seperti di Audit
+            if (empty($k->pengampus) || $k->pengampus->count() === 0) {
+                continue;
+            }
+
+            $namaNorm = strtolower(trim($k->nama_kelas ?? ''));
+            $isMalam = (bool) preg_match('/-\d*s[i\d]*[^\w]*$/i', $namaNorm)
+                || (bool) preg_match('/\bsore\b|\bmalam\b/', $namaNorm);
+            
+            $mk = $k->matakuliah ?? null;
+            $sks = $mk->sks ?? 0;
+            
+            $isLab = strtolower(trim($mk->jenis ?? '')) === 'praktikum';
+
+            if ($isMalam) {
+                if ($isLab) $sksMalamLab += $sks;
+                else $sksMalamTeori += $sks;
+            } else {
+                if ($isLab) $sksPagiLab += $sks;
+                else $sksPagiTeori += $sks;
+            }
+        }
+
         $stats = [
             'total_kelas'  => $kelas->count(),
             'total_matkul' => $kelas->unique('id_matakuliah')->count(),
-            'total_sks'    => $kelas->sum(fn($k) => $k->matakuliah->sks ?? 0),
+            'total_sks'    => $sksPagiTeori + $sksPagiLab + $sksMalamTeori + $sksMalamLab,
+            
+            'sks_pagi_teori'     => $sksPagiTeori,
+            'sks_pagi_lab'       => $sksPagiLab,
+            'kapasitas_pagi_teori' => $kapasitasPagiTeori,
+            'kapasitas_pagi_lab'   => $kapasitasPagiLab,
+
+            'sks_malam_teori'    => $sksMalamTeori,
+            'sks_malam_lab'      => $sksMalamLab,
+            'kapasitas_malam_teori'=> $kapasitasMalamTeori,
+            'kapasitas_malam_lab'  => $kapasitasMalamLab,
+            
             'kelas_kosong' => $kelas->filter(fn($k) => $k->dosen === null)->count(),
         ];
 
@@ -254,13 +329,12 @@ class KelasController extends Controller
     {
         abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
 
-        if ($kela->jadwals()->count() > 0) {
-            return redirect()->back()
-                ->with('error', 'Kelas tidak dapat dihapus karena sudah dijadwalkan pada menu penjadwalan.');
-        }
-
         try {
             $tahun = $kela->id_tahunakademik;
+
+            // Delete related schedule and pengampu records first to prevent FK constraint issues
+            $kela->jadwals()->delete();
+            $kela->pengampuKelas()->delete();
 
             $kela->delete();
 
@@ -270,7 +344,7 @@ class KelasController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Gagal menghapus data. Kelas mungkin masih digunakan pada data pengampu.');
+                ->with('error', 'Gagal menghapus data kelas: ' . $e->getMessage());
         }
     }
 
@@ -300,6 +374,23 @@ class KelasController extends Controller
         );
     }
 
+    public function getMataKuliahByFilter(Request $request)
+    {
+        $request->validate([
+            'id_prodi'     => 'required',
+            'semester'     => 'required',
+            'id_kurikulum' => 'required',
+        ]);
+
+        $mataKuliahs = MataKuliah::where('id_prodi', $request->id_prodi)
+            ->where('semester', $request->semester)
+            ->where('id_kurikulum', $request->id_kurikulum)
+            ->orderBy('nama_matkul')
+            ->get(['id_matakuliah', 'kode_matkul', 'nama_matkul', 'sks', 'sifat', 'konsentrasi']);
+
+        return response()->json($mataKuliahs);
+    }
+
     public function generate(Request $request)
     {
         abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
@@ -310,6 +401,11 @@ class KelasController extends Controller
             'id_kurikulum'     => 'required|exists:kurikulum,id_kurikulum',
             'jumlah_mahasiswa' => 'required|integer|min:1',
             'id_tahunakademik' => 'required',
+            'matkul_ids'       => 'required|array|min:1',
+            'matkul_ids.*'     => 'exists:mata_kuliah,id_matakuliah',
+            'tipe_kelas'       => 'nullable|in:pagi,malam',
+        ], [
+            'matkul_ids.required' => 'Pilih minimal satu mata kuliah untuk di-generate.',
         ]);
 
         $idProdi         = $request->id_prodi;
@@ -317,7 +413,7 @@ class KelasController extends Controller
         $jumlahMahasiswa = $request->jumlah_mahasiswa;
         $idTahun         = $request->id_tahunakademik;
 
-        $jumlahKelas = ceil($jumlahMahasiswa / 20);
+        $jumlahKelas = (int) ceil($jumlahMahasiswa / 25);
 
         $prodi = Prodi::findOrFail($idProdi);
 
@@ -334,26 +430,31 @@ class KelasController extends Controller
             default => 'AX'
         };
 
-        $mataKuliahs = MataKuliah::where('id_prodi', $request->id_prodi)
-            ->where('semester', $request->semester)
-            ->where('id_kurikulum', $request->id_kurikulum)
-            ->get();
+        $tipeKelas = $request->input('tipe_kelas', 'pagi');
+        
+        $mataKuliahs = MataKuliah::whereIn('id_matakuliah', $request->matkul_ids)->get();
 
         foreach ($mataKuliahs as $matkul) {
             $sisaMahasiswa = $jumlahMahasiswa;
 
             for ($i = 0; $i < $jumlahKelas; $i++) {
-                $huruf = chr(65 + $i);
+                if ($tipeKelas === 'malam') {
+                    $huruf = ($jumlahKelas === 1) ? 'S' : 'S' . ($i + 1);
+                } else {
+                    $huruf = chr(65 + $i);
+                }
+                
                 $namaKelas = $prefix . '-' . $semester . $huruf;
-                $kapasitasKelas = min(20, $sisaMahasiswa);
+                $kapasitasKelas = min(25, $sisaMahasiswa);
 
                 Kelas::create([
                     'nama_kelas'       => $namaKelas,
                     'semester'         => $semester,
-                    'kode_matkul'      => $matkul->kode_matkul,
+                    'id_matakuliah'    => $matkul->id_matakuliah,
                     'id_prodi'         => $idProdi,
                     'id_tahunakademik' => $idTahun,
                     'kapasitas'        => $kapasitasKelas,
+                    'jumlah_mahasiswa' => $kapasitasKelas,
                     'id_dosen'         => null,
                 ]);
 
@@ -368,22 +469,22 @@ class KelasController extends Controller
     {
         abort_if(!auth()->user()->hasPermissionAccess('management_data', 'Kelas Paralel', 'edit'), 403, 'Unauthorized action.');
 
-        $ids = explode(',', $request->ids);
+        $ids = array_filter(explode(',', $request->ids));
 
-        $kelasJadwal = Kelas::whereIn('id_kelas', $ids)->has('jadwals')->count();
-        if ($kelasJadwal > 0) {
-            return redirect()->back()
-                ->with('error', 'Beberapa kelas tidak dapat dihapus karena sudah dijadwalkan pada menu penjadwalan.');
+        if (empty($ids)) {
+            return redirect()->back()->with('error', 'Pilih minimal 1 kelas untuk dihapus.');
         }
 
         try {
+            \App\Models\Jadwal::whereIn('id_kelas', $ids)->delete();
+            \App\Models\PengampuKelas::whereIn('id_kelas', $ids)->delete();
             Kelas::whereIn('id_kelas', $ids)->delete();
 
             return redirect()->back()
                 ->with('success', 'Data kelas berhasil dihapus.');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Gagal menghapus data. Beberapa kelas mungkin masih digunakan pada data pengampu.');
+                ->with('error', 'Gagal menghapus data kelas: ' . $e->getMessage());
         }
     }
 }
