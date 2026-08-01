@@ -101,7 +101,7 @@
             @forelse ($tahunAkademiks as $tahun)
 
                 @php
-                    $isRestricted = !auth()->user()->isAdmin() && !$tahun->status_aktif;
+                    $isRestricted = !$tahun->status_aktif;
                 @endphp
                 <div
                     x-show="statusFilter === 'semua' || (statusFilter === 'aktif' && {{ $tahun->status_aktif ? 1 : 0 }} == 1) || (statusFilter === 'nonaktif' && {{ $tahun->status_aktif ? 0 : 1 }} == 1)"

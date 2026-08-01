@@ -147,9 +147,22 @@
                                     <div class="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                                         <div class="space-y-4 max-w-xl">
                                             <div>
-                                                <div class="flex items-center gap-2">
+                                                <div class="flex items-center gap-2 flex-wrap">
                                                     <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500 text-white shadow-sm">
                                                         Periode Utama Berjalan
+                                                    </span>
+                                                    <span class="px-3 py-1 text-xs font-bold rounded-full text-white shadow-sm uppercase tracking-wider
+                                                        @if(($activeYear->status_validasi ?? '') === 'disetujui') bg-emerald-600 @elseif(($activeYear->status_validasi ?? '') === 'revisi') bg-rose-600 @elseif(($activeYear->status_validasi ?? '') === 'menunggu_persetujuan') bg-amber-600 @else bg-slate-500 @endif
+                                                    ">
+                                                        @if(($activeYear->status_validasi ?? '') === 'disetujui')
+                                                            ✓ Disetujui Dekan
+                                                        @elseif(($activeYear->status_validasi ?? '') === 'revisi')
+                                                            ⚠ Perlu Revisi
+                                                        @elseif(($activeYear->status_validasi ?? '') === 'menunggu_persetujuan')
+                                                            ⏳ Menunggu Dekan
+                                                        @else
+                                                            📝 Draft
+                                                        @endif
                                                     </span>
                                                     @if($activeYears->count() > 1)
                                                     <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-teal-700/60 text-teal-200 border border-teal-600">
@@ -288,11 +301,12 @@
                 @forelse ($tahunAkademiks as $tahun)
                     @php
                         $progress = $tahun->kelas_count > 0 ? round(($tahun->jadwals_count / $tahun->kelas_count) * 100) : 0;
+                        $isRestricted = !$tahun->status_aktif;
                     @endphp
                     <div
                         x-show="(statusFilter === 'all' || (statusFilter === 'aktif' && {{ $tahun->status_aktif ? 1 : 0 }} == 1) || (statusFilter === 'nonaktif' && {{ $tahun->status_aktif ? 0 : 1 }} == 1)) && ('{{ strtolower($tahun->nama_tahunakademik) }}'.includes(searchQuery.toLowerCase()) || '{{ strtolower($tahun->tahun_ajaran) }}'.includes(searchQuery.toLowerCase()))"
                         :class="{{ $tahun->status_aktif }} ? 'ring-2 ring-emerald-500 ring-offset-1 border-emerald-100' : 'border-gray-200/60'"
-                        class="bg-white rounded-2xl shadow-md border overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
+                        class="bg-white rounded-2xl shadow-md border overflow-hidden transition-all duration-300 flex flex-col justify-between {{ $isRestricted ? 'opacity-50' : 'hover:shadow-xl hover:-translate-y-1' }}"
                     >
                         <!-- Card Header & Body -->
                         <div class="px-6 py-5">
@@ -324,6 +338,20 @@
                                         Nonaktif
                                     </span>
                                 @endif
+
+                                <span class="px-2.5 py-0.5 text-xs font-bold rounded-full text-white shadow-xs uppercase tracking-wider
+                                    @if(($tahun->status_validasi ?? '') === 'disetujui') bg-emerald-600 @elseif(($tahun->status_validasi ?? '') === 'revisi') bg-rose-600 @elseif(($tahun->status_validasi ?? '') === 'menunggu_persetujuan') bg-amber-500 @else bg-slate-500 @endif
+                                ">
+                                    @if(($tahun->status_validasi ?? '') === 'disetujui')
+                                        ✓ Disetujui
+                                    @elseif(($tahun->status_validasi ?? '') === 'revisi')
+                                        ⚠ Revisi
+                                    @elseif(($tahun->status_validasi ?? '') === 'menunggu_persetujuan')
+                                        ⏳ Menunggu Dekan
+                                    @else
+                                        📝 Draft
+                                    @endif
+                                </span>
                             </div>
 
                             <!-- Progress & Stats Section -->
@@ -374,11 +402,18 @@
                                 @endif
                             </div>
 
-                            <a href="{{ route('jadwal.manual', ['tahun' => $tahun->id_tahunakademik]) }}"
-                               class="inline-flex items-center justify-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl shadow-md transition duration-200 text-sm">
-                                Susun Jadwal
-                                <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                            </a>
+                            @if($isRestricted)
+                                <button disabled
+                                   class="inline-flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-400 font-bold rounded-xl cursor-not-allowed text-sm">
+                                    Tidak Aktif (Akses Terbatas)
+                                </button>
+                            @else
+                                <a href="{{ route('jadwal.manual', ['tahun' => $tahun->id_tahunakademik]) }}"
+                                   class="inline-flex items-center justify-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl shadow-md transition duration-200 text-sm">
+                                    Susun Jadwal
+                                    <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                </a>
+                            @endif
                         </div>
                     </div>
                 @empty

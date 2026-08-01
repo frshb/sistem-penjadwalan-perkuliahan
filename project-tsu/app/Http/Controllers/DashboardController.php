@@ -17,20 +17,29 @@ class DashboardController extends Controller
         
 
         $activeYears = \App\Models\TahunAkademik::where('status_aktif', 1)->get();
-        $activeYear = $activeYears->first();
+
+        // Cari tahun akademik aktif yang sudah disetujui & dipublikasikan secara resmi oleh Dekan
+        $approvedActiveYear = \App\Models\TahunAkademik::where('status_aktif', 1)
+            ->where('status_validasi', 'disetujui')
+            ->orderBy('validated_at', 'desc')
+            ->orderBy('id_tahunakademik', 'desc')
+            ->first();
+
+        // Untuk header info: jika ada yang disetujui pakai itu, jika tidak pakai activeYear pertama
+        $activeYear = $approvedActiveYear ?? $activeYears->first();
 
         $sksBeban = 0;
-        if ($authUser->id_dosen && $activeYear) {
-            $sksBeban = \App\Models\Jadwal::where('id_dosen', $authUser->id_dosen)
-                ->where('id_tahunakademik', $activeYear->id_tahunakademik)
-                ->sum('durasi_sks');
-        }
-
         $jadwalDosen = null;
-        if ($authUser->id_dosen && $activeYear) {
+
+        // Jadwal mengajar & SKS Beban HANYA tampil jika jadwal periode aktif SUDAH DI-ACC / DISETUJUI oleh Dekan!
+        if ($authUser->id_dosen && $approvedActiveYear) {
+            $sksBeban = \App\Models\Jadwal::where('id_dosen', $authUser->id_dosen)
+                ->where('id_tahunakademik', $approvedActiveYear->id_tahunakademik)
+                ->sum('durasi_sks');
+
             $jadwalDosen = \App\Models\Jadwal::with(['kelas', 'matakuliah', 'ruangan', 'hari', 'slotMulai'])
                 ->where('id_dosen', $authUser->id_dosen)
-                ->where('id_tahunakademik', $activeYear->id_tahunakademik)
+                ->where('id_tahunakademik', $approvedActiveYear->id_tahunakademik)
                 ->get()
                 ->map(function ($j) {
                     $slotId = $j->id_slot_mulai;

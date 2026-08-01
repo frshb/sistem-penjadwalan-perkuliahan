@@ -33,7 +33,7 @@
         </div>
 
         <!-- Alpine Component for Tabs & Form -->
-        <div x-data="{ activeTab: 'Super Admin' }" class="max-w-7xl mx-auto">
+        <div x-data="{ activeTab: '{{ $activeTab }}' }" class="max-w-7xl mx-auto">
             
             <!-- Tabs Navigation -->
             <div class="flex space-x-4 mb-8 border-b border-gray-100 overflow-x-auto pb-1 custom-scrollbar">
@@ -57,6 +57,25 @@
                             x-transition:enter-start="opacity-0 translate-y-2"
                             x-transition:enter-end="opacity-100 translate-y-0"
                             style="display: none;">
+
+                        @if(in_array(strtolower($roleName), ['kaprodi', 'sekretaris prodi']))
+                            <div class="mb-6 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <h3 class="text-sm font-bold text-gray-900">Pengaturan Spesifik Program Studi</h3>
+                                    <p class="text-xs text-gray-500 mt-1">Pilih prodi jika Anda ingin memberikan hak akses yang berbeda dari default.</p>
+                                </div>
+                                <select 
+                                    onchange="window.location.href='?tab={{ urlencode($roleName) }}&prodi_id=' + this.value" 
+                                    class="w-full sm:w-auto min-w-[250px] border-gray-300 rounded-xl shadow-sm focus:ring-teal-500 focus:border-teal-500 text-sm font-medium text-gray-700 bg-gray-50">
+                                    <option value="">-- Pengaturan Default (Semua Prodi) --</option>
+                                    @foreach($prodis as $prodi)
+                                        <option value="{{ $prodi->id_prodi }}" {{ $prodiId == $prodi->id_prodi && $activeTab == $roleName ? 'selected' : '' }}>
+                                            {{ $prodi->nama_prodi }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
 
                         <div class="space-y-6">
 
@@ -207,6 +226,11 @@
                         </div>
                     </div>
                 @endforeach
+
+                @if($prodiId)
+                    <input type="hidden" name="prodi_id" value="{{ $prodiId }}">
+                @endif
+                <input type="hidden" name="active_tab" :value="activeTab">
 
                 <div class="mt-8 pt-4 flex justify-end sticky bottom-6 z-10">
                     <button type="submit" class="bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl hover:translate-y-[-2px] transition-all duration-300 text-sm ring-4 ring-teal-500/20">

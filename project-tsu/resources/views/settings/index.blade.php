@@ -13,11 +13,12 @@
         @include('components.sidebar')
 
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-10'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
-            @include('components.header-profile')
-
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-teal-900">Pengaturan</h1>
-                <p class="text-gray-500 mt-2">Pilih menu pengaturan yang ingin Anda kelola.</p>
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-teal-900">Pengaturan</h1>
+                    <p class="text-gray-500 mt-2">Pilih menu pengaturan yang ingin Anda kelola.</p>
+                </div>
+                @include('components.header-profile')
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

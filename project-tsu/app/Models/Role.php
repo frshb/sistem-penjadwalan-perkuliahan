@@ -125,7 +125,7 @@ class Role extends Model
         ];
     }
 
-    public function getMergedPermissions(): array
+    public function getMergedPermissions(?int $prodiId = null): array
     {
         $saved    = $this->permissions;
         $defaults = $this->getDefaultPermissions();
@@ -135,17 +135,23 @@ class Role extends Model
             return $defaults;
         }
 
+        $overrideSource = $saved;
+        // Prioritaskan konfigurasi prodi jika ada
+        if ($prodiId !== null && isset($saved["prodi_{$prodiId}"])) {
+            $overrideSource = $saved["prodi_{$prodiId}"];
+        }
+
         foreach (['management_data', 'modul_penjadwalan'] as $module) {
-            if (!isset($saved[$module])) {
+            if (!isset($overrideSource[$module])) {
                 continue;
             }
 
             // Override enabled flag dari data tersimpan
-            $defaults[$module]['enabled'] = (bool) ($saved[$module]['enabled'] ?? $defaults[$module]['enabled']);
+            $defaults[$module]['enabled'] = (bool) ($overrideSource[$module]['enabled'] ?? $defaults[$module]['enabled']);
 
             // Buat map nama => [enabled, access] dari data tersimpan
             $savedItemMap = [];
-            foreach ($saved[$module]['items'] ?? [] as $item) {
+            foreach ($overrideSource[$module]['items'] ?? [] as $item) {
                 if (isset($item['name'])) {
                     $savedItemMap[$item['name']] = [
                         'enabled' => (bool) ($item['enabled'] ?? false),
@@ -169,7 +175,15 @@ class Role extends Model
 
     public function hasPermission(string $module, ?string $item = null): bool
     {
-        $permissions = $this->getMergedPermissions();
+        $prodiId = null;
+        if (in_array(strtolower($this->nama_role), ['kaprodi', 'sekretaris prodi'])) {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            if ($user && $user->id_role === $this->id_role) {
+                $prodiId = $user->id_prodi;
+            }
+        }
+
+        $permissions = $this->getMergedPermissions($prodiId);
 
         if (!isset($permissions[$module])) {
             return false;
@@ -199,7 +213,15 @@ class Role extends Model
 
     public function hasPermissionAccess(string $module, string $item, string $requiredAccess = 'read'): bool
     {
-        $permissions = $this->getMergedPermissions();
+        $prodiId = null;
+        if (in_array(strtolower($this->nama_role), ['kaprodi', 'sekretaris prodi'])) {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            if ($user && $user->id_role === $this->id_role) {
+                $prodiId = $user->id_prodi;
+            }
+        }
+
+        $permissions = $this->getMergedPermissions($prodiId);
 
         if (!isset($permissions[$module]) || !$permissions[$module]['enabled']) {
             return false;

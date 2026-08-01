@@ -273,6 +273,14 @@ class OptimizeJadwal
                 $overlap = $aStart < $bEnd && $aEnd > $bStart;
                 if (!$overlap) continue;
 
+                // Jika Dosen sama DAN Ruangan sama pada waktu yang sama, ini adalah KELAS GABUNGAN yang sah (bukan bentrok)
+                $isKelasGabunganValid = ($a->id_dosen && $b->id_dosen && $a->id_dosen === $b->id_dosen)
+                                      && ($a->id_ruang && $b->id_ruang && $a->id_ruang === $b->id_ruang);
+
+                if ($isKelasGabunganValid) {
+                    continue; // Skip dari laporan bentrok karena ini kelas gabungan yang sah
+                }
+
                 // [HC1] Dosen sama
                 if (
                     $a->id_dosen &&

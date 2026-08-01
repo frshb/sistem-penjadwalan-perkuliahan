@@ -1,56 +1,224 @@
-<div id="header-profile" class="relative w-fit ml-auto mb-6" x-data="{ 
+@php
+    $currentUser = Auth::user();
+    $currentRole = strtolower($currentUser->role->nama_role ?? '');
+    
+    $baseQuery = \App\Models\Notification::where(function($q) use ($currentUser, $currentRole) {
+        $q->where('user_id', $currentUser->id_user)
+          ->orWhere('role_target', $currentRole)
+          ->orWhereNull('role_target');
+    })
+    ->where(function($q) use ($currentUser) {
+        $q->whereNull('deleted_by')
+          ->orWhereJsonDoesntContain('deleted_by', $currentUser->id_user);
+    });
+
+    $unreadCount = (clone $baseQuery)->where('is_read', false)->count();
+    $userNotifications = (clone $baseQuery)->orderBy('created_at', 'desc')->take(10)->get();
+@endphp
+
+<div id="header-profile" class="relative w-fit ml-auto flex items-center gap-3" x-data="{ 
     dropdownOpen: false, 
+    notifOpen: false,
     modalOpen: false,
     editMode: false,
-    showPassword: false
+    showPassword: false,
+    markRead(id, redirectUrl = null) {
+        fetch('/notifications/' + id + '/read', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const target = redirectUrl || data.redirect_url;
+            if (target) {
+                window.location.href = target;
+            } else {
+                window.location.reload();
+            }
+        })
+        .catch(() => {
+            if (redirectUrl) window.location.href = redirectUrl;
+            else window.location.reload();
+        });
+    },
+    markAllRead() {
+        fetch('/notifications/read-all', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        }).then(() => window.location.reload());
+    },
+    deleteNotif(id) {
+        fetch('/notifications/' + id, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        }).then(() => window.location.reload());
+    },
+    deleteAllNotif() {
+        if (!confirm('Apakah Anda yakin ingin menghapus semua notifikasi dari akun Anda?')) return;
+        fetch('/notifications/delete-all', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        }).then(() => window.location.reload());
+    }
 }">
 
-    <div @click="dropdownOpen = !dropdownOpen" @click.away="dropdownOpen = false" class="flex items-center space-x-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors select-none">
-        <div class="bg-teal-100 p-2 rounded-full text-teal-600">
+    {{-- CHAT ICON CONTAINER --}}
+    <div id="chat-icon-container" class="relative"></div>
+
+    {{-- LONCENG NOTIFIKASI --}}
+    <div class="relative">
+        <button 
+            @click="notifOpen = !notifOpen; dropdownOpen = false" 
+            @click.away="notifOpen = false"
+            type="button" 
+            class="relative p-2.5 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-teal-50 text-gray-600 hover:text-teal-700 transition-colors focus:outline-none cursor-pointer"
+            title="Pemberitahuan & Notifikasi"
+        >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
+
+            @if($unreadCount > 0)
+                <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white ring-2 ring-white animate-pulse">
+                    {{ $unreadCount }}
+                </span>
+            @endif
+        </button>
+
+        {{-- DROPDOWN NOTIFIKASI --}}
+        <div x-show="notifOpen" 
+             x-transition:enter="transition ease-out duration-100"
+             x-transition:enter-start="transform opacity-0 scale-95"
+             x-transition:enter-end="transform opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-75"
+             x-transition:leave-start="transform opacity-100 scale-100"
+             x-transition:leave-end="transform opacity-0 scale-95"
+             class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl py-2 z-50 border border-gray-100 origin-top-right overflow-hidden"
+             style="display: none;">
+            
+            <div class="px-4 py-3 bg-gradient-to-r from-teal-700 to-teal-800 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <span class="font-bold text-sm">Pemberitahuan Sistem</span>
+                </div>
+                @if($unreadCount > 0)
+                    <button @click="markAllRead()" class="text-xs font-semibold text-teal-200 hover:text-white underline cursor-pointer" title="Tandai semua notifikasi sebagai dibaca">
+                        Tandai Semua Dibaca
+                    </button>
+                @endif
+            </div>
+
+            <div class="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                @forelse($userNotifications as $notif)
+                    <div class="p-3.5 hover:bg-gray-50 transition flex items-start justify-between gap-3 group {{ !$notif->is_read ? 'bg-teal-50/50' : '' }}">
+                        
+                        <div class="flex items-start gap-3 flex-1 min-w-0 cursor-pointer" @click="markRead({{ $notif->id }}, '{{ $notif->url ?? '' }}')">
+                            <div class="flex-shrink-0 mt-1">
+                                @if($notif->tipe === 'success')
+                                    <span class="p-1.5 rounded-full bg-emerald-100 text-emerald-600 block">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    </span>
+                                @elseif($notif->tipe === 'warning')
+                                    <span class="p-1.5 rounded-full bg-amber-100 text-amber-600 block">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    </span>
+                                @else
+                                    <span class="p-1.5 rounded-full bg-teal-100 text-teal-600 block">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs font-bold text-gray-900 truncate">{{ $notif->judul }}</p>
+                                    <span class="text-[10px] text-gray-400 shrink-0 ml-2">{{ $notif->created_at->diffForHumans() }}</span>
+                                </div>
+                                <p class="text-xs text-gray-600 mt-1 leading-normal line-clamp-3">{{ $notif->pesan }}</p>
+                            </div>
+                        </div>
+
+                        {{-- TOMBOL HAPUS INDIVIDUAL --}}
+                        <button 
+                            @click.stop="deleteNotif({{ $notif->id }})" 
+                            type="button"
+                            class="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition opacity-60 group-hover:opacity-100 cursor-pointer shrink-0 mt-0.5"
+                            title="Hapus notifikasi ini"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+
+                    </div>
+                @empty
+                    <div class="p-6 text-center text-gray-400">
+                        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
+                        <p class="text-xs">Belum ada notifikasi baru.</p>
+                    </div>
+                @endforelse
+            </div>
         </div>
-        <div class="hidden sm:flex flex-col text-right">
-            <span class="text-sm font-semibold text-gray-800">{{ Auth::user()->username ?? 'Guest' }}</span>
-            <span class="text-xs text-gray-500 capitalize">{{ Auth::user()->role->nama_role ?? '-' }}</span>
-        </div>
-        <svg class="w-4 h-4 text-gray-400 hidden sm:block transition-transform duration-200" :class="dropdownOpen ? 'transform rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
     </div>
 
-
-    <div x-show="dropdownOpen" 
-         x-transition:enter="transition ease-out duration-100"
-         x-transition:enter-start="transform opacity-0 scale-95"
-         x-transition:enter-end="transform opacity-100 scale-100"
-         x-transition:leave="transition ease-in duration-75"
-         x-transition:leave-start="transform opacity-100 scale-100"
-         x-transition:leave-end="transform opacity-0 scale-95"
-         class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 z-50 border border-gray-100 origin-top-right"
-         style="display: none;">
-        
-        <div class="px-4 py-3 border-b border-gray-100 sm:hidden bg-gray-50 mb-1">
-             <p class="text-sm font-bold text-gray-800 truncate">{{ Auth::user()->username ?? 'Guest' }}</p>
-             <p class="text-xs text-gray-500 capitalize">{{ Auth::user()->role->nama_role ?? '-' }}</p>
+    {{-- PROFILE DROPDOWN --}}
+    <div class="relative">
+        <div @click="dropdownOpen = !dropdownOpen; notifOpen = false" @click.away="dropdownOpen = false" class="flex items-center space-x-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors select-none">
+            <div class="bg-teal-100 p-2 rounded-full text-teal-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+            </div>
+            <div class="hidden sm:flex flex-col text-right">
+                <span class="text-sm font-semibold text-gray-800">{{ Auth::user()->username ?? 'Guest' }}</span>
+                <span class="text-xs text-gray-500 capitalize">{{ Auth::user()->role->nama_role ?? '-' }}</span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400 hidden sm:block transition-transform duration-200" :class="dropdownOpen ? 'transform rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </div>
 
-        <div class="px-2 space-y-1">
-            <a href="#" @click.prevent="dropdownOpen = false; modalOpen = true" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-md transition-colors">
-                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                Lihat Profil
-            </a>
+        <div x-show="dropdownOpen" 
+             x-transition:enter="transition ease-out duration-100"
+             x-transition:enter-start="transform opacity-0 scale-95"
+             x-transition:enter-end="transform opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-75"
+             x-transition:leave-start="transform opacity-100 scale-100"
+             x-transition:leave-end="transform opacity-0 scale-95"
+             class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 z-50 border border-gray-100 origin-top-right"
+             style="display: none;">
+            
+            <div class="px-4 py-3 border-b border-gray-100 sm:hidden bg-gray-50 mb-1">
+                 <p class="text-sm font-bold text-gray-800 truncate">{{ Auth::user()->username ?? 'Guest' }}</p>
+                 <p class="text-xs text-gray-500 capitalize">{{ Auth::user()->role->nama_role ?? '-' }}</p>
+            </div>
 
-            <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form-header').submit();" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">
-                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                Logout
-            </a>
+            <div class="px-2 space-y-1">
+                <a href="#" @click.prevent="dropdownOpen = false; modalOpen = true" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-md transition-colors">
+                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Lihat Profil
+                </a>
+
+                <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form-header').submit();" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">
+                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Logout
+                </a>
+            </div>
+            
+            <form id="logout-form-header" action="{{ route('logout') }}" method="POST" class="hidden">
+                @csrf
+            </form>
         </div>
-        
-        <form id="logout-form-header" action="{{ route('logout') }}" method="POST" class="hidden">
-            @csrf
-        </form>
     </div>
 
+    {{-- MODAL PROFIL --}}
     <template x-teleport="body">
         <div x-show="modalOpen" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -182,3 +350,6 @@
         </div>
     @endif
 </div>
+
+{{-- Include Chat Modal --}}
+<x-chat-modal />

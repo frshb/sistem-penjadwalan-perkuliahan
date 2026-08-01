@@ -35,15 +35,18 @@
 
     {{-- ── Top Header ── --}}
     <div class="bg-white border-b border-slate-200 px-6 sm:px-10 py-5 sticky top-0 z-10">
-        <div class="flex items-center gap-3">
-            <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
-                <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
-                <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-            </button>
-            <div>
-                <h1 class="text-2xl font-bold text-slate-800 leading-tight">Buat Jadwal Otomatis</h1>
-                <p class="text-sm text-slate-500 mt-1">Sistem Cerdas Penyusun Jadwal Perkuliahan</p>
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
+                    <div class="w-2 h-5 bg-teal-600 rounded-tl-md"></div>
+                    <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+                </button>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800 leading-tight">Buat Jadwal Otomatis</h1>
+                    <p class="text-sm text-slate-500 mt-1">Sistem Cerdas Penyusun Jadwal Perkuliahan</p>
+                </div>
             </div>
+            @include('components.header-profile')
         </div>
     </div>
 
@@ -964,82 +967,198 @@ function auditData() {
         .then(data => {
             btn.disabled = false;
             document.getElementById('btn-audit-label').textContent = oldText;
-
-            let msg = '';
             
-            // Render Stats
+            // 1. Helper untuk status (Tanpa Bullets, gunakan Bar & Badge)
+            const getStatusData = (sks, cap) => {
+                if (cap === 0) cap = 1;
+                const pct = Math.round((sks / cap) * 100);
+
+                if (pct > 100) {
+                    const kurang = Math.ceil(sks - cap);
+                    return { pct, label: `⚠ Kurang ${kurang} slot`, labelClass: 'text-rose-600 font-extrabold', badgeClass: 'bg-rose-100 text-rose-800 border border-rose-200', barClass: 'bg-rose-500' };
+                } else if (pct >= 85) {
+                    return { pct, label: 'Hampir penuh', labelClass: 'text-amber-600 font-bold', badgeClass: 'bg-amber-100 text-amber-800 border border-amber-200', barClass: 'bg-amber-500' };
+                } else if (pct >= 50) {
+                    return { pct, label: 'Masih cukup', labelClass: 'text-blue-600 font-bold', badgeClass: 'bg-blue-100 text-blue-800 border border-blue-200', barClass: 'bg-blue-500' };
+                } else {
+                    return { pct, label: 'Masih longgar', labelClass: 'text-emerald-600 font-bold', badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200', barClass: 'bg-emerald-500' };
+                }
+            };
+
+            // 2. Helper untuk render row (Teori / Lab)
+            const renderRow = (label, sks, cap) => {
+                const st = getStatusData(sks, cap);
+                const barWidth = Math.min(100, st.pct);
+                return `
+                <div class="py-3.5 border-b border-slate-100 last:border-0">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <span class="text-base font-extrabold text-slate-800">${label}</span>
+                        <div class="flex items-center gap-2 sm:gap-2.5">
+                            <span class="text-xs sm:text-sm font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-2xs">
+                                <strong class="text-slate-900 font-extrabold">${sks} SKS</strong> digunakan dari <strong class="text-slate-900 font-extrabold">${cap} SKS</strong>
+                            </span>
+                            <span class="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-extrabold shadow-2xs ${st.badgeClass}">
+                                ${st.pct}%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden flex-1 shadow-inner border border-slate-200/60">
+                            <div class="h-3 rounded-full ${st.barClass} transition-all duration-500" style="width: ${barWidth}%"></div>
+                        </div>
+                        <span class="text-xs sm:text-sm ${st.labelClass} text-right min-w-[110px]">${st.label}</span>
+                    </div>
+                </div>
+                `;
+            };
+
+            // 3. Helper untuk render shift card (Pagi / Malam)
+            const renderShiftCard = (s, title) => {
+                if (!s || s.total_sks === 0) return '';
+                return `
+                <div class="mb-4 bg-white p-4 sm:p-5 rounded-2xl border-2 border-slate-200 shadow-sm">
+                    <h4 class="font-extrabold text-slate-800 text-base mb-2 border-b border-slate-200 pb-2 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-teal-600"></span> ${title}
+                    </h4>
+                    <div class="space-y-1">
+                        ${renderRow('Ruang Teori', s.teori_sks, s.teori_capacity)}
+                        ${renderRow('Lab Praktik', s.lab_sks, s.lab_capacity)}
+                    </div>
+                </div>
+                `;
+            };
+
+            // 4. Summary Box & Action Box
+            let summaryHtml = '';
+            let actionHtml = '';
+
+            if (data.feasible) {
+                summaryHtml = `
+                <div class="p-4 sm:p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-emerald-950 mb-5 shadow-sm">
+                    <p class="font-extrabold text-base sm:text-lg text-emerald-900 mb-1 flex items-center gap-2">
+                        <span>✅</span> Kapasitas ruang kelas dan lab masih mencukupi.
+                    </p>
+                    <p class="text-sm font-semibold text-emerald-800">Sistem kemungkinan besar bisa langsung menyusun jadwal.</p>
+                </div>
+                `;
+            } else {
+                let fatalMsg = 'Terdapat kapasitas ruang atau prasyarat yang belum mencukupi untuk menampung semua kelas.';
+                const defisits = [];
+                if (data.stats) {
+                    if (data.stats.pagi && data.stats.pagi.teori_sks > data.stats.pagi.teori_capacity) {
+                        defisits.push(`Ruang Teori Pagi kekurangan ${Math.ceil(data.stats.pagi.teori_sks - data.stats.pagi.teori_capacity)} slot`);
+                    }
+                    if (data.stats.pagi && data.stats.pagi.lab_sks > data.stats.pagi.lab_capacity) {
+                        defisits.push(`Lab Praktik Pagi kekurangan ${Math.ceil(data.stats.pagi.lab_sks - data.stats.pagi.lab_capacity)} slot`);
+                    }
+                    if (data.stats.malam && data.stats.malam.teori_sks > data.stats.malam.teori_capacity) {
+                        defisits.push(`Ruang Teori Malam kekurangan ${Math.ceil(data.stats.malam.teori_sks - data.stats.malam.teori_capacity)} slot`);
+                    }
+                    if (data.stats.malam && data.stats.malam.lab_sks > data.stats.malam.lab_capacity) {
+                        defisits.push(`Lab Praktik Malam kekurangan ${Math.ceil(data.stats.malam.lab_sks - data.stats.malam.lab_capacity)} slot`);
+                    }
+                }
+                if (defisits.length > 0) {
+                    fatalMsg = defisits.join(', ') + ' untuk menampung semua kelas yang diminta.';
+                } else if (data.issues && data.issues.length > 0) {
+                    const firstFatal = data.issues.find(i => i.type === 'fatal') || data.issues[0];
+                    if (firstFatal) fatalMsg = firstFatal.message;
+                }
+
+                summaryHtml = `
+                <div class="p-4 sm:p-5 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-950 mb-5 shadow-sm">
+                    <p class="font-extrabold text-base sm:text-lg text-rose-900 mb-1 flex items-center gap-2">
+                        <span>❌</span> Ruang Belum Mencukupi
+                    </p>
+                    <p class="text-sm font-bold text-rose-800 leading-relaxed">${fatalMsg}</p>
+                </div>
+                `;
+
+                actionHtml = `
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 sm:p-5 my-4 text-slate-800 shadow-sm">
+                    <p class="font-extrabold text-base text-amber-950 mb-2.5 flex items-center gap-2">
+                        <span>💡</span> Yang bisa Anda lakukan:
+                    </p>
+                    <ul class="list-disc list-inside space-y-1.5 text-sm font-bold text-amber-900 pl-1">
+                        <li>Tambah ruang teori atau lab yang aktif pada jam tersebut, atau</li>
+                        <li>Pindahkan sebagian kelas ke sesi lain (pagi/sore), atau</li>
+                        <li>Kurangi jumlah kelas paralel pada mata kuliah yang padat</li>
+                    </ul>
+                </div>
+                `;
+            }
+
+            // 5. Details Accordion (Rincian Perhitungan Teknis)
+            let detailsHtml = '<div class="space-y-4 pt-1">';
             if (data.stats) {
-                const renderShiftStats = (s, title) => {
-                    if (s.total_sks === 0) return '';
-                    
-                    const pTeoriText = ((s.teori_sks / (s.teori_capacity || 1)) * 100).toFixed(1);
-                    const pLabText = ((s.lab_sks / (s.lab_capacity || 1)) * 100).toFixed(1);
-                    const pTotalText = ((s.total_sks / (s.total_capacity || 1)) * 100).toFixed(1);
-                    
-                    const pTeoriBar = Math.min(100, pTeoriText);
-                    const pLabBar = Math.min(100, pLabText);
-                    const pTotalBar = Math.min(100, pTotalText);
-
+                const renderDetailShift = (s, title) => {
+                    if (!s || s.total_sks === 0) return '';
                     return `
-                    <div class="mb-4 space-y-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
-                        <h4 class="font-bold text-slate-800 text-sm mb-1">${title}</h4>
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 space-y-2.5 shadow-sm">
+                        <div class="font-extrabold text-slate-800 text-sm border-b pb-1.5 mb-1">${title} — Rincian Teknis</div>
                         
-                        <div>
-                            <div class="flex justify-between text-xs font-semibold mb-1 ${s.teori_sks > s.teori_capacity ? 'text-rose-600' : 'text-slate-600'}">
-                                <span>Ruang Kelas Biasa (Teori)</span>
-                                <span>Butuh ${s.teori_sks} SKS / Ada ${s.teori_capacity} SKS (${pTeoriText}%)</span>
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span>Ruang Teori (${s.teori_ruangan} ruang × ${s.slots_per_week} slot):</span>
+                                <span class="font-bold text-slate-800">${s.teori_sks} SKS digunakan dari ${s.teori_capacity} SKS</span>
                             </div>
-                            <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden mb-1">
-                                <div class="h-2.5 rounded-full ${s.teori_sks > s.teori_capacity ? 'bg-rose-500' : 'bg-blue-500'}" style="width: ${pTeoriBar}%"></div>
-                            </div>
-                            <p class="text-[11px] text-slate-500 leading-snug mt-1">
-                                *<b>${s.teori_ruangan} Ruang Teori</b> <i>(× ${s.slots_per_week} slot = ${s.teori_capacity} SKS)</i>.
-                            </p>
+                            ${s.teori_room_names ? `<div class="text-[11px] text-slate-500 font-normal pl-2 border-l-2 border-teal-500/40 leading-snug">📌 <strong class="text-slate-700">Ruang aktif:</strong> ${s.teori_room_names}</div>` : ''}
                         </div>
 
-                        <div>
-                            <div class="flex justify-between text-xs font-semibold mb-1 ${s.lab_sks > s.lab_capacity ? 'text-rose-600' : 'text-slate-600'}">
-                                <span>Laboratorium (Praktik)</span>
-                                <span>Butuh ${s.lab_sks} SKS / Ada ${s.lab_capacity} SKS (${pLabText}%)</span>
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span>Lab Praktik (${s.lab_ruangan} ruang × ${s.slots_per_week} slot):</span>
+                                <span class="font-bold text-slate-800">${s.lab_sks} SKS digunakan dari ${s.lab_capacity} SKS</span>
                             </div>
-                            <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden mb-1">
-                                <div class="h-2.5 rounded-full ${s.lab_sks > s.lab_capacity ? 'bg-rose-500' : 'bg-blue-500'}" style="width: ${pLabBar}%"></div>
-                            </div>
-                            <p class="text-[11px] text-slate-500 leading-snug mt-1">
-                                *<b>${s.lab_ruangan} Laboratorium</b> <i>(× ${s.slots_per_week} slot = ${s.lab_capacity} SKS)</i>.
-                            </p>
+                            ${s.lab_room_names ? `<div class="text-[11px] text-slate-500 font-normal pl-2 border-l-2 border-teal-500/40 leading-snug">📌 <strong class="text-slate-700">Lab aktif:</strong> ${s.lab_room_names}</div>` : ''}
                         </div>
 
-                        <div class="pt-2 border-t border-slate-100 mt-2">
-                            <div class="flex justify-between text-xs font-bold mb-1 ${s.total_sks > s.total_capacity ? 'text-rose-700' : 'text-slate-700'}">
-                                <span>Total Keterisian</span>
-                                <span>Butuh ${s.total_sks} SKS / Ada ${s.total_capacity} SKS (${pTotalText}%)</span>
+                        <div class="space-y-1 border-t border-slate-100 pt-2 font-extrabold text-slate-900">
+                            <div class="flex justify-between items-center">
+                                <span>Total Keterisian (${s.total_ruangan} ruangan):</span>
+                                <span>${s.total_sks} SKS digunakan dari ${s.total_capacity} SKS</span>
                             </div>
                         </div>
                     </div>
                     `;
                 };
-
-                msg += renderShiftStats(data.stats.pagi, "Analisis Kapasitas Kelas Pagi (Reguler)");
-                msg += renderShiftStats(data.stats.malam, "Analisis Kapasitas Kelas Malam (Sore)");
+                detailsHtml += renderDetailShift(data.stats.pagi, "Kelas Pagi (Reguler)");
+                detailsHtml += renderDetailShift(data.stats.malam, "Kelas Malam (Sore)");
             }
 
-            // Render Issues
             if (data.issues && data.issues.length > 0) {
-                msg += '<div class="text-left space-y-2 text-sm mt-4 border-t pt-3">';
+                detailsHtml += '<div class="space-y-2 border-t border-slate-200 pt-3">';
+                detailsHtml += '<div class="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Daftar Temuan Audit:</div>';
                 data.issues.forEach(i => {
                     if (i.type === 'fatal') {
-                        msg += `<div class="p-3 rounded-xl bg-rose-50 text-rose-800 border border-rose-200/60 font-medium">❌ ${i.message}</div>`;
+                        detailsHtml += `<div class="p-3 rounded-xl bg-rose-50 text-rose-900 border border-rose-200 font-bold text-xs">❌ ${i.message}</div>`;
                     } else if (i.type === 'warning') {
-                        msg += `<div class="p-3 rounded-xl bg-amber-50 text-amber-800 border border-amber-200/60 font-medium">⚠️ ${i.message}</div>`;
+                        detailsHtml += `<div class="p-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 font-bold text-xs">⚠️ ${i.message}</div>`;
                     }
                 });
-                msg += '</div>';
-            } else if (data.feasible) {
-                msg += `<div class="p-4 rounded-xl bg-green-50 text-green-800 border border-green-200/60 font-medium mt-4">✅ Data sangat baik! Kemungkinan algoritma genetika akan dengan mudah menemukan jadwal optimal.</div>`;
+                detailsHtml += '</div>';
             }
+            detailsHtml += '</div>';
 
-            const title = data.feasible ? 'Hasil Audit Kelayakan Data' : 'Peringatan: Overload Terdeteksi';
+            // 6. Susun keseluruhan konten
+            let msg = `
+            <div class="space-y-2 text-left">
+                ${summaryHtml}
+                ${data.stats ? renderShiftCard(data.stats.pagi, "Kelas Pagi (Reguler)") : ''}
+                ${data.stats ? renderShiftCard(data.stats.malam, "Kelas Malam (Sore)") : ''}
+                ${actionHtml}
+                <div class="border-t border-slate-200 pt-3 mt-5">
+                    <button type="button" onclick="const el = document.getElementById('audit-details-box'); const isHidden = el.classList.contains('hidden'); el.classList.toggle('hidden'); this.innerHTML = isHidden ? 'Sembunyikan rincian perhitungan &#9652;' : 'Lihat rincian perhitungan &#9662;';" class="text-sm font-extrabold text-teal-700 hover:text-teal-900 flex items-center gap-1.5 transition cursor-pointer py-1.5 focus:outline-none">
+                        Lihat rincian perhitungan &#9662;
+                    </button>
+                    <div id="audit-details-box" class="hidden mt-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-inner transition-all">
+                        ${detailsHtml}
+                    </div>
+                </div>
+            </div>
+            `;
+
+            const title = data.feasible ? '✅ Data Siap Dijadwalkan' : '❌ Ruang Belum Mencukupi';
             showAuditModal(title, msg, false);
         })
         .catch(err => {
@@ -1072,24 +1191,24 @@ function showAuditModal(title, contentHtml, showConfirm = false, onConfirm = nul
     const closeButtonLabel = showConfirm ? 'Batal' : 'Tutup';
     const closeButtonClass = showConfirm 
         ? 'flex-1 px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition border border-slate-200'
-        : 'w-full px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl transition';
+        : 'w-full px-5 py-3.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl transition text-base shadow-md';
+
+    const pWarningHtml = showConfirm
+        ? `<p class="text-sm font-semibold text-slate-700 leading-relaxed mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200">Sistem mendeteksi beberapa potensi masalah pada data masukan Anda. Meskipun penjadwalan masih dapat dilanjutkan, hasil akhirnya berpotensi tidak 100% optimal:</p>`
+        : '';
 
     modal.innerHTML = `
         <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden transform scale-95 transition-all duration-300">
-            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                    ${showConfirm ? '⚠️' : '❌'} ${title}
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+                <h3 class="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                    ${showConfirm ? '⚠️ ' : ''}${title}
                 </h3>
-                <button type="button" id="btn-modal-x" class="text-slate-400 hover:text-slate-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <button type="button" id="btn-modal-x" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                <p class="text-sm text-slate-600 leading-relaxed">
-                    ${showConfirm 
-                        ? 'Sistem mendeteksi beberapa potensi masalah pada data masukan Anda. Meskipun penjadwalan masih dapat dilanjutkan, hasil akhirnya berpotensi tidak 100% optimal:' 
-                        : 'Sistem mendeteksi masalah kelayakan yang bersifat fatal pada data masukan Anda. Secara matematis, jadwal **tidak mungkin dapat disusun** tanpa pelanggaran berikut:'}
-                </p>
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                ${pWarningHtml}
                 ${contentHtml}
             </div>
             <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3">

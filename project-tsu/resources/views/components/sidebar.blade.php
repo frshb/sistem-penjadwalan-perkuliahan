@@ -100,7 +100,7 @@
             @endif
 
             @if($user->hasPermission('modul_penjadwalan', 'Penyesuaian Jadwal'))
-            <a href="{{ route('jadwal.pilih-tahun') }}" class="flex items-center {{ request()->routeIs('jadwal.manual') || request()->routeIs('jadwal.pilih-tahun') ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
+            <a href="{{ route('jadwal.index') }}" class="flex items-center {{ (request()->routeIs('jadwal.*') && !request()->routeIs('jadwal.otomatis.*')) ? 'px-4 py-2 text-xs font-medium text-teal-800 bg-teal-50 border-r-4 border-teal-600' : 'px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900' }} rounded-lg transition-all duration-200">
                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 Penyesuaian Jadwal
             </a>

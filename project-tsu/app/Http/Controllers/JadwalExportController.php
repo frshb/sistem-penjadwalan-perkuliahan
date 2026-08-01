@@ -20,6 +20,10 @@ class JadwalExportController extends Controller
     {
         $tahunAkademik = TahunAkademik::findOrFail($tahunAkademikId);
 
+        if (!$tahunAkademik->status_aktif) {
+            abort(403, 'Anda tidak memiliki akses ke tahun akademik yang dinonaktifkan.');
+        }
+
         return Excel::download(
             new JadwalExport($tahunAkademikId),
             'jadwal_' . $this->sanitizeFilename($tahunAkademik->nama_tahunakademik) . '.xlsx'
@@ -29,6 +33,10 @@ class JadwalExportController extends Controller
     public function exportPdf(Request $request, $tahunAkademikId)
     {
         $tahunAkademik = TahunAkademik::findOrFail($tahunAkademikId);
+
+        if (!$tahunAkademik->status_aktif) {
+            abort(403, 'Anda tidak memiliki akses ke tahun akademik yang dinonaktifkan.');
+        }
 
         $jadwals = $this->getJadwalData($tahunAkademikId);
 

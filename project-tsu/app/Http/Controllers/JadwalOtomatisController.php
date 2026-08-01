@@ -45,31 +45,20 @@ class JadwalOtomatisController extends Controller
         $tahunAkademikId = $request->tahun_akademik_id;
         $prodiId = ProdiFilter::getProdiId();
 
-        // Ambil data pengampu kelas untuk tahun akademik ini (sumber utama dari pengampu_kelas)
-        $pengampuKelasQuery = PengampuKelas::with([
-                'kelas.matakuliah.ruangans',
-                'kelas.prodi',
-                'dosen',
+        // Ambil data kelas untuk tahun akademik ini (sumber utama dari kelas)
+        $kelasQuery = \App\Models\Kelas::with([
+                'matakuliah.ruangans',
+                'prodi',
+                'pengampuKelas.dosen',
+                'pengampus.dosen',
             ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
-                $q->where('id_prodi', $prodiId);
-            });
+            $kelasQuery->where('id_prodi', $prodiId);
         }
 
-        $pengampus = $pengampuKelasQuery->get();
-
-        // Transformasikan pengampu_kelas menjadi koleksi Kelas
-        $kelas = $pengampus->map(function ($pk) {
-            $k = $pk->kelas;
-            if ($k) {
-                $k->setRelation('pengampus', collect([$pk]));
-                $k->setRelation('pengampuKelas', collect([$pk]));
-            }
-            return $k;
-        })->filter()->values();
+        $kelas = $kelasQuery->get();
 
         if ($kelas->isEmpty()) {
             return back()->withErrors(['kelas' => 'Tidak ada data kelas dengan dosen pengampu untuk tahun akademik ini.']);
@@ -208,14 +197,26 @@ class JadwalOtomatisController extends Controller
         $deleteQuery->delete();
 
         foreach ($jadwals as $row) {
+            $idKelas = $row['kelas_id'] ?? $row['id_kelas'] ?? null;
+            $kodeMk  = $row['kode_mk'] ?? $row['kode_matkul'] ?? null;
+            $idDosen = $row['dosen_id'] ?? $row['id_dosen'] ?? null;
+            $idHari  = $row['hari_id'] ?? $row['id_hari'] ?? null;
+            $idSlot  = $row['slot_id'] ?? $row['id_slot_mulai'] ?? null;
+            $idRuang = $row['ruangan_id'] ?? $row['id_ruang'] ?? null;
+            $sks     = $row['sks'] ?? $row['durasi_sks'] ?? 2;
+
+            if (!$idKelas || !$idHari || !$idSlot) {
+                continue;
+            }
+
             \App\Models\Jadwal::create([
-                'id_kelas'         => $row['kelas_id'],
-                'kode_matkul'      => $row['kode_mk'],
-                'id_dosen'         => $row['dosen_id'] ?: null,
-                'id_hari'          => $row['hari_id'],
-                'id_slot_mulai'    => $row['slot_id'],
-                'id_ruang'         => $row['ruangan_id'] ?: null,
-                'durasi_sks'       => $row['sks'],
+                'id_kelas'         => $idKelas,
+                'kode_matkul'      => $kodeMk,
+                'id_dosen'         => $idDosen ?: null,
+                'id_hari'          => $idHari,
+                'id_slot_mulai'    => $idSlot,
+                'id_ruang'         => $idRuang ?: null,
+                'durasi_sks'       => $sks,
                 'id_tahunakademik' => $tahunAkademikId,
                 'is_manual'        => 0,
             ]);
@@ -296,14 +297,26 @@ class JadwalOtomatisController extends Controller
         $deleteQuery->delete();
 
         foreach ($jadwals as $row) {
+            $idKelas = $row['kelas_id'] ?? $row['id_kelas'] ?? null;
+            $kodeMk  = $row['kode_mk'] ?? $row['kode_matkul'] ?? null;
+            $idDosen = $row['dosen_id'] ?? $row['id_dosen'] ?? null;
+            $idHari  = $row['hari_id'] ?? $row['id_hari'] ?? null;
+            $idSlot  = $row['slot_id'] ?? $row['id_slot_mulai'] ?? null;
+            $idRuang = $row['ruangan_id'] ?? $row['id_ruang'] ?? null;
+            $sks     = $row['sks'] ?? $row['durasi_sks'] ?? 2;
+
+            if (!$idKelas || !$idHari || !$idSlot) {
+                continue;
+            }
+
             \App\Models\Jadwal::create([
-                'id_kelas'         => $row['kelas_id'],
-                'kode_matkul'      => $row['kode_mk'],
-                'id_dosen'         => $row['dosen_id'] ?: null,
-                'id_hari'          => $row['hari_id'],
-                'id_slot_mulai'    => $row['slot_id'],
-                'id_ruang'         => $row['ruangan_id'] ?: null,
-                'durasi_sks'       => $row['sks'],
+                'id_kelas'         => $idKelas,
+                'kode_matkul'      => $kodeMk,
+                'id_dosen'         => $idDosen ?: null,
+                'id_hari'          => $idHari,
+                'id_slot_mulai'    => $idSlot,
+                'id_ruang'         => $idRuang ?: null,
+                'durasi_sks'       => $sks,
                 'id_tahunakademik' => $tahunAkademikId,
                 'is_manual'        => 0,
             ]);
@@ -356,30 +369,19 @@ class JadwalOtomatisController extends Controller
         $user = auth()->user();
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
-        $pengampuKelasQuery = PengampuKelas::with([
-                'kelas.matakuliah.ruangans',
-                'kelas.prodi',
-                'dosen',
+        $kelasQuery = \App\Models\Kelas::with([
+                'matakuliah.ruangans',
+                'prodi',
+                'pengampuKelas.dosen',
+                'pengampus.dosen',
             ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
-                $q->where('id_prodi', $prodiId);
-            });
+            $kelasQuery->where('id_prodi', $prodiId);
         }
 
-        $pengampus = $pengampuKelasQuery->get();
-
-        // Transformasikan pengampu_kelas menjadi koleksi Kelas
-        $kelas = $pengampus->map(function ($pk) {
-            $k = $pk->kelas;
-            if ($k) {
-                $k->setRelation('pengampus', collect([$pk]));
-                $k->setRelation('pengampuKelas', collect([$pk]));
-            }
-            return $k;
-        })->filter()->values();
+        $kelas = $kelasQuery->get();
 
         $slots = Slot_waktu::orderBy('id_slot')->get()
             ->map(fn($s) => [
@@ -605,30 +607,19 @@ class JadwalOtomatisController extends Controller
         $user = auth()->user();
         $prodiId = ($user && !$user->isAdmin() && !$user->isDekan()) ? $user->getProdiId() : null;
 
-        $pengampuKelasQuery = PengampuKelas::with([
-                'kelas.matakuliah.ruangans',
-                'kelas.prodi',
-                'dosen',
+        $kelasQuery = \App\Models\Kelas::with([
+                'matakuliah.ruangans',
+                'prodi',
+                'pengampuKelas.dosen',
+                'pengampus.dosen',
             ])
             ->where('id_tahunakademik', $tahunAkademikId);
 
         if ($prodiId) {
-            $pengampuKelasQuery->whereHas('kelas', function ($q) use ($prodiId) {
-                $q->where('id_prodi', $prodiId);
-            });
+            $kelasQuery->where('id_prodi', $prodiId);
         }
 
-        $pengampus = $pengampuKelasQuery->get();
-
-        // Transformasikan pengampu_kelas menjadi koleksi Kelas
-        $kelas = $pengampus->map(function ($pk) {
-            $k = $pk->kelas;
-            if ($k) {
-                $k->setRelation('pengampus', collect([$pk]));
-                $k->setRelation('pengampuKelas', collect([$pk]));
-            }
-            return $k;
-        })->filter()->values();
+        $kelas = $kelasQuery->get();
 
         if ($kelas->isEmpty()) {
             return response()->json([
@@ -694,32 +685,45 @@ class JadwalOtomatisController extends Controller
         $slotsPerWeekPagi = ($activeHari * $activePagiSlots) - 1; // minus friday slot 6
         $slotsPerWeekMalam = $activeHari * $activeMalamSlots;
         
-        $totalLabRuangan = collect($ruanganList)->filter(fn($r) => strtolower(trim($r->tipe_ruangan ?? '')) === 'lab')->count();
-        $totalTeoriRuangan = $totalRuangan - $totalLabRuangan;
+        $labRoomsColl = collect($ruanganList)->filter(fn($r) => strtolower(trim($r->tipe_ruangan ?? '')) === 'lab');
+        $teoriRoomsColl = collect($ruanganList)->filter(fn($r) => strtolower(trim($r->tipe_ruangan ?? '')) !== 'lab');
+
+        $totalLabRuangan = $labRoomsColl->count();
+        $totalTeoriRuangan = $teoriRoomsColl->count();
+
+        $labRoomNames = $labRoomsColl->pluck('nama_ruang')->implode(', ');
+        $teoriRoomNames = $teoriRoomsColl->pluck('nama_ruang')->implode(', ');
+        $totalRoomNames = collect($ruanganList)->pluck('nama_ruang')->implode(', ');
 
         $stats = [
             'pagi' => [
                 'total_sks' => 0,
                 'total_capacity' => $slotsPerWeekPagi * $totalRuangan,
                 'total_ruangan' => $totalRuangan,
+                'total_room_names' => $totalRoomNames,
                 'lab_sks' => 0,
                 'lab_capacity' => $slotsPerWeekPagi * $totalLabRuangan,
                 'lab_ruangan' => $totalLabRuangan,
+                'lab_room_names' => $labRoomNames,
                 'teori_sks' => 0,
                 'teori_capacity' => $slotsPerWeekPagi * $totalTeoriRuangan,
                 'teori_ruangan' => $totalTeoriRuangan,
+                'teori_room_names' => $teoriRoomNames,
                 'slots_per_week' => $slotsPerWeekPagi,
             ],
             'malam' => [
                 'total_sks' => 0,
                 'total_capacity' => $slotsPerWeekMalam * $totalRuangan,
                 'total_ruangan' => $totalRuangan,
+                'total_room_names' => $totalRoomNames,
                 'lab_sks' => 0,
                 'lab_capacity' => $slotsPerWeekMalam * $totalLabRuangan,
                 'lab_ruangan' => $totalLabRuangan,
+                'lab_room_names' => $labRoomNames,
                 'teori_sks' => 0,
                 'teori_capacity' => $slotsPerWeekMalam * $totalTeoriRuangan,
                 'teori_ruangan' => $totalTeoriRuangan,
+                'teori_room_names' => $teoriRoomNames,
                 'slots_per_week' => $slotsPerWeekMalam,
             ],
         ];

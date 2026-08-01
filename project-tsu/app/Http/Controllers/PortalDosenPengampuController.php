@@ -31,7 +31,7 @@ class PortalDosenPengampuController extends Controller
 
         $tahunAkademik = TahunAkademik::findOrFail($idTahun);
 
-        if (!auth()->user()->isAdmin() && !$tahunAkademik->status_aktif) {
+        if (!$tahunAkademik->status_aktif) {
             abort(403, 'Anda tidak memiliki akses ke tahun akademik yang dinonaktifkan.');
         }
 
@@ -146,8 +146,9 @@ class PortalDosenPengampuController extends Controller
                   });
             });
         }
-        $kelasList = $kelasQuery->get()->sortBy(function($k) {
-            return ($k->matakuliah->kode_matkul ?? '') . '-' . $k->nama_kelas;
+        $kelasList = $kelasQuery->get()->sortBy(function($k) use ($pengampus) {
+            $hasPengampu = $pengampus->where('id_kelas', $k->id_kelas)->isNotEmpty() ? 1 : 0;
+            return sprintf('%d-%s-%s', $hasPengampu, $k->matakuliah->kode_matkul ?? '', $k->nama_kelas);
         })->values();
 
         // Kurikulum & Prodi lookup

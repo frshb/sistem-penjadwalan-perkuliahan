@@ -175,6 +175,12 @@ class GeneticScheduler
      */
     private array $pairPartnerOf = [];
 
+    /**
+     * [BARU] Lookup kelas gabungan: primary_kelasId => [secondary_kelasId1, ...]
+     * Kelas secondary tidak dimasukkan ke GA, tapi jadwalnya diduplikasi di akhir (gabungan).
+     */
+    private array $gabunganMap = [];
+
     // ── Populasi & elite ─────────────────────────────────────────────────────
     /** @var Chromosome[] */
     private array $population = [];
@@ -309,7 +315,7 @@ class GeneticScheduler
         }
 
         return [
-            'genes'                => $best->getGenes(),
+            'genes'                => $this->expandGabunganGenes($best->getGenes()),
             'fitness_pct'          => round($best->getFitness(), 2),
             'generasi'             => 0, // akan diisi oleh caller dari progress data
             'total_kelas'          => count($best->getGenes()),
@@ -320,6 +326,29 @@ class GeneticScheduler
             'constraint_violations'=> $best->getConstraintViolations(),
             'problem_log'          => $this->problemLog,
         ];
+    }
+
+    /**
+     * [BARU] Expands genes for merged classes (gabungan)
+     */
+    private function expandGabunganGenes(array $genes): array
+    {
+        if (empty($this->gabunganMap)) {
+            return $genes;
+        }
+
+        $expandedGenes = [];
+        foreach ($genes as $gene) {
+            $expandedGenes[] = $gene;
+            if (isset($this->gabunganMap[$gene->kelasId])) {
+                foreach ($this->gabunganMap[$gene->kelasId] as $secondaryId) {
+                    $clonedGene = clone $gene;
+                    $clonedGene->kelasId = $secondaryId;
+                    $expandedGenes[] = $clonedGene;
+                }
+            }
+        }
+        return $expandedGenes;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -444,7 +473,7 @@ class GeneticScheduler
             $bestChromosome = $this->localSearch($bestChromosome);
 
             return [
-                'genes'               => $bestChromosome->getGenes(),
+                'genes'               => $this->expandGabunganGenes($bestChromosome->getGenes()),
                 'fitness_pct'         => round($bestChromosome->getFitness(), 2),
                 'generasi'            => $generation,
                 'total_kelas'         => count($this->kelasData),
@@ -544,7 +573,9 @@ class GeneticScheduler
         }
         $this->validRuangIds = array_unique($this->validRuangIds);
 
-        $this->kelasData = [];
+        $this->gabunganMap = [];
+        $rawKelasData = [];
+
         foreach ($kelas as $k) {
             $mk  = $k->matakuliah ?? null;
             $sks = (int) ($mk->sks ?? 0);
@@ -556,36 +587,22 @@ class GeneticScheduler
                 continue;
             }
 
-            $ruanganOptions = [];
+            // [NEW] Ambil id_dosen dari relasi pengampuKelas (bukan kolom id_dosen lama)
+            $idDosen = 0;
+            if (!empty($k->pengampuKelas) && $k->pengampuKelas->count() > 0) {
+                $idDosen = (int) $k->pengampuKelas->first()->id_dosen;
+            }
+            
+            $originalRuangans = [];
             try {
-                $ruanganOptions = $mk->ruangans
+                $originalRuangans = $mk->ruangans
                     ? $mk->ruangans->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray()
                     : [];
             } catch (\Exception $e) {
                 // Abaikan error relasi ruangan
             }
 
-            // [L5] Fallback: cari ruangan global yang cukup kapasitasnya
-            if (empty($ruanganOptions) && !empty($this->ruanganList)) {
-                $kap = (int) ($k->kapasitas ?? 0);
-                foreach ($this->ruanganList as $r) {
-                    if ($r['kapasitas'] >= $kap) {
-                        $ruanganOptions[] = $r['id'];
-                    }
-                }
-                if (!empty($ruanganOptions)) {
-                    $this->logProblem('fallback_ruangan',
-                        "Kelas id={$k->id_kelas}: ruangan dari global fallback.");
-                }
-            }
-
-            // [NEW] Ambil id_dosen dari relasi pengampuKelas (bukan kolom id_dosen lama)
-            $idDosen = 0;
-            if (!empty($k->pengampuKelas) && $k->pengampuKelas->count() > 0) {
-                $idDosen = (int) $k->pengampuKelas->first()->id_dosen;
-            }
-
-            $this->kelasData[(int) $k->id_kelas] = [
+            $rawKelasData[] = [
                 'id'              => (int) $k->id_kelas,
                 'nama'            => (string) ($k->nama_kelas ?? "Kelas-{$k->id_kelas}"),
                 'sks'             => $sks,
@@ -593,10 +610,66 @@ class GeneticScheduler
                 'kategori'        => strtolower(trim($mk->kategori ?? Gene::KATEGORI_SEDANG)),
                 'id_dosen'        => $idDosen,
                 'kapasitas'       => (int) ($k->kapasitas ?? 0),
-                'ruangan_options' => $ruanganOptions,
                 'kode_matkul'     => (string) ($mk->kode_matkul ?? ''),
-                'nama_matkul'     => (string) ($mk->nama_matkul ?? ''),
+                'nama_matkul'     => trim($mk->nama_matkul ?? ''),
+                'original_ruangans' => $originalRuangans,
             ];
+        }
+
+        // Proses penggabungan kelas (Class Merging)
+        $this->kelasData = [];
+        $groupedKelas = [];
+        foreach ($rawKelasData as $info) {
+            if ($info['id_dosen'] > 0 && $info['nama_matkul'] !== '') {
+                $key = strtolower($info['nama_matkul']) . '|' . $info['id_dosen'] . '|' . $info['sks'] . '|' . $info['jenis'];
+                $groupedKelas[$key][] = $info;
+            } else {
+                $groupedKelas['ungrouped_' . $info['id']][] = $info; // kelas tanpa dosen/nama matkul tidak digabung
+            }
+        }
+
+        foreach ($groupedKelas as $key => $group) {
+            $primary = $group[0];
+            $secondaryIds = [];
+            $totalKapasitas = $primary['kapasitas'];
+            
+            for ($i = 1; $i < count($group); $i++) {
+                $secondaryIds[] = $group[$i]['id'];
+                $totalKapasitas += $group[$i]['kapasitas'];
+                $this->logProblem('kelas_gabungan', "Kelas id={$group[$i]['id']} digabung ke id={$primary['id']} (Kapasitas total: {$totalKapasitas})");
+            }
+            
+            $primary['kapasitas'] = $totalKapasitas;
+            
+            // Hitung ruanganOptions berdasarkan total kapasitas
+            $ruanganOptions = [];
+            // Filter original_ruangans yang kapasitasnya masih cukup
+            foreach ($primary['original_ruangans'] as $rId) {
+                if (isset($this->ruanganList[$rId]) && $this->ruanganList[$rId]['kapasitas'] >= $totalKapasitas) {
+                    $ruanganOptions[] = $rId;
+                }
+            }
+            
+            // [L5] Fallback: cari ruangan global yang cukup kapasitasnya
+            if (empty($ruanganOptions) && !empty($this->ruanganList)) {
+                foreach ($this->ruanganList as $r) {
+                    if ($r['kapasitas'] >= $totalKapasitas) {
+                        $ruanganOptions[] = $r['id'];
+                    }
+                }
+                if (!empty($ruanganOptions) && $totalKapasitas > $group[0]['kapasitas']) {
+                    $this->logProblem('fallback_ruangan',
+                        "Kelas id={$primary['id']} (Gabungan): ruangan dari global fallback karena butuh kapasitas {$totalKapasitas}.");
+                }
+            }
+            
+            $primary['ruangan_options'] = $ruanganOptions;
+            unset($primary['original_ruangans']);
+            
+            $this->kelasData[$primary['id']] = $primary;
+            if (!empty($secondaryIds)) {
+                $this->gabunganMap[$primary['id']] = $secondaryIds;
+            }
         }
 
         // [BARU][P1] Bangun pasangan kelas paralel (HC15) setelah kelasData siap

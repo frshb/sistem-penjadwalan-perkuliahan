@@ -193,13 +193,50 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/penjadwalan/pilih-tahun', [JadwalController::class, 'pilihTahun'])->name('jadwal.pilih-tahun');
         Route::get('/penjadwalan/manual', [JadwalController::class, 'manual'])->name('jadwal.manual');
         Route::post('/jadwal/simpan-slot', [JadwalController::class, 'simpanSlot'])->name('jadwal.simpan-slot');
+        Route::post('/jadwal/simpan-bulk', [JadwalController::class, 'simpanBulk'])->name('jadwal.simpan-bulk');
         Route::delete('/jadwal/hapus-slot/{id}', [JadwalController::class, 'hapusSlot'])->name('jadwal.hapus-slot');
+        Route::delete('/jadwal/hapus-slots-bulk', [JadwalController::class, 'hapusSlotsBulk'])->name('jadwal.hapus-slots-bulk');
         Route::post('/jadwal/hapus-semua', [JadwalController::class, 'hapusSemua'])->name('jadwal.hapus-semua');
         Route::post('/jadwal/optimasi', [JadwalController::class, 'optimasi'])->name('jadwal.optimasi');
         Route::get('/jadwal/status-bentrok', [JadwalController::class, 'statusBentrok'])->name('jadwal.status-bentrok');
         Route::get('/jadwal/{tahunAkademikId}/export/excel', [JadwalExportController::class, 'exportExcel'])->name('jadwal.export.excel');
         Route::get('/jadwal/{tahunAkademikId}/export/pdf', [JadwalExportController::class, 'exportPdf'])->name('jadwal.export.pdf');
+
+        // Validasi & Persetujuan Dekan
+        Route::post('/penjadwalan/{id}/ajukan', [\App\Http\Controllers\JadwalValidasiController::class, 'ajukan'])->name('jadwal.validasi.ajukan');
+        Route::post('/penjadwalan/{id}/setujui', [\App\Http\Controllers\JadwalValidasiController::class, 'setujui'])->name('jadwal.validasi.setujui');
+        Route::post('/penjadwalan/{id}/revisi', [\App\Http\Controllers\JadwalValidasiController::class, 'mintaRevisi'])->name('jadwal.validasi.revisi');
+        Route::post('/penjadwalan/{id}/batalkan-validasi', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanValidasi'])->name('jadwal.validasi.batalkan');
+        Route::post('/penjadwalan/{id}/batalkan-pengajuan', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanPengajuan'])->name('jadwal.validasi.batalkan-pengajuan');
+        Route::post('/penjadwalan/{id}/kirim-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'kirimSekprodi'])->name('jadwal.validasi.kirim-sekprodi');
+        Route::post('/penjadwalan/{id}/revisi-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'revisiSekprodi'])->name('jadwal.validasi.revisi-sekprodi');
+        Route::post('/penjadwalan/{id}/setujui-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'setujuiSekprodi'])->name('jadwal.validasi.setujui-sekprodi');
+        Route::post('/penjadwalan/{id}/revisi-kaprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'revisiKaprodi'])->name('jadwal.validasi.revisi-kaprodi');
+        Route::post('/penjadwalan/{id}/setujui-kaprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'setujuiKaprodi'])->name('jadwal.validasi.setujui-kaprodi');
+        Route::get('/penjadwalan/{id}/timeline', [\App\Http\Controllers\JadwalValidasiController::class, 'timeline'])->name('jadwal.validasi.timeline');
+        Route::delete('/penjadwalan/{id}/hapus-catatan-revisi', [\App\Http\Controllers\JadwalValidasiController::class, 'hapusCatatanRevisi'])->name('jadwal.validasi.hapus-catatan-revisi');
+        Route::delete('/penjadwalan/history/{id}', [\App\Http\Controllers\JadwalValidasiController::class, 'hapusHistory'])->name('jadwal.validasi.hapus-history');
     });
+
+    // Notifications API
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\JadwalValidasiController::class, 'markNotificationRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\JadwalValidasiController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::delete('/notifications/{id}', [\App\Http\Controllers\JadwalValidasiController::class, 'deleteNotification'])->name('notifications.delete');
+    Route::post('/notifications/delete-all', [\App\Http\Controllers\JadwalValidasiController::class, 'deleteAllNotifications'])->name('notifications.delete-all');
+
+    // Chat API
+    Route::get('/chat/contacts', [\App\Http\Controllers\ChatController::class, 'getContacts'])->name('chat.contacts');
+    Route::get('/chat/messages/{userId}', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::post('/chat/send', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/read/{userId}', [\App\Http\Controllers\ChatController::class, 'markAsRead'])->name('chat.read');
+    Route::delete('/chat/message/{id}', [\App\Http\Controllers\ChatController::class, 'deleteMessage'])->name('chat.delete');
+    Route::delete('/chat/clear/{userId}', [\App\Http\Controllers\ChatController::class, 'clearChat'])->name('chat.clear');
+    Route::get('/chat/unread-count', [\App\Http\Controllers\ChatController::class, 'getUnreadCount'])->name('chat.unread-count');
 
 });
 
+Route::get('/run-migration', function() {
+    \Illuminate\Support\Facades\Schema::dropIfExists('messages');
+    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    return 'Migration run successfully. The table has been recreated with correct foreign keys.';
+});

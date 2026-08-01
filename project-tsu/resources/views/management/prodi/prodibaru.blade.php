@@ -16,12 +16,15 @@
         <main id="main-content" :class="sidebarOpen ? 'lg:ml-64' : 'ml-10'" class="flex-1 min-w-0 p-6 sm:p-10 transition-all duration-300 ease-in-out ml-0">
 
             <div>
-                <div class="flex items-center mb-8">
-                    <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col mr-3 hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
-                        <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
-                        <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
-                    </button>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
+                <div class="flex justify-between items-center mb-8">
+                    <div class="flex items-center">
+                        <button @click="sidebarOpen = !sidebarOpen" class="flex flex-col mr-3 hover:opacity-80 transition cursor-pointer" title="Toggle Sidebar">
+                            <div class="w-2 h-5 bg-teal-800 rounded-tl-md"></div>
+                            <div class="w-2 h-3 bg-yellow-400 rounded-bl-md"></div>
+                        </button>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
+                    </div>
+                    @include('components.header-profile')
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                     <!-- Yellow Profile Box with View Profile & Logout -->

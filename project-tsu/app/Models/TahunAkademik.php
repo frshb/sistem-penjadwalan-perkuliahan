@@ -18,6 +18,9 @@ class TahunAkademik extends Model
         'nama_tahunakademik',
         'tahun_ajaran',
         'status_aktif',
+        'status_validasi',
+        'catatan_revisi',
+        'validated_at',
     ];
 
     public function kelas()

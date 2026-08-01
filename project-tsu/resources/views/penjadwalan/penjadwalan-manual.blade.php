@@ -350,6 +350,31 @@
         @include('components.header-profile')
     </div>
 
+    {{-- BANNER VALIDASI DEKAN (STATUS & TOMBOL AKSI DEKAN) --}}
+    <div class="mt-6">
+        <x-dekan-validasi-banner :tahunAkademik="$tahunAkademik" />
+        <x-prodi-validasi-banner :tahunAkademik="$tahunAkademik" />
+    </div>
+
+    @php
+        $uRole = strtolower(Auth::user()->role->nama_role ?? '');
+        $isEd = in_array($uRole, ['admin', 'kaprodi', 'sekretaris prodi']);
+        $isDek = ($uRole === 'dekan');
+        $isAppr = (($tahunAkademik->status_validasi ?? 'draft') === 'disetujui');
+    @endphp
+
+    @if(!$isEd && !$isDek && !$isAppr)
+    <div class="mt-4 p-5 bg-amber-50 border-2 border-amber-200 rounded-3xl shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+            <h4 class="text-sm font-bold text-amber-950">Jadwal Kuliah Belum Dipublikasikan</h4>
+            <p class="text-xs text-amber-800 font-medium">Jadwal perkuliahan periode {{ $tahunAkademik->nama_tahunakademik }} masih dalam proses penyusunan/pemeriksaan oleh Admin & Dekan. Jadwal akan tampil setelah disetujui dan dipublikasikan resmi oleh Dekan.</p>
+        </div>
+    </div>
+    @endif
+
     {{-- ACTION BAR --}}
     <div class="mt-8" :class="focusMode ? 'mt-0 bg-white p-3 rounded-2xl border border-gray-150 shadow-sm' : ''">
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -368,6 +393,13 @@
                     <span>{{ $tahunAkademik->nama_tahunakademik }}</span>
                 </div>
 
+                @php
+                    $userRole = strtolower(Auth::user()->role->nama_role ?? '');
+                    $isAdmin  = ($userRole === 'admin');
+                    $isEditor = Auth::user()->role->hasPermissionAccess('modul_penjadwalan', 'Penyesuaian Jadwal', 'edit');
+                @endphp
+
+                @if($isAdmin)
                 <!-- Optimasi -->
                 <button
                     id="btn-optimasi"
@@ -381,6 +413,7 @@
                     <span class="hidden sm:inline">Optimasi Jadwal</span>
                     <span class="sm:hidden">Optimasi</span>
                 </button>
+                @endif
 
                 <!-- Lihat Bentrok -->
                 <button
@@ -396,6 +429,7 @@
                     <span class="sm:hidden">Bentrok</span>
                 </button>
 
+                @if($isAdmin)
                 <!-- Reset -->
                 <button
                     onclick="resetWorkspace()"
@@ -411,7 +445,7 @@
 
                 <!-- Simpan -->
                 <button
-                    onclick="simpanSemuaJadwal()"
+                    onclick="openModalSimpanJadwal()"
                     id="btn-simpan-semua"
                     class="px-3 sm:px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow flex items-center gap-2 transition text-sm"
                 >
@@ -423,7 +457,76 @@
                         <span class="sm:hidden">Simpan</span>
                     </span>
                 </button>
+                @endif
 
+                <!-- Status & Pengajuan Validasi Dekan (Untuk Admin / Kaprodi) -->
+                @php
+                    $stVal = $tahunAkademik->status_validasi ?? 'draft';
+                    $kCount = isset($kelas) ? $kelas->count() : \App\Models\Kelas::where('id_tahunakademik', $tahunAkademik->id_tahunakademik)->count();
+                    $jCount = isset($jadwalTersimpan) ? $jadwalTersimpan->pluck('id_kelas')->unique()->count() : \App\Models\Jadwal::where('id_tahunakademik', $tahunAkademik->id_tahunakademik)->count();
+                    $pPercent = $kCount > 0 ? min(100, (int)round(($jCount / $kCount) * 100)) : 0;
+                @endphp
+
+                <div id="container-btn-ajukan" class="{{ in_array($stVal, ['draft', 'revisi', 'revisi_sekprodi', 'revisi_kaprodi', 'disetujui_kaprodi']) && $pPercent >= 100 ? 'flex items-center gap-2' : 'hidden' }}">
+                    @if(in_array($stVal, ['draft', 'revisi', 'revisi_sekprodi', 'revisi_kaprodi']))
+                        @if($isAdmin)
+                            <form action="{{ route('jadwal.validasi.kirim-sekprodi', $tahunAkademik->id_tahunakademik) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="px-3 sm:px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Kirim jadwal ini ke Sekretaris Prodi untuk direview">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                    <span>{{ in_array($stVal, ['revisi', 'revisi_sekprodi', 'revisi_kaprodi']) ? 'Kirim Ulang untuk Review' : 'Review Jadwal (Kirim ke Sekprodi)' }}</span>
+                                </button>
+                            </form>
+                            @if($stVal === 'revisi')
+                            <form action="{{ route('jadwal.validasi.ajukan', $tahunAkademik->id_tahunakademik) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="px-3 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Ajukan langsung kembali ke Dekan tanpa review ulang Sekprodi/Kaprodi">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>Ajukan Langsung ke Dekan</span>
+                                </button>
+                            </form>
+                            @endif
+                        @endif
+                    @elseif($stVal === 'disetujui_kaprodi')
+                        @if($isAdmin)
+                            <form action="{{ route('jadwal.validasi.ajukan', $tahunAkademik->id_tahunakademik) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit" class="px-3 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Ajukan jadwal yang telah disetujui Kaprodi ini ke Dekan untuk validasi akhir">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>Ajukan ke Dekan (Validasi Akhir)</span>
+                                </button>
+                            </form>
+                        @endif
+                    @endif
+                </div>
+
+                <div id="container-status-menunggu" class="{{ in_array($stVal, ['review_sekprodi', 'review_kaprodi', 'menunggu_persetujuan']) && $pPercent >= 100 ? 'inline' : 'hidden' }}">
+                    @if(in_array($stVal, ['review_sekprodi', 'review_kaprodi', 'menunggu_persetujuan']))
+                        @if($isAdmin)
+                            <form action="{{ route('jadwal.validasi.batalkan-pengajuan', $tahunAkademik->id_tahunakademik) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pengajuan review ini untuk mengedit jadwal kembali?')">
+                                @csrf
+                                <button type="submit" class="px-3.5 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition" title="Klik untuk membatalkan pengajuan review agar dapat mengedit jadwal kembali">
+                                    <svg class="w-4 h-4 text-amber-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                    <span>{{ $stVal === 'review_sekprodi' ? 'Menunggu Sekprodi' : ($stVal === 'review_kaprodi' ? 'Menunggu Kaprodi' : 'Menunggu Dekan') }} (Klik Batalkan)</span>
+                                </button>
+                            </form>
+                        @else
+                            <span class="px-3.5 py-2.5 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Jadwal sedang dalam proses review">
+                                <svg class="w-4 h-4 text-amber-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                <span>{{ $stVal === 'review_sekprodi' ? 'Sedang Dalam Review Sekprodi' : ($stVal === 'review_kaprodi' ? 'Sedang Dalam Review Kaprodi' : 'Menunggu Persetujuan Dekan') }}</span>
+                            </span>
+                        @endif
+                    @endif
+                </div>
+
+                @if($stVal === 'disetujui' && $pPercent >= 100)
+                    <span class="px-3.5 py-2.5 bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Jadwal telah disetujui & dipublikasikan Dekan">
+                        <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                        <span>Disetujui Dekan</span>
+                    </span>
+                @endif
+
+                @if($isEditor)
                 <!-- Undo -->
                 <button
                     id="hist-undo-btn"
@@ -464,6 +567,7 @@
                     </svg>
                     <span id="hist-stack-info" class="hidden md:inline">Riwayat</span>
                 </button>
+                @endif
 
             </div>
 
@@ -776,6 +880,7 @@
                 <div class="px-5 py-4 space-y-4 flex-1 overflow-y-auto">
                     <div><p class="text-xs text-gray-400 font-medium mb-0.5">Mata Kuliah</p><p id="dp-nama" class="text-sm font-bold text-gray-800"></p></div>
                     <div><p class="text-xs text-gray-400 font-medium mb-0.5">Kode MK</p><p id="dp-kode" class="text-sm font-semibold text-teal-700 font-mono"></p></div>
+                    <div><p class="text-xs text-gray-400 font-medium mb-0.5">Program Studi</p><p id="dp-prodi" class="text-sm font-semibold text-gray-800"></p></div>
                     <div><p class="text-xs text-gray-400 font-medium mb-0.5">Kelas</p><p id="dp-kelas" class="text-sm font-semibold text-gray-800"></p></div>
                     <div><p class="text-xs text-gray-400 font-medium mb-0.5">Dosen</p><p id="dp-dosen" class="text-sm font-semibold text-gray-800"></p></div>
                     <div><p class="text-xs text-gray-400 font-medium mb-0.5">Hari</p><p id="dp-hari" class="text-sm font-semibold text-gray-800"></p></div>
@@ -987,6 +1092,8 @@ function _snapshotWorkspace() {
     return [...document.querySelectorAll('.jadwal-card')].map(card => ({
         kelasList:   card.dataset.kelasList   || '[]',
         kelasIdList: card.dataset.kelasIdList || '[]',
+        kodeMkList:  card.dataset.kodeMkList  || '[]',
+        prodiList:   card.dataset.prodiList   || '[]',
         start:       card.dataset.start,
         end:         card.dataset.end,
         sks:         card.dataset.sks,
@@ -1004,6 +1111,8 @@ function _snapshotWorkspace() {
         jamSelesai:  card.dataset.jamSelesai,
         jadwalIds:   card.dataset.jadwalIds   || '[]',
         column:      card.dataset.column,
+        isReadOnly:  card.dataset.isReadOnly === 'true',
+        isOtherProdi: card.dataset.isOtherProdi === 'true',
     }));
 }
 
@@ -1061,25 +1170,34 @@ function _restoreWorkspace(snapshot) {
             prodi:      s.prodi,
             jenis:      s.jenis,
             column:     s.column,
+            isReadOnly: s.isReadOnly,
+            isOtherProdi: s.isOtherProdi,
         }, true);
 
         const kelasList   = JSON.parse(s.kelasList   || '[]');
         const kelasIdList = JSON.parse(s.kelasIdList || '[]');
+        const kodeMkList  = JSON.parse(s.kodeMkList  || JSON.stringify(s.kodeMk ? [s.kodeMk] : []));
+        const prodiList   = JSON.parse(s.prodiList   || JSON.stringify(s.prodi ? [s.prodi] : []));
         if (kelasList.length > 1) {
             c.dataset.kelasList   = s.kelasList;
             c.dataset.kelasIdList = s.kelasIdList;
+            c.dataset.kodeMkList  = s.kodeMkList || JSON.stringify(kodeMkList);
+            c.dataset.prodiList   = s.prodiList  || JSON.stringify(prodiList);
             const color = getCourseColor(s.kelas);
+            const displayKodeMk = kodeMkList.length > 1 ? kodeMkList.join(' + ') : (s.kodeMk || '-');
+            const displayProdi  = prodiList.length > 1 ? prodiList.join(' + ') : (s.prodi || '-');
             c.innerHTML = `
                 <div>
                     <div class="flex items-start justify-between">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="font-bold text-[13px] ${color.text}">${kelasList.join(' + ')}</span>
-                            <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan</span>
+                            <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan (${kelasList.length} Kelas)</span>
                         </div>
                         <button class="text-gray-400 hover:text-red-500 transition ml-2" onclick="removeCard(this)">✕</button>
                     </div>
-                    <div class="mt-1">
-                        <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${s.kodeMk || '-'}</span>
+                    <div class="mt-2 flex flex-col items-start gap-1">
+                        <span class="text-[10px] px-2 py-0.5 rounded-lg bg-white/80 text-gray-600 border border-gray-200">${displayProdi}</span>
+                        <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${displayKodeMk}</span>
                     </div>
                     <h3 class="mt-1 text-[13px] leading-snug font-bold text-gray-800">${s.nama || '-'}</h3>
                     <div class="mt-2 space-y-1">
@@ -1299,7 +1417,7 @@ async function simpanJadwal(card) {
                 body: JSON.stringify({
                     kelas_id: kelasId, slot_id: parseInt(card.dataset.start),
                     hari_id: hariId, ruang_id: card.dataset.ruanganId || null,
-                    durasi_sks: parseInt(card.dataset.sks), kode_matkul: card.dataset.kodeMk || '',
+                    durasi_sks: parseInt(card.dataset.sks), kode_matkul: sidebarEl?.dataset.kodeMk || card.dataset.kodeMk || '',
                     dosen_id: sidebarEl?.dataset.dosenId || null, tahun_akademik_id: TAHUN_AKADEMIK,
                 }),
             }).then(async r => {
@@ -1314,19 +1432,87 @@ async function simpanJadwal(card) {
     }
 }
 
-async function simpanSemuaJadwal() {
+function openModalSimpanJadwal() {
+    const cards = [...document.querySelectorAll('.jadwal-card')];
+    if (!cards.length) { alert('Belum ada jadwal yang disusun di workspace.'); return; }
+    
+    const modal = document.getElementById('modal-simpan-jadwal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const inp = document.getElementById('inp-simpan-label');
+    if (inp) {
+        inp.value = `Penyesuaian Manual (${timeStr})`;
+        setTimeout(() => { inp.focus(); inp.select(); }, 100);
+    }
+}
+
+function closeModalSimpanJadwal() {
+    const modal = document.getElementById('modal-simpan-jadwal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function prosesSimpanJadwalDenganLabel() {
+    const inp = document.getElementById('inp-simpan-label');
+    const labelInput = inp ? inp.value.trim() : '';
+    const customLabel = labelInput || 'Penyesuaian Manual Workspace';
+    closeModalSimpanJadwal();
+    await simpanSemuaJadwal(customLabel);
+}
+
+async function simpanSemuaJadwal(customLabel = null) {
     const cards = [...document.querySelectorAll('.jadwal-card')];
     if (!cards.length) { alert('Belum ada jadwal yang disusun di workspace.'); return; }
     const btn   = document.getElementById('btn-simpan-semua');
     const label = document.getElementById('btn-simpan-label');
-    btn.disabled = true; label.innerText = 'Menyimpan...';
-    let berhasil = 0, gagal = 0;
+    if (btn) btn.disabled = true;
+    if (label) label.innerText = 'Menyimpan...';
+
+    const hariMap = {!! $hari->mapWithKeys(function($h) { return [strtolower($h->nama_hari) => $h->id_hari]; })->toJson() !!};
+    const bulkItems = [];
+
     for (const card of cards) {
-        try { await simpanJadwal(card); berhasil++; }
-        catch (e) { gagal++; console.error('Gagal simpan card:', e); }
+        const kelasIdList = JSON.parse(card.dataset.kelasIdList || '[]');
+        const hariId = hariMap[card.dataset.day] ?? 1;
+        for (const kelasId of kelasIdList) {
+            const sidebarEl = document.querySelector(`.kelas-item[data-id="${kelasId}"]`);
+            bulkItems.push({
+                kelas_id: kelasId,
+                slot_id: parseInt(card.dataset.start),
+                hari_id: hariId,
+                ruang_id: card.dataset.ruanganId || null,
+                durasi_sks: parseInt(card.dataset.sks),
+                kode_matkul: sidebarEl?.dataset.kodeMk || card.dataset.kodeMk || '',
+                dosen_id: sidebarEl?.dataset.dosenId || null,
+            });
+        }
     }
-    btn.disabled = false; label.innerText = 'Simpan Jadwal';
-    showToast(gagal === 0 ? `✓ ${berhasil} jadwal berhasil disimpan!` : `${berhasil} berhasil, ${gagal} gagal. Cek console.`, gagal === 0 ? 'green' : 'red');
+
+    try {
+        const res = await fetch('{{ route("jadwal.simpan-bulk", [], false) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
+            body: JSON.stringify({
+                tahun_akademik_id: TAHUN_AKADEMIK,
+                items: bulkItems,
+                label: customLabel
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            showToast(data.message || `✓ ${bulkItems.length} jadwal disimpan & disinkronkan ke Perbandingan Hasil!`, 'green');
+        } else {
+            showToast('Gagal menyimpan jadwal secara bulk.', 'red');
+        }
+    } catch (e) {
+        console.error('Gagal simpan bulk:', e);
+        showToast('Terjadi kesalahan saat menyimpan jadwal.', 'red');
+    } finally {
+        if (btn) btn.disabled = false;
+        if (label) label.innerText = 'Simpan Jadwal';
+    }
 }
 
 function showToast(message, color = 'green') {
@@ -1342,10 +1528,22 @@ function showToast(message, color = 'green') {
 
 async function hapusJadwal(card) {
     const ids = JSON.parse(card.dataset.jadwalIds || '[]');
-    if (!ids.length) return;
-    await Promise.all(ids.map(id =>
-        fetch(`/jadwal/hapus-slot/${id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': CSRF_TOKEN } })
-    ));
+    const kelasIdList = JSON.parse(card.dataset.kelasIdList || '[]');
+
+    // INSTANT OPTIMISTIC DOM REMOVAL
+    card.remove();
+    kelasIdList.forEach(kId => {
+        setSidebarStatus(kId, 'belum');
+    });
+    updateCounter();
+
+    if (ids.length) {
+        fetch('{{ route("jadwal.hapus-slots-bulk", [], false) }}', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+            body: JSON.stringify({ ids: ids })
+        }).catch(err => console.error('Error deleting slot:', err));
+    }
 }
 
 // ============================================================
@@ -1371,8 +1569,32 @@ function setSidebarStatus(kelasId, status) {
 }
 
 function updateCounter() {
-    document.getElementById('count-belum').innerText = document.querySelectorAll('.kelas-item[data-status="belum"]').length;
-    document.getElementById('count-sudah').innerText = document.querySelectorAll('.kelas-item[data-status="sudah"]').length;
+    const totalBelum = document.querySelectorAll('.kelas-item[data-status="belum"]').length;
+    const totalSudah = document.querySelectorAll('.kelas-item[data-status="sudah"]').length;
+    const totalKelas = totalBelum + totalSudah;
+
+    const countBelumEl = document.getElementById('count-belum');
+    const countSudahEl = document.getElementById('count-sudah');
+    if (countBelumEl) countBelumEl.innerText = totalBelum;
+    if (countSudahEl) countSudahEl.innerText = totalSudah;
+
+    // DYNAMICALLY HIDE/SHOW 'AJUKAN KE DEKAN' BUTTON & 'MENUNGGU DEKAN' BADGE
+    const containerAjukan = document.getElementById('container-btn-ajukan');
+    if (containerAjukan) {
+        if (totalKelas > 0 && totalBelum === 0) {
+            containerAjukan.classList.remove('hidden');
+            containerAjukan.classList.add('flex', 'items-center', 'gap-2');
+        } else {
+            containerAjukan.classList.add('hidden');
+            containerAjukan.classList.remove('flex', 'items-center', 'gap-2', 'inline');
+        }
+    }
+
+    const containerMenunggu = document.getElementById('container-status-menunggu');
+    if (containerMenunggu && totalBelum > 0) {
+        containerMenunggu.classList.add('hidden');
+        containerMenunggu.classList.remove('inline');
+    }
 }
 
 // ============================================================
@@ -1424,9 +1646,6 @@ function filterCardsByDay(dayStr) {
         const show = card.dataset.day === activeDay;
         card.style.display       = show ? 'flex' : 'none';
         card.style.pointerEvents = show ? 'auto' : 'none';
-        
-        // Non matching cards opacity
-        card.style.opacity = show ? '1' : '0.75';
     });
 
     // Load pivot mapping
@@ -1499,13 +1718,19 @@ function openDetailPanel(card) {
     const hari       = card.dataset.day;
 
     document.getElementById('dp-nama').innerText     = card.dataset.nama || '-';
+    const kodeMkList = JSON.parse(card.dataset.kodeMkList || JSON.stringify(card.dataset.kodeMk ? [card.dataset.kodeMk] : []));
+    const prodiList  = JSON.parse(card.dataset.prodiList || JSON.stringify(card.dataset.prodi ? [card.dataset.prodi] : []));
+
     document.getElementById('dp-kelas').innerText    = kelasList.join(' + ');
     document.getElementById('dp-dosen').innerText    = card.dataset.dosen || '-';
     document.getElementById('dp-hari').innerText     = hari.charAt(0).toUpperCase() + hari.slice(1);
     document.getElementById('dp-waktu').innerText    = `${jamMulai} – ${jamSelesai} (${card.dataset.sks} SKS)`;
     document.getElementById('dp-sks').innerText      = `${card.dataset.sks} SKS`;
-    document.getElementById('dp-kode').innerText     = card.dataset.kodeMk || '-';
+    document.getElementById('dp-kode').innerText     = kodeMkList.length > 1 ? kodeMkList.join(' + ') : (card.dataset.kodeMk || '-');
+    document.getElementById('dp-prodi').innerText    = prodiList.length > 1 ? prodiList.join(' + ') : (card.dataset.prodi || '-');
     document.getElementById('dp-semester').innerText = `Semester ${semester}`;
+
+    const isReadOnly = card.dataset.isReadOnly === 'true';
 
     const select = document.getElementById('dp-ruangan-select');
     select.innerHTML = '<option value="">-- Pilih Ruangan --</option>';
@@ -1516,14 +1741,21 @@ function openDetailPanel(card) {
         opt.selected = String(r.id) === String(card.dataset.ruanganId) || r.nama === card.dataset.ruangan;
         select.appendChild(opt);
     });
+    select.disabled = isReadOnly;
 
-    document.getElementById('dp-btn-hapus').onclick = () => {
-        const closeBtn = card.querySelector('button[onclick="removeCard(this)"]');
-        if (closeBtn) closeBtn.click();
-    };
+    const btnHapus = document.getElementById('dp-btn-hapus');
+    if (isReadOnly) {
+        btnHapus.classList.add('hidden');
+    } else {
+        btnHapus.classList.remove('hidden');
+        btnHapus.onclick = () => {
+            const closeBtn = card.querySelector('button[onclick="removeCard(this)"]');
+            if (closeBtn) closeBtn.click();
+        };
+    }
 
     const btnSplit = document.getElementById('dp-btn-split');
-    if (kelasList.length > 1) {
+    if (kelasList.length > 1 && !isReadOnly) {
         btnSplit.classList.remove('hidden');
         btnSplit.onclick = () => splitCard(card);
     } else {
@@ -1531,10 +1763,16 @@ function openDetailPanel(card) {
         btnSplit.onclick = null;
     }
 
-    document.getElementById('dp-btn-simpan').onclick = async () => {
-        try { await simpanJadwal(card); showToast('✓ Perubahan jadwal berhasil disimpan', 'green'); }
-        catch (e) { showToast('Gagal menyimpan perubahan', 'red'); }
-    };
+    const btnSimpan = document.getElementById('dp-btn-simpan');
+    if (isReadOnly) {
+        btnSimpan.classList.add('hidden');
+    } else {
+        btnSimpan.classList.remove('hidden');
+        btnSimpan.onclick = async () => {
+            try { await simpanJadwal(card); showToast('✓ Perubahan jadwal berhasil disimpan', 'green'); }
+            catch (e) { showToast('Gagal menyimpan perubahan', 'red'); }
+        };
+    }
 
     const panel = document.getElementById('detail-panel');
     panel.classList.remove('hidden');
@@ -1704,12 +1942,20 @@ function renderTablePreview() {
     tbody.innerHTML = '';
     cards.forEach(card => {
         const kelasList    = JSON.parse(card.dataset.kelasList || '[]');
+        const kodeMkList   = JSON.parse(card.dataset.kodeMkList || '[]');
+        const prodiList    = JSON.parse(card.dataset.prodiList || '[]');
         const slotId       = parseInt(card.dataset.start);
         const sesi         = slotId <= 11 ? 'Pagi' : 'Malam';
         const hariLabel    = card.dataset.day.charAt(0).toUpperCase() + card.dataset.day.slice(1);
         const kelasPertama = kelasList[0];
         const sidebarEl    = document.querySelector(`.kelas-item[data-kelas="${kelasPertama}"]`);
-        const prodi        = sidebarEl?.querySelector('.bg-purple-100')?.innerText?.trim() || '-';
+        
+        let prodiTampil    = prodiList.length > 1 ? prodiList.join(' + ') : (prodiList[0] || card.dataset.prodi || '-');
+        if (prodiTampil === '-' && sidebarEl) {
+            prodiTampil = sidebarEl.querySelector('.bg-purple-100')?.innerText?.trim() || '-';
+        }
+        const kodeMkTampil = kodeMkList.length > 1 ? kodeMkList.join(' + ') : (kodeMkList[0] || card.dataset.kodeMk || '-');
+
         const semester     = sidebarEl?.querySelector('.bg-gray-100')?.innerText?.replace('Semester ', '').trim() || '-';
         const kurikulum    = kelasPertama ? '20' + kelasPertama.substring(0, 2) : '-';
         const namaKelas    = kelasList.length > 1
@@ -1718,17 +1964,17 @@ function renderTablePreview() {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50 border-b border-gray-100';
         tr.setAttribute('data-preview', '1');
-        tr.dataset.hari = hariLabel; tr.dataset.prodi = prodi; tr.dataset.semester = semester;
+        tr.dataset.hari = hariLabel; tr.dataset.prodi = prodiTampil; tr.dataset.semester = semester;
         tr.dataset.sesi = sesi; tr.dataset.kurikulum = kurikulum;
         tr.dataset.dosen = card.dataset.dosen || ''; tr.dataset.mk = card.dataset.nama || '';
         tr.dataset.kelas = kelasList.join(' ') || '';
         tr.innerHTML = `
             <td class="px-4 py-3 text-sm">${hariLabel}</td>
-            <td class="px-4 py-3 text-sm">${prodi}</td>
+            <td class="px-4 py-3 text-sm">${prodiTampil}</td>
             <td class="px-4 py-3 text-sm">${semester}</td>
             <td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${sesi==='Pagi'?'bg-amber-100 text-amber-700':'bg-indigo-100 text-indigo-700'}">${sesi}</span></td>
             <td class="px-4 py-3 text-sm font-medium">${namaKelas}</td>
-            <td class="px-4 py-3 text-sm font-mono text-teal-700">${card.dataset.kodeMk || '-'}</td>
+            <td class="px-4 py-3 text-sm font-mono text-teal-700">${kodeMkTampil}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.nama || '-'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.jenis || 'Teori'}</td>
             <td class="px-4 py-3 text-sm">${card.dataset.sks} SKS</td>
@@ -1751,6 +1997,8 @@ function createCard(data, skipSave = false) {
     const { sks, nama, kelas, kelasId, dosen, kodeMk, ruangan, ruanganId,
             slotId, day, jamMulai, jamSelesai, jadwalIds, prodi, jenis, column: forceColumn } = data;
     const color = getCourseColor(kelas);
+    const isOtherProdi = data.isOtherProdi === true || data.isOtherProdi === 'true';
+    const isReadOnly   = data.isReadOnly   === true || data.isReadOnly   === 'true';
 
     const sameDay = [...document.querySelectorAll('.jadwal-card')].filter(c => c.dataset.day === day);
     let column = 0;
@@ -1771,9 +2019,18 @@ function createCard(data, skipSave = false) {
     const left = 16 + column * (CARD_WIDTH + CARD_GAP);
     const top  = (slotId - 1) * SLOT_HEIGHT + 8;
 
+    const bgClass = `${color.bg} ${color.border}`;
+    let opacityClass = 'shadow-sm hover:shadow-md cursor-move';
+    
+    if (isReadOnly && !isOtherProdi) {
+        opacityClass = 'opacity-100 shadow-sm hover:shadow-md cursor-default';
+    }
+
     const card = document.createElement('div');
-    card.className = `jadwal-card absolute ${color.bg} ${color.border} border border-l-[3px] rounded-2xl p-3 shadow-sm hover:shadow-md overflow-hidden z-10 cursor-move transition duration-200`;
-    card.setAttribute('draggable', 'true');
+    card.className = `jadwal-card absolute ${bgClass} border border-l-[3px] rounded-2xl p-3 overflow-hidden z-10 transition duration-200 ${opacityClass}`;
+    
+    const isDraggable = isOtherProdi ? true : !isReadOnly;
+    card.setAttribute('draggable', isDraggable ? 'true' : 'false');
     card.setAttribute('data-kelas-id', kelasId);
 
     const days = {!! $hari->pluck('nama_hari')->map(fn($d) => strtolower($d))->toJson() !!};
@@ -1783,6 +2040,8 @@ function createCard(data, skipSave = false) {
     Object.assign(card.dataset, {
         kelasList:   JSON.stringify([kelas]),
         kelasIdList: JSON.stringify([kelasId]),
+        kodeMkList:  JSON.stringify([kodeMk || '']),
+        prodiList:   JSON.stringify([prodi || '']),
         start:    slotId, end: slotId + sks, column,
         dosen, sks, nama, kelas, day, kodeMk, kelasId,
         prodi:      prodi      || '',
@@ -1792,6 +2051,8 @@ function createCard(data, skipSave = false) {
         ruanganId:  ruanganId  || '',
         jadwalIds:  jadwalIds ? JSON.stringify(Array.isArray(jadwalIds) ? jadwalIds : [jadwalIds]) : '[]',
         jenis:      jenis      || 'Teori',
+        isReadOnly: isReadOnly ? 'true' : 'false',
+        isOtherProdi: isOtherProdi ? 'true' : 'false',
     });
 
     card.style.cssText = `width:170px; height:${sks * SLOT_HEIGHT - 18}px; left:${left}px; top:${top}px; pointer-events:${isVisible ? 'auto' : 'none'}; user-select:none; touch-action:none; display:${isVisible ? 'flex' : 'none'};`;
@@ -1799,11 +2060,11 @@ function createCard(data, skipSave = false) {
         <div>
             <div class="flex items-start justify-between">
                 <div class="text-sm font-bold ${color.text}">${kelas}</div>
-                <button class="text-gray-400 hover:text-red-500 transition" onclick="removeCard(this)">✕</button>
+                ${isReadOnly ? '' : '<button class="text-gray-400 hover:text-red-500 transition" onclick="removeCard(this)">✕</button>'}
             </div>
-            <div class="mt-1">
-                <span class="text-xs px-2 py-0.5 rounded-lg bg-white/60 text-gray-600">${prodi || '-'}</span>
-                <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${kodeMk}</span>
+            <div class="mt-1 flex flex-col items-start gap-1">
+                <span class="text-[10px] px-2 py-0.5 rounded-lg bg-white/80 text-gray-700 font-semibold shadow-2xs border border-gray-200">${prodi || '-'}</span>
+                <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/70 ${color.text}">${kodeMk || '-'}</span>
             </div>
             <h3 class="mt-2 text-[14px] leading-snug font-bold text-gray-800">${nama}</h3>
             <div class="mt-3 space-y-1">
@@ -1813,8 +2074,12 @@ function createCard(data, skipSave = false) {
         </div>`;
 
     document.getElementById('jadwal-layer').appendChild(card);
-    enableCardDrag(card);
-    enableMerge(card);
+    if (isDraggable) {
+        enableCardDrag(card);
+    }
+    if (!isReadOnly) {
+        enableMerge(card);
+    }
     updateBentrokButton();
     _updateWorkspaceMinWidth();
     return card;
@@ -1838,23 +2103,86 @@ function loadExistingJadwals() {
     if (!jadwals.length) return;
 
     _historyPaused = true;
+    // Kelompokkan jadwal untuk mendeteksi kelas gabungan
+    const grouped = {};
     jadwals.forEach(j => {
+        // Kelompokkan berdasarkan slot, hari, ruangan (opsional), dan dosen.
+        // Jika dosen, hari, dan waktu sama, maka itu pasti kelas gabungan.
+        const roomKey = j.ruangan_id ? `R${j.ruangan_id}` : 'noroom';
+        const dosenKey = j.dosen_id ? `D${j.dosen_id}` : 'nodosen';
+        const key = `${j.slot_id}_${j.hari}_${roomKey}_${dosenKey}`;
+        
+        if (!grouped[key]) {
+            grouped[key] = {
+                ...j,
+                kelasList: [j.nama_kelas],
+                kelasIdList: [parseInt(j.kelas_id)],
+                kodeMkList: [j.kode_mk],
+                prodiList: [j.prodi],
+                jadwalIds: [j.jadwal_id]
+            };
+        } else {
+            grouped[key].kelasList.push(j.nama_kelas);
+            grouped[key].kelasIdList.push(parseInt(j.kelas_id));
+            grouped[key].kodeMkList.push(j.kode_mk);
+            grouped[key].prodiList.push(j.prodi);
+            grouped[key].jadwalIds.push(j.jadwal_id);
+        }
+    });
+
+    _historyPaused = true;
+    Object.values(grouped).forEach(j => {
         const slotIdInt = parseInt(j.slot_id);
         const sksInt    = parseInt(j.sks);
         const infoStart = slotElMap[slotIdInt];
         const infoEnd   = slotElMap[slotIdInt + sksInt - 1];
         if (!infoStart) { console.warn('Slot tidak ditemukan:', slotIdInt); return; }
-        const sidebarEl = document.querySelector(`.kelas-item[data-id="${j.kelas_id}"]`);
-        const prodi     = sidebarEl?.dataset.prodi || '-';
-        const jenis     = sidebarEl?.dataset.jenis || 'Teori';
-        createCard({
+        
+        const isReadOnly = j.is_read_only || false;
+        const isOtherProdi = j.is_other_prodi || false;
+        
+        const uniqueProdi = [...new Set(j.prodiList.filter(Boolean))];
+        const uniqueKodeMk = [...new Set(j.kodeMkList.filter(Boolean))];
+        const finalProdi = uniqueProdi.length > 1 ? uniqueProdi.join(' + ') : (uniqueProdi[0] || '-');
+        const finalKodeMk = uniqueKodeMk.length > 1 ? uniqueKodeMk.join(' + ') : (uniqueKodeMk[0] || '-');
+
+        const card = createCard({
             sks: sksInt, nama: j.nama, kelas: j.nama_kelas, kelasId: parseInt(j.kelas_id),
-            dosen: j.dosen, kodeMk: j.kode_mk, ruangan: j.ruangan || '', ruanganId: j.ruangan_id || '',
+            dosen: j.dosen, kodeMk: finalKodeMk, ruangan: j.ruangan || '', ruanganId: j.ruangan_id || '',
             slotId: slotIdInt, day: j.hari,
             jamMulai: infoStart.jamMulai, jamSelesai: infoEnd?.jamSelesai || '-',
-            jadwalIds: [j.jadwal_id], prodi, jenis,
+            jadwalIds: j.jadwalIds, prodi: finalProdi, jenis: j.jenis || 'Teori', isReadOnly, isOtherProdi,
         }, true);
-        setSidebarStatus(j.kelas_id, 'sudah');
+
+        if (j.kelasList.length > 1) {
+            card.dataset.kelasList   = JSON.stringify(j.kelasList);
+            card.dataset.kelasIdList = JSON.stringify(j.kelasIdList);
+            card.dataset.kodeMkList  = JSON.stringify(uniqueKodeMk);
+            card.dataset.prodiList   = JSON.stringify(uniqueProdi);
+            
+            const color = getCourseColor(j.nama);
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-[13px] text-gray-800">${j.kelasList.join(' + ')}</span>
+                            <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan (${j.kelasList.length} Kelas)</span>
+                        </div>
+                        ${isReadOnly ? '' : '<button class="text-gray-400 hover:text-red-500 transition ml-2" onclick="removeCard(this)">✕</button>'}
+                    </div>
+                    <div class="mt-2 flex flex-col items-start gap-1">
+                        <span class="text-[10px] px-2 py-0.5 rounded-lg bg-white/80 text-gray-600 border border-gray-200">${finalProdi}</span>
+                        <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${finalKodeMk}</span>
+                    </div>
+                    <h3 class="mt-2 text-[14px] leading-snug font-bold text-gray-800">${j.nama}</h3>
+                    <div class="mt-3 space-y-1">
+                        <p class="text-sm text-gray-700 font-medium">${j.dosen}</p>
+                        <p class="text-sm text-gray-700 font-semibold ruangan-text">${j.ruangan || '-'} <span class="mx-1 text-gray-300">|</span> ${sksInt} SKS</p>
+                    </div>
+                </div>`;
+        }
+
+        j.kelasIdList.forEach(kid => setSidebarStatus(kid, 'sudah'));
     });
     _historyPaused = false;
 
@@ -1878,6 +2206,17 @@ function loadExistingJadwals() {
 // ============================================================
 function enableCardDrag(card) {
     card.addEventListener('dragstart', e => {
+        if (card.dataset.isOtherProdi === 'true') {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Akses Ditolak',
+                text: 'Anda tidak diizinkan untuk memindahkan atau mengubah jadwal kelas milik program studi lain.',
+                confirmButtonColor: '#0d9488'
+            });
+            return;
+        }
+
         draggedCard = card;
         e.dataTransfer.setData('from_workspace', '1');
         ['start','sks','nama','kelas','dosen','kodeMk','ruangan','ruanganId'].forEach(k =>
@@ -1899,41 +2238,177 @@ function enableCardDrag(card) {
 
 function enableMerge(card) {
     card.addEventListener('dragover', e => e.preventDefault());
-    card.addEventListener('drop', e => {
+    card.addEventListener('drop', async e => {
         e.preventDefault();
         e.stopPropagation();
-        const src = draggedCard;
-        if (!src || src === card) return;
-        if (src.dataset.nama !== card.dataset.nama || src.dataset.dosen !== card.dataset.dosen) {
-            alert('Hanya kelas dengan mata kuliah dan dosen yang sama yang bisa digabung.');
+
+        const isFromWorkspace = e.dataTransfer.getData('from_workspace') === '1';
+        const srcCard = draggedCard;
+
+        // Cegah bug di mana card digabungkan dengan dirinya sendiri
+        if (isFromWorkspace && srcCard === card) {
+            return;
+        }
+        let srcKelasList   = [];
+        let srcKelasIdList = [];
+        let srcDosen       = '';
+        let srcDosenId     = '';
+        let srcNama        = '';
+        let srcKodeMk      = '';
+
+        if (srcCard && srcCard !== card) {
+            srcKelasList   = JSON.parse(srcCard.dataset.kelasList   || '[]');
+            srcKelasIdList = JSON.parse(srcCard.dataset.kelasIdList || '[]');
+            srcDosen       = srcCard.dataset.dosen  || '';
+            srcDosenId     = srcCard.dataset.dosenId|| '';
+            srcNama        = srcCard.dataset.nama   || '';
+            srcKodeMk      = srcCard.dataset.kodeMk || '';
+        } else {
+            // Dragged from sidebar (.kelas-item)
+            const sidebarKelasId = e.dataTransfer.getData('kelas_id');
+            if (!sidebarKelasId) return;
+            const sidebarEl = document.querySelector(`.kelas-item[data-id="${sidebarKelasId}"]`);
+            const sidebarKelasName = e.dataTransfer.getData('kelas') || (sidebarEl ? sidebarEl.dataset.kelas : '');
+            if (!sidebarKelasName) return;
+
+            srcKelasList   = [sidebarKelasName];
+            srcKelasIdList = [parseInt(sidebarKelasId)];
+            srcDosen       = e.dataTransfer.getData('dosen') || (sidebarEl ? sidebarEl.dataset.dosen : '');
+            srcDosenId     = sidebarEl ? sidebarEl.dataset.dosenId : '';
+            srcNama        = e.dataTransfer.getData('nama') || (sidebarEl ? sidebarEl.dataset.nama : '');
+            srcKodeMk      = e.dataTransfer.getData('kode_mk') || (sidebarEl ? sidebarEl.dataset.kodeMk : '');
+        }
+
+        // Target card
+        const cardKelasList   = JSON.parse(card.dataset.kelasList   || '[]');
+        const cardKelasIdList = JSON.parse(card.dataset.kelasIdList || '[]');
+
+        // Normalisasi perbandingan string
+        const clean = s => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+
+        const sameDosen = (srcDosenId && card.dataset.dosenId && srcDosenId === card.dataset.dosenId) ||
+                          (clean(srcDosen) && clean(card.dataset.dosen) && clean(srcDosen) === clean(card.dataset.dosen));
+        const sameMk    = (clean(srcNama) && clean(card.dataset.nama) && clean(srcNama) === clean(card.dataset.nama)) ||
+                          (clean(srcKodeMk) && clean(card.dataset.kodeMk) && clean(srcKodeMk) === clean(card.dataset.kodeMk));
+
+        if (!sameDosen) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tidak Bisa Digabung',
+                text: 'Kelas dengan Dosen Pengampu yang berbeda tidak dapat digabungkan!',
+                confirmButtonColor: '#0d9488'
+            });
             return;
         }
 
-        const merged   = [...new Set([...JSON.parse(src.dataset.kelasList   || '[]'), ...JSON.parse(card.dataset.kelasList   || '[]')])];
-        const mergedId = [...new Set([...JSON.parse(src.dataset.kelasIdList || '[]'), ...JSON.parse(card.dataset.kelasIdList || '[]')])];
+        let warningText = 'Gabungkan kelas ini menjadi satu?';
+        let isWarning = false;
+        
+        if (!sameMk) {
+            warningText = `Beda Mata Kuliah!<br>Tetap gabungkan?`;
+            isWarning = true;
+        }
+
+        const confirmResult = await new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute -inset-2 bg-white/95 z-50 flex flex-col items-center justify-center p-2 text-center rounded-2xl border-2 ' + (isWarning ? 'border-orange-500' : 'border-teal-500') + ' shadow-xl backdrop-blur-md transition-all duration-200';
+            overlay.innerHTML = `
+                <span class="text-[11px] font-bold text-gray-800 mb-2 leading-tight">${warningText}</span>
+                <div class="flex gap-2 w-full px-1">
+                    <button type="button" class="btn-yes flex-1 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold py-1.5 rounded shadow transition cursor-pointer">Ya</button>
+                    <button type="button" class="btn-no flex-1 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold py-1.5 rounded shadow transition cursor-pointer">Batal</button>
+                </div>
+            `;
+            
+            // To ensure the overlay can exceed card boundaries if the card is too small (overflow is hidden on card)
+            // Wait, card has overflow-hidden class!
+            // If card has overflow-hidden, -inset-2 will be clipped!
+            // We temporarily remove overflow-hidden from the card
+            const wasOverflowHidden = card.classList.contains('overflow-hidden');
+            if (wasOverflowHidden) card.classList.remove('overflow-hidden');
+            
+            card.appendChild(overlay);
+            
+            overlay.querySelector('.btn-yes').addEventListener('click', (e) => {
+                e.stopPropagation();
+                overlay.remove();
+                if (wasOverflowHidden) card.classList.add('overflow-hidden');
+                resolve(true);
+            });
+            
+            overlay.querySelector('.btn-no').addEventListener('click', (e) => {
+                e.stopPropagation();
+                overlay.remove();
+                if (wasOverflowHidden) card.classList.add('overflow-hidden');
+                resolve(false);
+            });
+        });
+
+        if (!confirmResult) {
+            return;
+        }
+
+        let srcProdi = '';
+        if (srcCard && srcCard !== card) {
+            srcProdi = srcCard.dataset.prodi || '';
+        } else {
+            const sidebarKelasId = e.dataTransfer.getData('kelas_id');
+            const sidebarEl = document.querySelector(`.kelas-item[data-id="${sidebarKelasId}"]`);
+            srcProdi = e.dataTransfer.getData('prodi') || (sidebarEl ? sidebarEl.dataset.prodi : '');
+        }
+
+        const srcKodeMkList = JSON.parse(srcCard?.dataset?.kodeMkList || JSON.stringify(srcKodeMk ? [srcKodeMk] : []));
+        const cardKodeMkList = JSON.parse(card.dataset.kodeMkList || JSON.stringify(card.dataset.kodeMk ? [card.dataset.kodeMk] : []));
+        const mergedKodeMk = [...new Set([...srcKodeMkList, ...cardKodeMkList].filter(Boolean))];
+
+        const srcProdiList = JSON.parse(srcCard?.dataset?.prodiList || JSON.stringify(srcProdi ? [srcProdi] : []));
+        const cardProdiList = JSON.parse(card.dataset.prodiList || JSON.stringify(card.dataset.prodi ? [card.dataset.prodi] : []));
+        const mergedProdi = [...new Set([...srcProdiList, ...cardProdiList].filter(Boolean))];
+
+        // Gabungkan list kelas & list ID tanpa duplikasi
+        const merged   = [...new Set([...srcKelasList, ...cardKelasList])];
+        const mergedId = [...new Set([...srcKelasIdList, ...cardKelasIdList])];
+
         card.dataset.kelasList   = JSON.stringify(merged);
         card.dataset.kelasIdList = JSON.stringify(mergedId);
+        card.dataset.kodeMkList  = JSON.stringify(mergedKodeMk);
+        card.dataset.prodiList   = JSON.stringify(mergedProdi);
+        card.dataset.isOtherProdi = 'false'; // Gabungan kini milik workspace aktif
 
+        const displayKodeMk = mergedKodeMk.length > 1 ? mergedKodeMk.join(' + ') : (card.dataset.kodeMk || '-');
+        const displayProdi  = mergedProdi.length > 1 ? mergedProdi.join(' + ') : (card.dataset.prodi || '-');
+
+        // Update tampilan card
         const color = getCourseColor(card.dataset.nama);
         card.innerHTML = `
             <div>
                 <div class="flex items-start justify-between">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="font-bold text-[13px] ${color.text}">${merged.join(' + ')}</span>
-                        <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan</span>
+                        <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan (${merged.length} Kelas)</span>
                     </div>
                     <button class="text-gray-400 hover:text-red-500 transition ml-2" onclick="removeCard(this)">✕</button>
                 </div>
-                <div class="mt-1">
-                    <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${card.dataset.kodeMk || '-'}</span>
+                <div class="mt-2 flex flex-col items-start gap-1">
+                    <span class="text-[10px] px-2 py-0.5 rounded-lg bg-white/80 text-gray-600 border border-gray-200">${displayProdi}</span>
+                    <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${displayKodeMk}</span>
                 </div>
                 <h3 class="mt-1 text-[13px] leading-snug font-bold text-gray-800">${card.dataset.nama || '-'}</h3>
                 <div class="mt-2 space-y-1">
-                    <p class="text-sm text-gray-700 font-medium">${card.dataset.dosen}</p>
+                    <p class="text-sm text-gray-700 font-medium">${card.dataset.dosen || '-'}</p>
                     <p class="text-sm text-gray-700 font-semibold ruangan-text">${card.dataset.ruangan || '-'} <span class="mx-1 text-gray-300">|</span> ${card.dataset.sks} SKS</p>
                 </div>
             </div>`;
-        src.remove();
+
+        if (srcCard && srcCard !== card) {
+            srcCard.remove();
+        }
+
+        // Tandai status di sidebar untuk seluruh kelas yang digabung
+        mergedId.forEach(id => setSidebarStatus(id, 'sudah'));
+
+        // Simpan perubahan gabungan kelas ke backend database
+        await simpanJadwal(card);
 
         renderTablePreview();
         updateBentrokButton();
@@ -2119,21 +2594,29 @@ document.addEventListener('DOMContentLoaded', () => {
             _historyPaused = false;
 
             if (kelasList.length > 1) {
+                const srcKodeMkList = JSON.parse(draggedCard?.dataset?.kodeMkList || JSON.stringify(kodeMk ? [kodeMk] : []));
+                const srcProdiList  = JSON.parse(draggedCard?.dataset?.prodiList  || JSON.stringify(prodi ? [prodi] : []));
+                
                 card.dataset.kelasList   = JSON.stringify(kelasList);
                 card.dataset.kelasIdList = JSON.stringify(kelasIdList);
+                card.dataset.kodeMkList  = JSON.stringify(srcKodeMkList);
+                card.dataset.prodiList   = JSON.stringify(srcProdiList);
                 const color = getCourseColor(nama);
+                const displayKodeMk = srcKodeMkList.length > 1 ? srcKodeMkList.join(' + ') : (kodeMk || '-');
+                const displayProdi  = srcProdiList.length > 1 ? srcProdiList.join(' + ') : (prodi || '-');
+
                 card.innerHTML = `
                     <div>
                         <div class="flex items-start justify-between">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-bold text-[13px] text-gray-800">${kelasList.join(' + ')}</span>
-                                <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan</span>
+                                <span class="px-2 py-0.5 rounded-full ${color.badge} text-[10px] font-semibold">Gabungan (${kelasList.length} Kelas)</span>
                             </div>
                             <button class="text-gray-400 hover:text-red-500 transition ml-2" onclick="removeCard(this)">✕</button>
                         </div>
-                        <div class="mt-2">
-                            <span class="text-xs px-2 py-0.5 rounded-lg bg-white/60 text-gray-600">${prodi || '-'}</span>
-                            <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${kodeMk}</span>
+                        <div class="mt-2 flex flex-col items-start gap-1">
+                            <span class="text-[10px] px-2 py-0.5 rounded-lg bg-white/80 text-gray-600 border border-gray-200">${displayProdi}</span>
+                            <span class="text-xs font-mono px-2 py-0.5 rounded-lg bg-white/60 ${color.text}">${displayKodeMk}</span>
                         </div>
                         <h3 class="mt-2 text-[14px] leading-snug font-bold text-gray-800">${nama}</h3>
                         <div class="mt-3 space-y-1">
@@ -2366,10 +2849,10 @@ window.workspaceSearch = function() {
     
     // Reset previous search styles
     document.querySelectorAll('.jadwal-card').forEach(card => {
-        card.style.opacity = '1';
+        card.style.opacity = '';
         card.style.zIndex = '10';
         card.style.outline = 'none';
-        card.style.boxShadow = 'none';
+        card.style.boxShadow = '';
     });
 
     if (!query) {
@@ -2395,12 +2878,12 @@ window.workspaceSearch = function() {
 
         if (textToSearch.includes(query)) {
             window.workspaceSearchResults.push(card);
-            card.style.opacity = '1';
+            card.style.opacity = '';
             card.style.zIndex = '50';
             card.style.outline = 'none'; // Ensure no outline
             card.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'; // Optional nice shadow
         } else {
-            card.style.opacity = '0.75';
+            card.style.opacity = '0.2';
             card.style.zIndex = '10';
             card.style.outline = 'none';
             card.style.boxShadow = 'none';
@@ -2476,6 +2959,163 @@ window.updateWorkspaceSearchCounter = function() {
     }
 };
 
+</script>
+
+{{-- MODAL SIMPAN JADWAL & TRIAL RUN --}}
+<div id="modal-simpan-jadwal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModalSimpanJadwal()"></div>
+    <!-- Content -->
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md p-6 m-4 transform scale-95 transition-all duration-300">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="p-2.5 bg-teal-100 rounded-xl text-teal-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-gray-800">Simpan Jadwal & Trial Run</h3>
+                <p class="text-xs text-gray-500">Berikan nama/label untuk uji coba versi jadwal ini.</p>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Nama / Label Uji Coba</label>
+            <input type="text" id="inp-simpan-label" placeholder="Contoh: Penyesuaian Manual (Revisi 1)"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-400 outline-none text-sm font-medium text-gray-700"
+                onkeydown="if(event.key==='Enter') { event.preventDefault(); prosesSimpanJadwalDenganLabel(); }">
+        </div>
+
+        <div class="flex items-center justify-end gap-3">
+            <button type="button" onclick="closeModalSimpanJadwal()"
+                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer">
+                Batal
+            </button>
+            <button type="button" onclick="prosesSimpanJadwalDenganLabel()" id="btn-submit-modal-simpan"
+                class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Simpan Uji Coba</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL REVIEW WORKFLOW (DECISION & TIMELINE) --}}
+<x-modal-approval-decision :tahunAkademik="$tahunAkademik" />
+<x-modal-approval-timeline :tahunAkademik="$tahunAkademik" />
+
+<script>
+// Workflow Approval Modals Handler
+window.bukaModalDecisionApproval = function(url, title, subtitle, requireNotes, actionType) {
+    const overlay = document.getElementById('modal-approval-decision-overlay');
+    const form = document.getElementById('form-approval-decision');
+    const titleEl = document.getElementById('mad-title');
+    const subtitleEl = document.getElementById('mad-subtitle');
+    const actionEl = document.getElementById('mad-action-type');
+    const badgeEl = document.getElementById('mad-required-badge');
+    const iconBox = document.getElementById('mad-icon-box');
+    const submitBtn = document.getElementById('mad-submit-btn');
+    const catatanEl = document.getElementById('mad-catatan');
+
+    if (form) form.action = url;
+    if (titleEl) titleEl.innerText = title || 'Keputusan Review Jadwal';
+    if (subtitleEl) subtitleEl.innerText = subtitle || 'Berikan tanggapan hasil evaluasi Anda.';
+    if (actionEl) actionEl.value = actionType || 'setujui';
+    if (catatanEl) catatanEl.value = '';
+
+    if (actionType === 'revisi') {
+        if (badgeEl) badgeEl.classList.add('hidden'); // Tidak wajib lagi
+        if (iconBox) {
+            iconBox.className = 'w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center font-bold text-lg';
+            iconBox.innerText = '⚠️';
+        }
+        if (submitBtn) {
+            submitBtn.className = 'px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition flex items-center gap-2 cursor-pointer';
+            submitBtn.innerHTML = '<span>Kirim Revisi</span>';
+        }
+    } else {
+        if (badgeEl) badgeEl.classList.add('hidden');
+        if (iconBox) {
+            iconBox.className = 'w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center font-bold text-lg';
+            iconBox.innerText = '✨';
+        }
+        if (submitBtn) {
+            submitBtn.className = 'px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition flex items-center gap-2 cursor-pointer';
+            submitBtn.innerHTML = '<span>Setujui Jadwal</span>';
+        }
+    }
+
+    if (overlay) overlay.classList.remove('hidden');
+};
+
+window.tutupModalDecisionApproval = function() {
+    const overlay = document.getElementById('modal-approval-decision-overlay');
+    if (overlay) overlay.classList.add('hidden');
+};
+
+window.submitApprovalDecision = function(event) {
+    const actionEl = document.getElementById('mad-action-type');
+    const badgeEl = document.getElementById('mad-required-badge');
+    const catatanEl = document.getElementById('mad-catatan');
+    // Validasi dihapus sesuai permintaan agar catatan menjadi opsional
+    return true;
+    return true;
+};
+
+window.bukaModalTimelineApproval = function() {
+    const overlay = document.getElementById('modal-approval-timeline-overlay');
+    const bodyEl = document.getElementById('timeline-approval-body');
+    if (overlay) overlay.classList.remove('hidden');
+
+    if (bodyEl) {
+        bodyEl.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs">Mengambil data riwayat timeline...</div>';
+        
+        fetch(`{{ route('jadwal.validasi.timeline', $tahunAkademik->id_tahunakademik) }}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success && data.histories && data.histories.length > 0) {
+                    let html = '<div class="relative pl-6 border-l-2 border-teal-200 space-y-6 my-2">';
+                    data.histories.forEach(h => {
+                        let badgeColor = 'bg-gray-100 text-gray-700';
+                        if (h.action.includes('setujui') || h.new_status.includes('disetujui')) badgeColor = 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+                        else if (h.action.includes('revisi') || h.new_status.includes('revisi')) badgeColor = 'bg-rose-100 text-rose-800 border border-rose-200';
+                        else if (h.action.includes('kirim') || h.action.includes('ajukan')) badgeColor = 'bg-blue-100 text-blue-800 border border-blue-200';
+
+                        html += `
+                            <div class="relative group">
+                                <div class="absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full bg-teal-500 border-2 border-white shadow-sm"></div>
+                                <div class="bg-gray-50/80 rounded-2xl p-4 border border-gray-150 shadow-xs hover:border-gray-200 transition">
+                                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-sm text-gray-800">${h.user_name}</span>
+                                            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-gray-200 text-gray-700">${h.user_role}</span>
+                                        </div>
+                                        <span class="text-xs text-gray-400 font-medium">${h.created_at} (${h.time_ago})</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="inline-block px-2.5 py-1 rounded-lg text-xs font-bold ${badgeColor}">${h.action.replace(/_/g, ' ').toUpperCase()}</span>
+                                        <span class="text-xs text-gray-500 font-medium">(${h.old_status} ➔ ${h.new_status})</span>
+                                    </div>
+                                    ${h.notes ? `<div class="mt-2 text-xs bg-white p-3 rounded-xl border border-gray-200 text-gray-700 italic">"${h.notes}"</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    bodyEl.innerHTML = html;
+                } else {
+                    bodyEl.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs">Belum ada riwayat aktivitas workflow untuk periode ini.</div>';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                bodyEl.innerHTML = '<div class="text-center py-8 text-red-500 text-xs">Gagal memuat riwayat timeline.</div>';
+            });
+    }
+};
+
+window.tutupModalTimelineApproval = function() {
+    const overlay = document.getElementById('modal-approval-timeline-overlay');
+    if (overlay) overlay.classList.add('hidden');
+};
 </script>
 
 </body>

@@ -37,7 +37,7 @@ class KelasController extends Controller
 
         $tahunAkademik  = TahunAkademik::findOrFail($idTahun);
 
-        if (!auth()->user()->isAdmin() && !$tahunAkademik->status_aktif) {
+        if (!$tahunAkademik->status_aktif) {
             abort(403, 'Anda tidak memiliki akses ke tahun akademik yang dinonaktifkan.');
         }
 
@@ -167,11 +167,6 @@ class KelasController extends Controller
         $sksMalamTeori = 0; $sksMalamLab = 0;
 
         foreach ($kelas as $k) {
-            // Abaikan kelas yang tidak memiliki dosen (Kelas Kosong), persis seperti di Audit
-            if (empty($k->pengampus) || $k->pengampus->count() === 0) {
-                continue;
-            }
-
             $namaNorm = strtolower(trim($k->nama_kelas ?? ''));
             $isMalam = (bool) preg_match('/-\d*s[i\d]*[^\w]*$/i', $namaNorm)
                 || (bool) preg_match('/\bsore\b|\bmalam\b/', $namaNorm);
