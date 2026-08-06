@@ -139,29 +139,43 @@
                         <p>Pilih kontak untuk mulai berkirim pesan.</p>
                     </div>
 
-                    <template x-for="msg in messages" :key="msg.id">
-                        <div :class="msg.is_mine ? 'flex justify-end items-center gap-2 group' : 'flex justify-start items-center gap-2 group'">
+                    <template x-for="(msg, index) in messages" :key="msg.id">
+                        <div>
+                            <!-- Date Divider -->
+                            <template x-if="index === 0 || msg.date !== messages[index - 1]?.date">
+                                <div class="flex justify-center my-4">
+                                    <span class="bg-white/80 backdrop-blur text-slate-500 text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm" x-text="msg.date_label"></span>
+                                </div>
+                            </template>
+
+                            <div :class="msg.is_mine ? 'flex justify-end items-center gap-2 group mb-4' : 'flex justify-start items-center gap-2 group mb-4'">
                             
                             <!-- Delete button (for own messages, appears on the left of the bubble) -->
                             <template x-if="msg.is_mine">
-                                <button @click="deleteMessage(msg.id)" class="opacity-0 group-hover:opacity-100 p-1.5 rounded-full hover:bg-rose-100 text-rose-500 transition cursor-pointer flex-shrink-0" title="Hapus pesan ini">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
+                                <div class="flex gap-1 items-center">
+                                    <button x-show="(Date.now() - msg.timestamp) <= 30 * 60 * 1000" @click="startEdit(msg)" class="opacity-0 group-hover:opacity-100 p-1.5 rounded-full hover:bg-teal-100 text-teal-600 transition cursor-pointer flex-shrink-0" title="Edit pesan">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                    </button>
+                                    <button @click="deleteMessage(msg.id)" class="opacity-0 group-hover:opacity-100 p-1.5 rounded-full hover:bg-rose-100 text-rose-500 transition cursor-pointer flex-shrink-0" title="Hapus pesan ini">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
                             </template>
 
-                            <div :class="msg.is_mine ? 'bg-teal-600 text-white rounded-l-2xl rounded-tr-2xl' : 'bg-white border border-slate-200 text-slate-800 rounded-r-2xl rounded-tl-2xl'" class="max-w-[75%] p-3 shadow-sm relative">
-                                <p class="text-sm whitespace-pre-wrap" x-text="msg.text"></p>
+                            <div :class="msg.is_mine ? 'bg-teal-600 text-white rounded-l-2xl rounded-tr-2xl' : 'bg-white border border-slate-200 text-slate-800 rounded-r-2xl rounded-tl-2xl'" class="max-w-[80%] p-3.5 shadow-sm relative">
+                                <p class="text-[15px] sm:text-base whitespace-pre-wrap leading-relaxed" x-text="msg.text"></p>
                                 
-                                <div :class="msg.is_mine ? 'text-teal-100' : 'text-slate-400'" class="text-[10px] mt-1 font-medium flex justify-end items-center gap-1">
+                                <div :class="msg.is_mine ? 'text-teal-100' : 'text-slate-400'" class="text-xs mt-1.5 font-medium flex justify-end items-center gap-1">
                                     <span x-text="msg.time"></span>
+                                    <span x-show="msg.is_edited" class="italic text-[10px] opacity-80">(Diedit)</span>
                                     
                                     <!-- Read Receipts -->
                                     <template x-if="msg.is_mine">
-                                        <div class="flex items-center -mr-0.5">
+                                        <div class="flex items-center ml-0.5">
                                             <!-- Belum dibaca (Centang 1) -->
-                                            <svg x-show="!msg.is_read" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                            <!-- Sudah dibaca (Centang 2 biru) -->
-                                            <svg x-show="msg.is_read" class="w-3.5 h-3.5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5 5L20 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 17l5 5L20 12"></path></svg>
+                                            <svg x-show="!msg.is_read" class="w-4 h-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                            <!-- Sudah dibaca (Centang 2 biru muda cerah) -->
+                                            <svg x-show="msg.is_read" class="w-4 h-4 text-cyan-300 drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 17l5 5L20 12"></path></svg>
                                         </div>
                                     </template>
                                 </div>
@@ -174,27 +188,39 @@
                                 </button>
                             </template>
                         </div>
+                        </div>
                     </template>
                 </div>
 
                 <!-- Input Area -->
-                <div class="p-4 border-t border-slate-200 bg-white" x-show="selectedContact">
+                <div class="p-4 border-t border-slate-200 bg-white relative z-20" x-show="selectedContact">
+                    <!-- Edit Mode Indicator -->
+                    <div x-show="editingMessageId" class="flex justify-between items-center mb-2 px-3 py-1.5 bg-teal-50 text-teal-700 text-xs rounded-lg border border-teal-100">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            <span class="font-medium">Mengedit pesan...</span>
+                        </div>
+                        <button type="button" @click="cancelEdit()" class="p-1 hover:bg-teal-200 rounded-full transition text-teal-600">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
                     <form @submit.prevent="sendMessage()" class="flex gap-2">
                         <textarea 
                             x-model="newMessage" 
                             @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendMessage(); }"
                             placeholder="Ketik pesan (Shift + Enter untuk baris baru)..." 
-                            class="flex-1 px-4 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl text-sm transition resize-none overflow-y-auto custom-scrollbar"
+                            class="flex-1 px-4 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl text-base transition resize-none overflow-y-auto custom-scrollbar"
                             rows="1"
-                            style="min-height: 44px; max-height: 120px;"
+                            style="min-height: 48px; max-height: 120px;"
                             x-init="$watch('newMessage', val => { 
-                                if(val === '') { $el.style.height = '44px'; } 
+                                if(val === '') { $el.style.height = '48px'; } 
                                 else { $el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 120) + 'px'; }
                             })"
                             @input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 120) + 'px';"
                             required
                         ></textarea>
-                        <button type="submit" :disabled="!newMessage.trim() || isSending" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center gap-2 cursor-pointer">
+                        <button type="submit" :disabled="!newMessage.trim() || isSending" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm sm:text-base font-bold shadow-md transition flex items-center gap-2 cursor-pointer">
                             <span x-show="!isSending">Kirim</span>
                             <span x-show="isSending">...</span>
                         </button>
@@ -216,6 +242,7 @@ function chatSystem() {
         messages: [],
         selectedContact: null,
         newMessage: '',
+        editingMessageId: null,
         isSending: false,
         totalUnread: 0,
         pollingInterval: null,
@@ -234,25 +261,52 @@ function chatSystem() {
         openChat() {
             this.isOpen = true;
             this.fetchContacts();
+            this.cancelEdit();
         },
 
         closeChat() {
             this.isOpen = false;
+            this.cancelEdit();
         },
 
         async fetchUnreadCount() {
             try {
-                let res = await fetch('{{ route('chat.unread-count') }}');
+                let res = await fetch('{{ route('chat.unread-count') }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
                 let data = await res.json();
                 if(data.success) {
                     this.totalUnread = data.count;
+                    if (data.system_count !== undefined) {
+                        let bellBadge = document.querySelector('button[title="Pemberitahuan & Notifikasi"] span.animate-pulse');
+                        if (data.system_count > 0) {
+                            if (!bellBadge) {
+                                let btn = document.querySelector('button[title="Pemberitahuan & Notifikasi"]');
+                                if (btn) {
+                                    btn.insertAdjacentHTML('beforeend', `<span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white ring-2 ring-white animate-pulse">${data.system_count}</span>`);
+                                }
+                            } else {
+                                bellBadge.innerText = data.system_count;
+                            }
+                        } else {
+                            if (bellBadge) bellBadge.remove();
+                        }
+                    }
                 }
             } catch(e) {}
         },
 
         async fetchContacts(silent = false) {
             try {
-                let res = await fetch('{{ route('chat.contacts') }}');
+                let res = await fetch('{{ route('chat.contacts') }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
                 let data = await res.json();
                 if(data.success) {
                     this.contacts = data.contacts;
@@ -311,11 +365,26 @@ function chatSystem() {
             if(contact.unread_count > 0) {
                 fetch(`{{ url('/chat/read') }}/${contact.id}`, {
                     method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    headers: { 
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
                 });
                 contact.unread_count = 0;
                 this.fetchUnreadCount();
             }
+        },
+
+        startEdit(msg) {
+            this.editingMessageId = msg.id;
+            this.newMessage = msg.text;
+            // focus logic if needed, but x-model handles binding
+        },
+
+        cancelEdit() {
+            this.editingMessageId = null;
+            this.newMessage = '';
         },
 
         async sendMessage() {
@@ -323,25 +392,55 @@ function chatSystem() {
             
             this.isSending = true;
             let text = this.newMessage;
+            let editingId = this.editingMessageId;
+            
             this.newMessage = '';
+            this.editingMessageId = null;
 
             try {
-                let res = await fetch('{{ route('chat.send') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        receiver_id: this.selectedContact.id,
-                        message: text
-                    })
-                });
-                let data = await res.json();
-                if(data.success) {
-                    this.messages.push(data.message);
-                    this.scrollToBottom();
-                    this.fetchContacts(true); // update last message snippet
+                if (editingId) {
+                    let res = await fetch(`{{ url('/chat/message') }}/${editingId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ message: text })
+                    });
+                    let data = await res.json();
+                    if(data.success) {
+                        let msgObj = this.messages.find(m => m.id === editingId);
+                        if(msgObj) {
+                            msgObj.text = data.text;
+                            msgObj.is_edited = true;
+                            msgObj.is_read = false;
+                        }
+                        this.fetchContacts(true);
+                    } else {
+                        alert(data.message || 'Gagal mengedit pesan');
+                    }
+                } else {
+                    let res = await fetch('{{ route('chat.send') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            receiver_id: this.selectedContact.id,
+                            message: text
+                        })
+                    });
+                    let data = await res.json();
+                    if(data.success) {
+                        this.messages.push(data.message);
+                        this.scrollToBottom();
+                        this.fetchContacts(true); // update last message snippet
+                    }
                 }
             } catch(e) {}
 
@@ -353,7 +452,11 @@ function chatSystem() {
             try {
                 let res = await fetch(`{{ url('/chat/message') }}/${id}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    headers: { 
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
                 });
                 let data = await res.json();
                 if(data.success) {
@@ -370,7 +473,11 @@ function chatSystem() {
             try {
                 let res = await fetch(`{{ url('/chat/clear') }}/${this.selectedContact.id}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    headers: { 
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
                 });
                 let data = await res.json();
                 if(data.success) {

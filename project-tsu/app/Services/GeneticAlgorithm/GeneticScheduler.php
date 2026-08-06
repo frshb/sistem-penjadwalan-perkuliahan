@@ -620,12 +620,7 @@ class GeneticScheduler
         $this->kelasData = [];
         $groupedKelas = [];
         foreach ($rawKelasData as $info) {
-            if ($info['id_dosen'] > 0 && $info['nama_matkul'] !== '') {
-                $key = strtolower($info['nama_matkul']) . '|' . $info['id_dosen'] . '|' . $info['sks'] . '|' . $info['jenis'];
-                $groupedKelas[$key][] = $info;
-            } else {
-                $groupedKelas['ungrouped_' . $info['id']][] = $info; // kelas tanpa dosen/nama matkul tidak digabung
-            }
+            $groupedKelas['ungrouped_' . $info['id']][] = $info; // kelas tidak digabung secara otomatis sesuai permintaan
         }
 
         foreach ($groupedKelas as $key => $group) {
@@ -652,14 +647,22 @@ class GeneticScheduler
             
             // [L5] Fallback: cari ruangan global yang cukup kapasitasnya
             if (empty($ruanganOptions) && !empty($this->ruanganList)) {
-                foreach ($this->ruanganList as $r) {
-                    if ($r['kapasitas'] >= $totalKapasitas) {
-                        $ruanganOptions[] = $r['id'];
+                if (empty($primary['original_ruangans'])) {
+                    foreach ($this->ruanganList as $r) {
+                        if ($r['kapasitas'] >= $totalKapasitas) {
+                            $ruanganOptions[] = $r['id'];
+                        }
                     }
-                }
-                if (!empty($ruanganOptions) && $totalKapasitas > $group[0]['kapasitas']) {
-                    $this->logProblem('fallback_ruangan',
-                        "Kelas id={$primary['id']} (Gabungan): ruangan dari global fallback karena butuh kapasitas {$totalKapasitas}.");
+                    if (!empty($ruanganOptions) && $totalKapasitas > $group[0]['kapasitas']) {
+                        $this->logProblem('fallback_ruangan',
+                            "Kelas id={$primary['id']} (Gabungan): ruangan dari global fallback karena butuh kapasitas {$totalKapasitas}.");
+                    }
+                } else {
+                    // Kelas ini memiliki ruangan spesifik di matkul_ruang, tetapi kapasitasnya tidak mencukupi.
+                    // Jangan fallback ke ruangan global (seperti Perpustakaan) yang tidak diinginkan user.
+                    // Tetap gunakan ruangan aslinya, dan biarkan constraint kapasitas (SC) yang menanggung penaltinya.
+                    $ruanganOptions = $primary['original_ruangans'];
+                    $this->logProblem('capacity_override', "Kelas id={$primary['id']} dipaksa menggunakan ruangan pilihannya meskipun kapasitas tidak mencukupi.");
                 }
             }
             

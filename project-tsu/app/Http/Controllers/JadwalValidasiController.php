@@ -84,16 +84,7 @@ class JadwalValidasiController extends Controller
             return back()->with('error', 'Jadwal belum 100% disusun (' . $pPercent . '%). Pengajuan ke Dekan hanya dapat dilakukan setelah seluruh kelas berhasil dijadwalkan.');
         }
 
-        $validStatuses = ['disetujui_kaprodi', 'revisi'];
-        if (!in_array($tahunAkademik->status_validasi ?? 'draft', $validStatuses)) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Pengajuan ke Dekan gagal. Jadwal harus direview oleh Sekretaris Prodi dan disetujui oleh Kaprodi terlebih dahulu.'
-                ], 422);
-            }
-            return back()->with('error', 'Pengajuan ke Dekan gagal. Jadwal harus direview oleh Sekretaris Prodi dan disetujui oleh Kaprodi terlebih dahulu.');
-        }
+
 
         $oldStatus = $tahunAkademik->status_validasi ?? 'draft';
         DB::transaction(function () use ($tahunAkademik, $user, $oldStatus) {
@@ -327,6 +318,37 @@ class JadwalValidasiController extends Controller
     }
 
     /**
+     * Admin membatalkan pengajuan review ke Sekre Prodi
+     */
+    public function batalkanSekprodi($id)
+    {
+        $tahun = TahunAkademik::findOrFail($id);
+        
+        // Cek status saat ini
+        if ($tahun->status_validasi !== 'review_sekprodi') {
+            return redirect()->back()->with('error', 'Pembatalan gagal. Status saat ini tidak valid untuk dibatalkan.');
+        }
+
+        // Hapus data JadwalValidasiProdi
+        \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $id)->delete();
+
+        // Kembalikan status menjadi draft
+        $tahun->status_validasi = 'draft';
+        $tahun->save();
+
+        // Tambah history
+        \App\Models\JadwalApprovalHistory::create([
+            'id_tahunakademik' => $id,
+            'actor_id' => Auth::id(),
+            'role_actor' => Auth::user()->role->nama_role ?? 'Admin',
+            'action' => 'batalkan_pengajuan_sekprodi',
+            'notes' => 'Admin membatalkan pengajuan review ke Sekretaris Prodi'
+        ]);
+
+        return redirect()->back()->with('success', 'Pengajuan review ke Sekretaris Prodi berhasil dibatalkan. Status dikembalikan ke Draft.');
+    }
+
+    /**
      * Admin mengirim jadwal ke Sekre Prodi untuk direview
      */
     public function kirimSekprodi(Request $request, $idTahun)
@@ -362,11 +384,24 @@ class JadwalValidasiController extends Controller
             return back()->with('error', 'Jadwal belum 100% disusun (' . $pPercent . '%). Review hanya dapat diajukan setelah seluruh kelas berhasil dijadwalkan.');
         }
 
-        DB::transaction(function () use ($tahunAkademik, $user, $oldStatus) {
+        DB::transaction(function () use ($tahunAkademik, $user, $oldStatus, $idTahun) {
             $tahunAkademik->update([
                 'status_validasi' => 'review_sekprodi',
                 'catatan_revisi'  => null,
             ]);
+
+            $prodis = \App\Models\Prodi::where('nama_prodi', 'NOT LIKE', '%Eksternal%')->get();
+            foreach ($prodis as $prodi) {
+                \App\Models\JadwalValidasiProdi::updateOrCreate(
+                    ['id_tahunakademik' => $idTahun, 'id_prodi' => $prodi->id_prodi],
+                    [
+                        'status_sekprodi' => 'menunggu',
+                        'status_kaprodi'  => 'menunggu',
+                        'catatan_revisi_sekprodi' => null,
+                        'catatan_revisi_kaprodi'  => null,
+                    ]
+                );
+            }
 
             Notification::create([
                 'user_id'     => null,
@@ -410,18 +445,30 @@ class JadwalValidasiController extends Controller
         $tahunAkademik = $this->checkAccessTahunAkademik($idTahun);
         $oldStatus = $tahunAkademik->status_validasi ?? 'review_sekprodi';
 
-        DB::transaction(function () use ($tahunAkademik, $request, $user, $oldStatus) {
-            $tahunAkademik->update([
-                'status_validasi' => 'revisi_sekprodi',
-                'catatan_revisi'  => $request->catatan_revisi,
-            ]);
+        DB::transaction(function () use ($tahunAkademik, $request, $user, $oldStatus, $idTahun) {
+            $prodiId = \App\Helpers\ProdiFilter::getProdiId() ?: ($user->id_prodi ?? null);
+            
+            if ($prodiId) {
+                \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $idTahun)
+                    ->where('id_prodi', $prodiId)
+                    ->update([
+                        'status_sekprodi' => 'revisi',
+                        'catatan_revisi_sekprodi' => $request->catatan_revisi
+                    ]);
+            } else {
+                $tahunAkademik->update([
+                    'status_validasi' => 'revisi_sekprodi',
+                    'catatan_revisi'  => $request->catatan_revisi,
+                ]);
+            }
 
             $catatanText = $request->catatan_revisi ? "\"{$request->catatan_revisi}\"" : "(Tanpa catatan)";
+            $prodiName = $user->prodi->nama_prodi ?? '';
             Notification::create([
                 'user_id'     => null,
                 'role_target' => 'admin',
-                'judul'       => '⚠️ Komentar / Keluhan Review dari Sekretaris Prodi',
-                'pesan'       => "Sekretaris Prodi ({$user->username}) memberikan catatan evaluasi pada jadwal periode {$tahunAkademik->nama_tahunakademik}: {$catatanText}",
+                'judul'       => "⚠️ Komentar / Keluhan Review dari Sekretaris Prodi $prodiName",
+                'pesan'       => "Sekretaris Prodi $prodiName ({$user->username}) memberikan catatan evaluasi pada jadwal periode {$tahunAkademik->nama_tahunakademik}: {$catatanText}",
                 'tipe'        => 'warning',
                 'is_read'     => false,
             ]);
@@ -445,31 +492,50 @@ class JadwalValidasiController extends Controller
         $tahunAkademik = $this->checkAccessTahunAkademik($idTahun);
         $oldStatus = $tahunAkademik->status_validasi ?? 'review_sekprodi';
 
-        DB::transaction(function () use ($tahunAkademik, $user, $oldStatus) {
-            $tahunAkademik->update([
-                'status_validasi' => 'review_kaprodi',
-                'catatan_revisi'  => null,
-            ]);
+        DB::transaction(function () use ($tahunAkademik, $user, $oldStatus, $idTahun) {
+            $prodiId = \App\Helpers\ProdiFilter::getProdiId() ?: ($user->id_prodi ?? null);
 
-            Notification::create([
-                'user_id'     => null,
-                'role_target' => 'kaprodi',
-                'judul'       => '📋 Pengajuan Review Jadwal dari Sekprodi',
-                'pesan'       => "Sekretaris Prodi ({$user->username}) telah memeriksa jadwal periode {$tahunAkademik->nama_tahunakademik} (tanpa keluhan) dan mengajukannya kepada Anda untuk disetujui.",
-                'tipe'        => 'info',
-                'is_read'     => false,
-            ]);
+            if ($prodiId) {
+                \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $idTahun)
+                    ->where('id_prodi', $prodiId)
+                    ->update([
+                        'status_sekprodi' => 'disetujui'
+                    ]);
+            }
 
+            // Check if all sekprodi approved
+            $prodisValidasi = \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $idTahun)->get();
+            $allApproved = $prodisValidasi->every(function($vp) {
+                return $vp->status_sekprodi === 'disetujui';
+            });
+
+            if ($allApproved && $tahunAkademik->status_validasi !== 'review_kaprodi') {
+                $tahunAkademik->update([
+                    'status_validasi' => 'review_kaprodi',
+                    'catatan_revisi'  => null,
+                ]);
+
+                Notification::create([
+                    'user_id'     => null,
+                    'role_target' => 'kaprodi',
+                    'judul'       => '📋 Pengajuan Review Jadwal dari Sekprodi',
+                    'pesan'       => "Seluruh Sekretaris Prodi telah memeriksa jadwal periode {$tahunAkademik->nama_tahunakademik} dan mengajukannya kepada Anda untuk disetujui.",
+                    'tipe'        => 'info',
+                    'is_read'     => false,
+                ]);
+            }
+
+            $prodiName = $user->prodi->nama_prodi ?? '';
             Notification::create([
                 'user_id'     => null,
                 'role_target' => 'admin',
-                'judul'       => '✅ Review Sekprodi Selesai',
-                'pesan'       => "Sekretaris Prodi telah memeriksa jadwal periode {$tahunAkademik->nama_tahunakademik}. Jadwal kini diteruskan kepada Kaprodi untuk persetujuan.",
+                'judul'       => "✅ Review Sekprodi $prodiName Selesai",
+                'pesan'       => "Sekretaris Prodi $prodiName telah memeriksa jadwal periode {$tahunAkademik->nama_tahunakademik}. Jadwal kini diteruskan kepada Kaprodi $prodiName.",
                 'tipe'        => 'success',
                 'is_read'     => false,
             ]);
 
-            $this->recordHistory($tahunAkademik->id_tahunakademik, 'setujui_sekprodi', $oldStatus, 'review_kaprodi');
+            $this->recordHistory($tahunAkademik->id_tahunakademik, 'setujui_sekprodi', $oldStatus, $allApproved ? 'review_kaprodi' : $oldStatus);
         });
 
         return back()->with('success', 'Jadwal berhasil disetujui dan diteruskan kepada Kaprodi!');
@@ -494,30 +560,45 @@ class JadwalValidasiController extends Controller
         $tahunAkademik = $this->checkAccessTahunAkademik($idTahun);
         $oldStatus = $tahunAkademik->status_validasi ?? 'review_kaprodi';
 
-        DB::transaction(function () use ($tahunAkademik, $request, $user, $oldStatus) {
-            $tahunAkademik->update([
-                'status_validasi' => 'revisi_kaprodi',
-                'catatan_revisi'  => $request->catatan_revisi,
-            ]);
+        DB::transaction(function () use ($tahunAkademik, $request, $user, $oldStatus, $idTahun) {
+            $prodiId = \App\Helpers\ProdiFilter::getProdiId() ?: ($user->id_prodi ?? null);
+            
+            if ($prodiId) {
+                \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $idTahun)
+                    ->where('id_prodi', $prodiId)
+                    ->update([
+                        'status_kaprodi' => 'revisi',
+                        'catatan_revisi_kaprodi' => $request->catatan_revisi
+                    ]);
+            } else {
+                $tahunAkademik->update([
+                    'status_validasi' => 'revisi_kaprodi',
+                    'catatan_revisi'  => $request->catatan_revisi,
+                ]);
+            }
 
             $catatanText = $request->catatan_revisi ? "\"{$request->catatan_revisi}\"" : "(Tanpa catatan)";
+            $prodiName = $user->prodi->nama_prodi ?? '';
             Notification::create([
                 'user_id'     => null,
                 'role_target' => 'admin',
-                'judul'       => '⚠️ Komentar / Revisi dari Kaprodi',
-                'pesan'       => "Kaprodi ({$user->username}) memberikan catatan pada jadwal periode {$tahunAkademik->nama_tahunakademik}: {$catatanText}",
+                'judul'       => "⚠️ Komentar / Revisi dari Kaprodi $prodiName",
+                'pesan'       => "Kaprodi $prodiName ({$user->username}) memberikan catatan pada jadwal periode {$tahunAkademik->nama_tahunakademik}: {$catatanText}",
                 'tipe'        => 'warning',
                 'is_read'     => false,
             ]);
 
-            Notification::create([
-                'user_id'     => null,
-                'role_target' => 'sekretaris prodi',
-                'judul'       => 'ℹ️ Jadwal Dikembalikan Kaprodi ke Admin',
-                'pesan'       => "Kaprodi mengembalikan jadwal periode {$tahunAkademik->nama_tahunakademik} ke Admin untuk perbaikan.",
-                'tipe'        => 'info',
-                'is_read'     => false,
-            ]);
+            $sekre = \App\Models\User::whereHas('role', fn($q) => $q->where('nama_role', 'sekretaris prodi'))->where('id_prodi', $prodiId)->first();
+            if ($sekre) {
+                Notification::create([
+                    'user_id'     => $sekre->id_user ?? $sekre->id,
+                    'role_target' => null,
+                    'judul'       => 'ℹ️ Jadwal Dikembalikan Kaprodi ke Admin',
+                    'pesan'       => "Kaprodi mengembalikan jadwal periode {$tahunAkademik->nama_tahunakademik} ke Admin untuk perbaikan.",
+                    'tipe'        => 'info',
+                    'is_read'     => false,
+                ]);
+            }
 
             $this->recordHistory($tahunAkademik->id_tahunakademik, 'revisi_kaprodi', $oldStatus, 'revisi_kaprodi', $request->catatan_revisi);
         });
@@ -538,31 +619,54 @@ class JadwalValidasiController extends Controller
         $tahunAkademik = $this->checkAccessTahunAkademik($idTahun);
         $oldStatus = $tahunAkademik->status_validasi ?? 'review_kaprodi';
 
-        DB::transaction(function () use ($tahunAkademik, $user, $oldStatus) {
-            $tahunAkademik->update([
-                'status_validasi' => 'disetujui_kaprodi',
-                'catatan_revisi'  => null,
-            ]);
+        DB::transaction(function () use ($tahunAkademik, $user, $oldStatus, $idTahun) {
+            $prodiId = \App\Helpers\ProdiFilter::getProdiId() ?: ($user->id_prodi ?? null);
+            
+            if ($prodiId) {
+                \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $idTahun)
+                    ->where('id_prodi', $prodiId)
+                    ->update([
+                        'status_kaprodi' => 'disetujui'
+                    ]);
+            }
 
-            Notification::create([
-                'user_id'     => null,
-                'role_target' => 'admin',
-                'judul'       => '✅ Jadwal Disetujui Kaprodi!',
-                'pesan'       => "Kaprodi ({$user->username}) telah menyetujui jadwal perkuliahan periode {$tahunAkademik->nama_tahunakademik}. Anda sekarang dapat mengajukan jadwal ke Dekan untuk validasi akhir.",
-                'tipe'        => 'success',
-                'is_read'     => false,
-            ]);
+            // Check if all kaprodi approved
+            $prodisValidasi = \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $idTahun)->get();
+            $allApproved = $prodisValidasi->every(function($vp) {
+                return $vp->status_kaprodi === 'disetujui';
+            });
 
-            Notification::create([
-                'user_id'     => null,
-                'role_target' => 'sekretaris prodi',
-                'judul'       => '✅ Jadwal Disetujui Kaprodi',
-                'pesan'       => "Jadwal periode {$tahunAkademik->nama_tahunakademik} yang Anda teruskan telah disetujui oleh Kaprodi.",
-                'tipe'        => 'success',
-                'is_read'     => false,
-            ]);
+            if ($allApproved && $tahunAkademik->status_validasi !== 'disetujui_kaprodi') {
+                $tahunAkademik->update([
+                    'status_validasi' => 'disetujui_kaprodi',
+                    'catatan_revisi'  => null,
+                ]);
 
-            $this->recordHistory($tahunAkademik->id_tahunakademik, 'setujui_kaprodi', $oldStatus, 'disetujui_kaprodi');
+                Notification::create([
+                    'user_id'     => null,
+                    'role_target' => 'admin',
+                    'judul'       => '✅ Jadwal Disetujui Kaprodi (Seluruh Prodi)',
+                    'pesan'       => "Seluruh Kaprodi telah menyetujui jadwal perkuliahan periode {$tahunAkademik->nama_tahunakademik}. Anda sekarang dapat mengajukan jadwal ke Dekan untuk validasi akhir.",
+                    'tipe'        => 'success',
+                    'is_read'     => false,
+                ]);
+            }
+
+            $prodiName = $user->prodi->nama_prodi ?? '';
+            $sekre = \App\Models\User::whereHas('role', fn($q) => $q->where('nama_role', 'sekretaris prodi'))->where('id_prodi', $prodiId)->first();
+            
+            if ($sekre) {
+                Notification::create([
+                    'user_id'     => $sekre->id_user ?? $sekre->id,
+                    'role_target' => null,
+                    'judul'       => '✅ Jadwal Disetujui Kaprodi',
+                    'pesan'       => "Jadwal periode {$tahunAkademik->nama_tahunakademik} yang Anda teruskan telah disetujui oleh Kaprodi.",
+                    'tipe'        => 'success',
+                    'is_read'     => false,
+                ]);
+            }
+
+            $this->recordHistory($tahunAkademik->id_tahunakademik, 'setujui_kaprodi', $oldStatus, $allApproved ? 'disetujui_kaprodi' : $oldStatus);
         });
 
         return back()->with('success', 'Jadwal berhasil disetujui! Admin kini dapat melanjutkan pengajuan ke Dekan.');
@@ -596,6 +700,36 @@ class JadwalValidasiController extends Controller
         ]);
     }
 
+    public function progress(Request $request, $idTahun)
+    {
+        $this->checkAccessTahunAkademik($idTahun);
+
+        $validasiProdis = \App\Models\JadwalValidasiProdi::with('prodi')
+            ->where('id_tahunakademik', $idTahun)
+            ->whereHas('prodi', function($q) {
+                $q->where('nama_prodi', 'NOT LIKE', '%Eksternal%');
+            })
+            ->get();
+
+        $totalProdi = $validasiProdis->count();
+        $approvedProdis = $validasiProdis->where('status_kaprodi', 'disetujui')->count();
+        $progressApprovalPercent = $totalProdi > 0 ? (int)round(($approvedProdis / $totalProdi) * 100) : 0;
+
+        $prodis = $validasiProdis->map(function($vp) {
+            return [
+                'nama_prodi' => $vp->prodi->nama_prodi ?? 'Prodi',
+                'status_sekprodi' => $vp->status_sekprodi ?? 'menunggu_review',
+                'status_kaprodi' => $vp->status_kaprodi ?? 'menunggu_review',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'prodis' => $prodis,
+            'progress_percent' => $progressApprovalPercent
+        ]);
+    }
+
     /**
      * Tandai Notifikasi Sudah Dibaca
      */
@@ -608,7 +742,9 @@ class JadwalValidasiController extends Controller
 
         if (!$redirectUrl) {
             $text = strtolower(($notification->judul ?? '') . ' ' . ($notification->pesan ?? ''));
-            if (str_contains($text, 'jadwal') || str_contains($text, 'validasi') || str_contains($text, 'revisi') || str_contains($text, 'pengajuan') || str_contains($text, 'dekan') || str_contains($text, 'dosen')) {
+            if (str_contains($text, 'pesan') || str_contains($text, 'obrolan')) {
+                $redirectUrl = '#chat';
+            } elseif (str_contains($text, 'jadwal') || str_contains($text, 'validasi') || str_contains($text, 'revisi') || str_contains($text, 'pengajuan') || str_contains($text, 'dekan') || str_contains($text, 'dosen')) {
                 $redirectUrl = route('jadwal.index');
             } elseif (str_contains($text, 'kelas') || str_contains($text, 'prodi')) {
                 $redirectUrl = route('kelas.index');

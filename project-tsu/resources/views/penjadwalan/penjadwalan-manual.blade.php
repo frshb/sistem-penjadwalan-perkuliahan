@@ -465,55 +465,121 @@
                     $kCount = isset($kelas) ? $kelas->count() : \App\Models\Kelas::where('id_tahunakademik', $tahunAkademik->id_tahunakademik)->count();
                     $jCount = isset($jadwalTersimpan) ? $jadwalTersimpan->pluck('id_kelas')->unique()->count() : \App\Models\Jadwal::where('id_tahunakademik', $tahunAkademik->id_tahunakademik)->count();
                     $pPercent = $kCount > 0 ? min(100, (int)round(($jCount / $kCount) * 100)) : 0;
+                    
+                    // Progress Approval Data
+                    $validasiProdis = \App\Models\JadwalValidasiProdi::with('prodi')
+                        ->where('id_tahunakademik', $tahunAkademik->id_tahunakademik)
+                        ->whereHas('prodi', function($q) {
+                            $q->where('nama_prodi', 'NOT LIKE', '%Eksternal%');
+                        })->get();
+                    $totalProdi = $validasiProdis->count();
+                    $approvedKaprodi = $validasiProdis->where('status_kaprodi', 'disetujui')->count();
+                    $progressApprovalPercent = $totalProdi > 0 ? round(($approvedKaprodi / $totalProdi) * 100) : 0;
                 @endphp
 
-                <div id="container-btn-ajukan" class="{{ in_array($stVal, ['draft', 'revisi', 'revisi_sekprodi', 'revisi_kaprodi', 'disetujui_kaprodi']) && $pPercent >= 100 ? 'flex items-center gap-2' : 'hidden' }}">
-                    @if(in_array($stVal, ['draft', 'revisi', 'revisi_sekprodi', 'revisi_kaprodi']))
+                <div id="container-btn-ajukan" class="{{ $pPercent >= 100 ? 'flex items-center gap-2' : 'hidden' }}">
+                    @if(in_array($stVal, ['draft', 'revisi']))
                         @if($isAdmin)
-                            <form action="{{ route('jadwal.validasi.kirim-sekprodi', $tahunAkademik->id_tahunakademik) }}" method="POST">
+                            <form action="{{ route('jadwal.validasi.kirim-sekprodi', $tahunAkademik->id_tahunakademik) }}" method="POST" onsubmit="return handleFormSubmit(this, 'Mengajukan...')">
                                 @csrf
                                 <button type="submit" class="px-3 sm:px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Kirim jadwal ini ke Sekretaris Prodi untuk direview">
                                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                                    <span>{{ in_array($stVal, ['revisi', 'revisi_sekprodi', 'revisi_kaprodi']) ? 'Kirim Ulang untuk Review' : 'Review Jadwal (Kirim ke Sekprodi)' }}</span>
+                                    <span>{{ $stVal === 'revisi' ? 'Kirim Ulang untuk Review' : 'Review Jadwal (Kirim ke Sekprodi)' }}</span>
                                 </button>
                             </form>
-                            @if($stVal === 'revisi')
-                            <form action="{{ route('jadwal.validasi.ajukan', $tahunAkademik->id_tahunakademik) }}" method="POST">
-                                @csrf
-                                <button type="submit" class="px-3 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Ajukan langsung kembali ke Dekan tanpa review ulang Sekprodi/Kaprodi">
-                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    <span>Ajukan Langsung ke Dekan</span>
-                                </button>
-                            </form>
+                        @endif
+                    @elseif($stVal === 'review_sekprodi')
+                        @php
+                            $uProdiId = Auth::user()->id_prodi ?? null;
+                            $myValidasi = $validasiProdis->firstWhere('id_prodi', $uProdiId);
+                            $isMySekprodiDone = $myValidasi && $myValidasi->status_sekprodi === 'disetujui';
+                        @endphp
+                        @if(!$isAdmin && strtolower(Auth::user()->role->nama_role ?? '') === 'sekretaris prodi')
+                            @if(!$isMySekprodiDone)
+                                <span class="px-3.5 py-2.5 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Silakan gunakan banner hijau di atas untuk mereview">
+                                    <span>⚠️ Menunggu Review Anda</span>
+                                </span>
+                            @else
+                                <span class="px-3.5 py-2.5 bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Sedang menunggu review Sekretaris Prodi Lainnya">
+                                    <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                    <span>Menunggu Sekprodi Lainnya</span>
+                                </span>
                             @endif
+                        @else
+                            @if($isAdmin)
+                                <form action="{{ route('jadwal.validasi.batalkan-sekprodi', $tahunAkademik->id_tahunakademik) }}" method="POST" class="inline" onsubmit="if(confirm('Apakah Anda yakin ingin membatalkan pengajuan review ke Sekprodi? Jadwal akan kembali ke status Draft.')){ return handleFormSubmit(this, 'Membatalkan...'); } return false;">
+                                    @csrf
+                                    <button type="submit" class="px-3 sm:px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Batalkan pengajuan ini">
+                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        <span>Batalkan Review (Sekre Prodi)</span>
+                                    </button>
+                                </form>
+                            @else
+                                <span class="px-3.5 py-2.5 bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Sedang menunggu review Sekretaris Prodi">
+                                    <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                    <span>Menunggu Review Sekprodi Lainnya</span>
+                                </span>
+                            @endif
+                        @endif
+                    @elseif($stVal === 'review_kaprodi')
+                        @php
+                            $uProdiId = Auth::user()->id_prodi ?? null;
+                            $myValidasi = $validasiProdis->firstWhere('id_prodi', $uProdiId);
+                            $isMyKaprodiDone = $myValidasi && $myValidasi->status_kaprodi === 'disetujui';
+                        @endphp
+                        @if(!$isAdmin && strtolower(Auth::user()->role->nama_role ?? '') === 'kaprodi')
+                            @if(!$isMyKaprodiDone)
+                                <span class="px-3.5 py-2.5 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Silakan gunakan banner biru di atas untuk mereview">
+                                    <span>⚠️ Menunggu Persetujuan Anda</span>
+                                </span>
+                            @else
+                                <span class="px-3.5 py-2.5 bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Sedang menunggu review Kaprodi Lainnya">
+                                    <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                    <span>Menunggu Kaprodi Lainnya</span>
+                                </span>
+                            @endif
+                        @else
+                            <span class="px-3.5 py-2.5 bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Sedang menunggu review Kaprodi">
+                                <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                                <span>{{ $isAdmin ? 'Menunggu Review Kaprodi' : 'Menunggu Review Kaprodi Lainnya' }}</span>
+                            </span>
                         @endif
                     @elseif($stVal === 'disetujui_kaprodi')
                         @if($isAdmin)
-                            <form action="{{ route('jadwal.validasi.ajukan', $tahunAkademik->id_tahunakademik) }}" method="POST" class="inline">
+                            <form action="{{ route('jadwal.validasi.ajukan', $tahunAkademik->id_tahunakademik) }}" method="POST" onsubmit="if(confirm('Ajukan jadwal ke Dekan sekarang?')){ return handleFormSubmit(this, 'Mengajukan...'); } return false;">
                                 @csrf
-                                <button type="submit" class="px-3 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Ajukan jadwal yang telah disetujui Kaprodi ini ke Dekan untuk validasi akhir">
-                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    <span>Ajukan ke Dekan (Validasi Akhir)</span>
+                                <button type="submit" class="px-3 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Ajukan jadwal final ke Dekan">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                    <span>Ajukan Validasi Dekan</span>
                                 </button>
                             </form>
                         @endif
                     @endif
+
+                    @if(in_array($stVal, ['review_sekprodi', 'review_kaprodi', 'revisi_sekprodi', 'revisi_kaprodi', 'disetujui_kaprodi']))
+                        @if($isAdmin)
+                        <button type="button" onclick="bukaModalProgressApproval()" class="px-3 sm:px-5 py-2.5 bg-white border border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl font-bold shadow flex items-center gap-2 transition text-sm cursor-pointer" title="Lihat progress approval jadwal per program studi">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <span>Dashboard Progress</span>
+                        </button>
+                        @endif
+                    @endif
                 </div>
 
-                <div id="container-status-menunggu" class="{{ in_array($stVal, ['review_sekprodi', 'review_kaprodi', 'menunggu_persetujuan']) && $pPercent >= 100 ? 'inline' : 'hidden' }}">
-                    @if(in_array($stVal, ['review_sekprodi', 'review_kaprodi', 'menunggu_persetujuan']))
+                <div id="container-status-menunggu" class="{{ in_array($stVal, ['menunggu_persetujuan']) && $pPercent >= 100 ? 'inline' : 'hidden' }}">
+                    @if($stVal === 'menunggu_persetujuan')
                         @if($isAdmin)
-                            <form action="{{ route('jadwal.validasi.batalkan-pengajuan', $tahunAkademik->id_tahunakademik) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pengajuan review ini untuk mengedit jadwal kembali?')">
+                            <form action="{{ route('jadwal.validasi.batalkan-pengajuan', $tahunAkademik->id_tahunakademik) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pengajuan ke Dekan ini?')">
                                 @csrf
-                                <button type="submit" class="px-3.5 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition" title="Klik untuk membatalkan pengajuan review agar dapat mengedit jadwal kembali">
+                                <button type="submit" class="px-3.5 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition" title="Klik untuk membatalkan pengajuan ke Dekan">
                                     <svg class="w-4 h-4 text-amber-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-                                    <span>{{ $stVal === 'review_sekprodi' ? 'Menunggu Sekprodi' : ($stVal === 'review_kaprodi' ? 'Menunggu Kaprodi' : 'Menunggu Dekan') }} (Klik Batalkan)</span>
+                                    <span>Menunggu Dekan (Klik Batalkan)</span>
                                 </button>
                             </form>
                         @else
                             <span class="px-3.5 py-2.5 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5" title="Jadwal sedang dalam proses review">
                                 <svg class="w-4 h-4 text-amber-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
-                                <span>{{ $stVal === 'review_sekprodi' ? 'Sedang Dalam Review Sekprodi' : ($stVal === 'review_kaprodi' ? 'Sedang Dalam Review Kaprodi' : 'Menunggu Persetujuan Dekan') }}</span>
+                                <span>Menunggu Persetujuan Dekan</span>
                             </span>
                         @endif
                     @endif
@@ -637,7 +703,7 @@
             x-transition:leave="transition ease-in duration-250"
             x-transition:leave-start="opacity-100 translate-x-0"
             x-transition:leave-end="opacity-0 -translate-x-10"
-            class="col-span-12 xl:col-span-3 min-h-0 flex relative z-10"
+            class="col-span-12 xl:col-span-3 min-h-0 flex relative z-40"
         >
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col w-full overflow-visible">
 
@@ -2406,6 +2472,9 @@ function enableMerge(card) {
 
         // Tandai status di sidebar untuk seluruh kelas yang digabung
         mergedId.forEach(id => setSidebarStatus(id, 'sudah'));
+        
+        updateCounter();
+        applyFilter();
 
         // Simpan perubahan gabungan kelas ke backend database
         await simpanJadwal(card);
@@ -2998,6 +3067,99 @@ window.updateWorkspaceSearchCounter = function() {
     </div>
 </div>
 
+{{-- MODAL PROGRESS APPROVAL --}}
+<div id="modal-progress-approval" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="document.getElementById('modal-progress-approval').classList.add('hidden')"></div>
+    <!-- Content -->
+    <div class="relative bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-4xl p-6 sm:p-10 m-4 transform scale-95 transition-all duration-300">
+        <div class="flex items-center justify-between border-b pb-5 mb-6">
+            <h3 class="text-2xl font-bold text-gray-800">Progress Validasi Fakultas</h3>
+            <button type="button" onclick="document.getElementById('modal-progress-approval').classList.add('hidden')" class="text-gray-500 hover:bg-gray-100 p-3 rounded-xl transition text-xl font-bold">✕</button>
+        </div>
+        
+        <div class="space-y-6 mb-8">
+            <div class="overflow-hidden rounded-2xl border border-gray-200">
+                <table class="w-full text-left">
+                    <thead class="text-sm font-bold text-gray-600 bg-gray-100 uppercase border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-5">Program Studi</th>
+                            <th class="px-6 py-5 text-center">Review Sekre Prodi</th>
+                            <th class="px-6 py-5 text-center">Review Kaprodi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-base" id="progress-approval-tbody">
+                        @foreach($validasiProdis ?? [] as $vp)
+                        <tr class="border-b border-gray-100 hover:bg-slate-50 transition">
+                            <td class="px-6 py-5 font-bold text-gray-800 text-lg">{{ $vp->prodi->nama_prodi ?? 'Prodi' }}</td>
+                            <td class="px-6 py-5 text-center">
+                                @if($vp->status_sekprodi === 'disetujui') 
+                                    <span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-800 font-bold border border-green-200 w-36">
+                                        ✔ Disetujui
+                                    </span>
+                                @elseif($vp->status_sekprodi === 'revisi') 
+                                    <span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold border border-red-200 w-36">
+                                        ✖ Revisi
+                                    </span>
+                                @else 
+                                    <span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 w-36">
+                                        ⏳ Menunggu
+                                    </span> 
+                                @endif
+                            </td>
+                            <td class="px-6 py-5 text-center">
+                                @if($vp->status_kaprodi === 'disetujui') 
+                                    <span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-800 font-bold border border-green-200 w-36">
+                                        ✔ Disetujui
+                                    </span>
+                                @elseif($vp->status_kaprodi === 'revisi') 
+                                    <span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold border border-red-200 w-36">
+                                        ✖ Revisi
+                                    </span>
+                                @else 
+                                    <span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 w-36">
+                                        ⏳ Menunggu
+                                    </span> 
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-8 bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-base font-bold text-gray-700 uppercase tracking-wide">Progress Keseluruhan Kaprodi</span>
+                    <span id="progress-approval-percent-text" class="text-2xl font-black {{ ($progressApprovalPercent ?? 0) == 100 ? 'text-green-600' : 'text-indigo-600' }}">{{ $progressApprovalPercent ?? 0 }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                    <div id="progress-approval-bar" class="h-4 rounded-full {{ ($progressApprovalPercent ?? 0) == 100 ? 'bg-green-600' : 'bg-indigo-600' }} transition-all duration-1000" style="width: {{ $progressApprovalPercent ?? 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-4 pt-6 border-t border-gray-200 mt-8">
+            <button type="button" onclick="document.getElementById('modal-progress-approval').classList.add('hidden')"
+                class="w-full sm:w-auto px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-lg font-bold rounded-xl transition cursor-pointer text-center">
+                Tutup Jendela
+            </button>
+            @if($isAdmin)
+                <form action="{{ route('jadwal.validasi.ajukan', $tahunAkademik->id_tahunakademik) }}" method="POST" class="w-full sm:w-auto" onsubmit="return handleFormSubmit(this, 'Mengajukan...')">
+                    @csrf
+                    <button type="submit" id="btn-ajukan-dekan-modal"
+                        class="w-full sm:w-auto px-8 py-3.5 text-lg font-bold rounded-xl shadow-md transition flex items-center justify-center gap-3 cursor-pointer 
+                        {{ ($progressApprovalPercent ?? 0) >= 100 ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed' }}"
+                        {{ ($progressApprovalPercent ?? 0) < 100 ? 'disabled' : '' }}>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Ajukan ke Dekan</span>
+                    </button>
+                </form>
+            @endif
+        </div>
+    </div>
+</div>
+
 {{-- MODAL REVIEW WORKFLOW (DECISION & TIMELINE) --}}
 <x-modal-approval-decision :tahunAkademik="$tahunAkademik" />
 <x-modal-approval-timeline :tahunAkademik="$tahunAkademik" />
@@ -3116,7 +3278,110 @@ window.tutupModalTimelineApproval = function() {
     const overlay = document.getElementById('modal-approval-timeline-overlay');
     if (overlay) overlay.classList.add('hidden');
 };
+
+window.bukaModalProgressApproval = function() {
+    const modal = document.getElementById('modal-progress-approval');
+    const tbody = document.getElementById('progress-approval-tbody');
+    const percentText = document.getElementById('progress-approval-percent-text');
+    const bar = document.getElementById('progress-approval-bar');
+    const btnAjukan = document.getElementById('btn-ajukan-dekan-modal');
+
+    if (modal) modal.classList.remove('hidden');
+
+    if (percentText && bar) {
+        percentText.innerText = '...';
+        percentText.className = 'text-2xl font-black text-indigo-400 animate-pulse';
+        bar.style.width = '0%';
+        bar.className = 'h-4 rounded-full bg-indigo-200 transition-all duration-300';
+    }
+
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm">Mengambil data terbaru...</td></tr>';
+        
+        fetch(`{{ route('jadwal.validasi.progress', $tahunAkademik->id_tahunakademik) }}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success && data.prodis) {
+                    let html = '';
+                    data.prodis.forEach(vp => {
+                        let sekprodiBadge = '', kaprodiBadge = '';
+                        
+                        if(vp.status_sekprodi === 'disetujui') {
+                            sekprodiBadge = '<span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-800 font-bold border border-green-200 w-36">✔ Disetujui</span>';
+                        } else if(vp.status_sekprodi === 'revisi') {
+                            sekprodiBadge = '<span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold border border-red-200 w-36">✖ Revisi</span>';
+                        } else {
+                            sekprodiBadge = '<span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 w-36">⏳ Menunggu</span>';
+                        }
+                        
+                        if(vp.status_kaprodi === 'disetujui') {
+                            kaprodiBadge = '<span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-800 font-bold border border-green-200 w-36">✔ Disetujui</span>';
+                        } else if(vp.status_kaprodi === 'revisi') {
+                            kaprodiBadge = '<span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold border border-red-200 w-36">✖ Revisi</span>';
+                        } else {
+                            kaprodiBadge = '<span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 w-36">⏳ Menunggu</span>';
+                        }
+
+                        html += `
+                            <tr class="border-b border-gray-100 hover:bg-slate-50 transition">
+                                <td class="px-6 py-5 font-bold text-gray-800 text-lg">${vp.nama_prodi}</td>
+                                <td class="px-6 py-5 text-center">${sekprodiBadge}</td>
+                                <td class="px-6 py-5 text-center">${kaprodiBadge}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                    
+                    if (percentText && bar) {
+                        const pct = data.progress_percent;
+                        percentText.innerText = pct + '%';
+                        bar.style.width = pct + '%';
+                        
+                        if (pct === 100) {
+                            percentText.className = 'text-2xl font-black text-green-600';
+                            bar.className = 'h-4 rounded-full bg-green-600 transition-all duration-1000';
+                            if(btnAjukan) {
+                                btnAjukan.className = 'w-full sm:w-auto px-8 py-3.5 text-lg font-bold rounded-xl shadow-md transition flex items-center justify-center gap-3 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white';
+                                btnAjukan.disabled = false;
+                            }
+                        } else {
+                            percentText.className = 'text-2xl font-black text-indigo-600';
+                            bar.className = 'h-4 rounded-full bg-indigo-600 transition-all duration-1000';
+                            if(btnAjukan) {
+                                btnAjukan.className = 'w-full sm:w-auto px-8 py-3.5 text-lg font-bold rounded-xl shadow-md transition flex items-center justify-center gap-3 cursor-not-allowed bg-gray-300 text-gray-500';
+                                btnAjukan.disabled = true;
+                            }
+                        }
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-red-500 text-sm">Gagal memuat progress validasi.</td></tr>';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-red-500 text-sm">Gagal memuat progress validasi.</td></tr>';
+            });
+    }
+};
 </script>
 
+<script>
+window.handleFormSubmit = function(form, loadingText = 'Memproses...') {
+    if (form.dataset.submitted) {
+        return false;
+    }
+    form.dataset.submitted = true;
+    let btn = form.querySelector('button[type="submit"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-wait');
+        let span = btn.querySelector('span');
+        if (span) {
+            span.innerHTML = loadingText + ' <svg class="inline w-4 h-4 animate-spin ml-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>';
+        }
+    }
+    return true;
+}
+</script>
 </body>
 </html>

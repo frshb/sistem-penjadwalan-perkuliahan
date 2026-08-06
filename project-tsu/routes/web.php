@@ -23,6 +23,17 @@ Route::get('/debug-columns', function () {
     return redirect()->route('login');
 });
 
+Route::get('/debug-dump-schema', function () {
+    $res = \Illuminate\Support\Facades\DB::select('SHOW CREATE TABLE jadwal');
+    file_put_contents(storage_path('logs/schema_jadwal.txt'), json_encode($res));
+    return 'Done';
+});
+Route::get('/debug-log-view', function () {
+    $file = file(storage_path('logs/laravel.log'));
+    file_put_contents(storage_path('logs/latest_log.txt'), implode("\n", array_slice($file, -100)));
+    return 'Done';
+});
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
@@ -209,11 +220,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/penjadwalan/{id}/batalkan-validasi', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanValidasi'])->name('jadwal.validasi.batalkan');
         Route::post('/penjadwalan/{id}/batalkan-pengajuan', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanPengajuan'])->name('jadwal.validasi.batalkan-pengajuan');
         Route::post('/penjadwalan/{id}/kirim-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'kirimSekprodi'])->name('jadwal.validasi.kirim-sekprodi');
+        Route::post('/penjadwalan/{id}/batalkan-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanSekprodi'])->name('jadwal.validasi.batalkan-sekprodi');
         Route::post('/penjadwalan/{id}/revisi-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'revisiSekprodi'])->name('jadwal.validasi.revisi-sekprodi');
         Route::post('/penjadwalan/{id}/setujui-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'setujuiSekprodi'])->name('jadwal.validasi.setujui-sekprodi');
         Route::post('/penjadwalan/{id}/revisi-kaprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'revisiKaprodi'])->name('jadwal.validasi.revisi-kaprodi');
         Route::post('/penjadwalan/{id}/setujui-kaprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'setujuiKaprodi'])->name('jadwal.validasi.setujui-kaprodi');
         Route::get('/penjadwalan/{id}/timeline', [\App\Http\Controllers\JadwalValidasiController::class, 'timeline'])->name('jadwal.validasi.timeline');
+        Route::get('/penjadwalan/{id}/progress', [\App\Http\Controllers\JadwalValidasiController::class, 'progress'])->name('jadwal.validasi.progress');
         Route::delete('/penjadwalan/{id}/hapus-catatan-revisi', [\App\Http\Controllers\JadwalValidasiController::class, 'hapusCatatanRevisi'])->name('jadwal.validasi.hapus-catatan-revisi');
         Route::delete('/penjadwalan/history/{id}', [\App\Http\Controllers\JadwalValidasiController::class, 'hapusHistory'])->name('jadwal.validasi.hapus-history');
     });
@@ -228,6 +241,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/chat/contacts', [\App\Http\Controllers\ChatController::class, 'getContacts'])->name('chat.contacts');
     Route::get('/chat/messages/{userId}', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/send', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::put('/chat/message/{id}', [\App\Http\Controllers\ChatController::class, 'updateMessage'])->name('chat.update');
     Route::post('/chat/read/{userId}', [\App\Http\Controllers\ChatController::class, 'markAsRead'])->name('chat.read');
     Route::delete('/chat/message/{id}', [\App\Http\Controllers\ChatController::class, 'deleteMessage'])->name('chat.delete');
     Route::delete('/chat/clear/{userId}', [\App\Http\Controllers\ChatController::class, 'clearChat'])->name('chat.clear');
@@ -236,7 +250,8 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/run-migration', function() {
+    \Illuminate\Support\Facades\DB::table('migrations')->where('migration', 'like', '%create_messages_table%')->delete();
     \Illuminate\Support\Facades\Schema::dropIfExists('messages');
     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-    return 'Migration run successfully. The table has been recreated with correct foreign keys.';
+    return 'Tabel messages berhasil dibuat ulang! Silakan kembali ke aplikasi.';
 });

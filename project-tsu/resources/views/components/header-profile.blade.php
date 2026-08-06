@@ -4,8 +4,13 @@
     
     $baseQuery = \App\Models\Notification::where(function($q) use ($currentUser, $currentRole) {
         $q->where('user_id', $currentUser->id_user)
-          ->orWhere('role_target', $currentRole)
-          ->orWhereNull('role_target');
+          ->orWhere(function($q2) use ($currentRole) {
+              $q2->whereNull('user_id')
+                 ->where(function($q3) use ($currentRole) {
+                     $q3->where('role_target', $currentRole)
+                        ->orWhereNull('role_target');
+                 });
+          });
     })
     ->where(function($q) use ($currentUser) {
         $q->whereNull('deleted_by')
@@ -33,14 +38,29 @@
         .then(res => res.json())
         .then(data => {
             const target = redirectUrl || data.redirect_url;
-            if (target) {
+            if (target === '#chat') {
+                this.notifOpen = false;
+                if (typeof window.chatSystem === 'function') {
+                     let chatBtn = document.querySelector('#chat-icon-container button');
+                     if(chatBtn) chatBtn.click();
+                }
+                let badge = document.querySelector('#chat-icon-container').nextElementSibling.querySelector('span.animate-pulse');
+                if (badge) {
+                    let count = parseInt(badge.innerText) - 1;
+                    if (count !== 0) {
+                        badge.innerText = count;
+                    } else {
+                        badge.remove();
+                    }
+                }
+            } else if (target) {
                 window.location.href = target;
             } else {
                 window.location.reload();
             }
         })
         .catch(() => {
-            if (redirectUrl) window.location.href = redirectUrl;
+            if (redirectUrl && redirectUrl !== '#chat') window.location.href = redirectUrl;
             else window.location.reload();
         });
     },

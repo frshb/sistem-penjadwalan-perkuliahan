@@ -354,13 +354,33 @@ class OptimizeJadwal
                 ];
             }
 
-            // [HC10] Ruangan harus ada di database
+            // [HC10] Ruangan harus ada di database (dan sesuai pivot matkul_ruang jika ada)
+            $ruanganMk = $j->kelas->matakuliah->ruangans ?? collect();
+            $hasPivot = $ruanganMk->isNotEmpty();
+            $isDiPivot = $hasPivot && $j->id_ruang && in_array((int) $j->id_ruang, $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray(), true);
+            
+            $namaKelasLog = $j->kelas->nama_kelas ?? '';
+            $namaMatkulLog = $j->kelas->matakuliah->nama_matkul ?? '';
+            if (str_contains($namaMatkulLog, 'Audit Sistem Informasi')) {
+                \Log::info("AUDIT DEBUG deteksiBentrok: jadwal_id={$j->id_jadwal}, ruang_id={$j->id_ruang}, hasPivot=" . ($hasPivot ? 'true' : 'false') . ", isDiPivot=" . ($isDiPivot ? 'true' : 'false') . ", pivotRooms=" . json_encode($ruanganMk->pluck('id_ruang')));
+            }
+
             if (!$j->id_ruang || !Ruangan::find($j->id_ruang)) {
                 $bentrokList[] = [
                     'jadwal_id'    => $j->id_jadwal,
                     'jadwal_lawan' => null,
                     'tipe'         => 'ruangan_tidak_valid',
                     'keterangan'   => 'Ruangan tidak valid atau belum dipilih',
+                ];
+            } elseif ($hasPivot && !$isDiPivot) {
+                if (str_contains($namaMatkulLog, 'Audit Sistem Informasi')) {
+                    \Log::info("AUDIT DEBUG: Adding bentrok ruangan_tidak_valid for Audit Sistem Informasi");
+                }
+                $bentrokList[] = [
+                    'jadwal_id'    => $j->id_jadwal,
+                    'jadwal_lawan' => null,
+                    'tipe'         => 'ruangan_tidak_valid',
+                    'keterangan'   => 'Ruangan ' . ($j->ruangan->nama_ruang ?? '-') . ' tidak terdaftar pada mata kuliah ini (harus sesuai matkul_ruang)',
                 ];
             }
 
@@ -506,8 +526,14 @@ class OptimizeJadwal
             $pelanggaran[] = 'dosen_kosong';
         }
 
-        // [HC10] Ruangan harus valid di database (sesuai spesifikasi di Gene.php & GeneticScheduler.php)
+        // [HC10] Ruangan harus valid di database (dan sesuai pivot matkul_ruang jika ada)
+        $ruanganMk = $jadwal->kelas->matakuliah->ruangans ?? collect();
+        $hasPivot = $ruanganMk->isNotEmpty();
+        $isDiPivot = $hasPivot && $jadwal->id_ruang && in_array((int) $jadwal->id_ruang, $ruanganMk->pluck('id_ruang')->map(fn($id) => (int) $id)->toArray(), true);
+
         if (!$jadwal->id_ruang || !Ruangan::find($jadwal->id_ruang)) {
+            $pelanggaran[] = 'ruangan_tidak_valid';
+        } elseif ($hasPivot && !$isDiPivot) {
             $pelanggaran[] = 'ruangan_tidak_valid';
         }
 
@@ -619,14 +645,25 @@ class OptimizeJadwal
         // ── Pelanggaran yang HANYA soal ruangan (hari/slot tetap valid) ───────
         $hanyaSoalRuangan = empty(array_diff($pelanggaran, ['ruangan_tidak_valid', 'tipe_ruangan_salah', 'bentrok_ruangan']));
 
+        if (str_contains($jadwal->kelas->matakuliah->nama_matkul ?? '', 'Audit Sistem Informasi')) {
+            \Log::info("AUDIT DEBUG perbaikiJadwal: jadwal_id={$jadwal->id_jadwal}, hanyaSoalRuangan=" . ($hanyaSoalRuangan ? 'true' : 'false') . ", pelanggaran=" . json_encode($pelanggaran));
+            \Log::info("AUDIT DEBUG poolRuanganValid=" . json_encode($poolRuanganValid->pluck('id_ruang')));
+        }
+
         if ($hanyaSoalRuangan) {
             $ruanganBaru = $this->cariRuanganBebas(
                 $jadwal->id_hari, $jadwal->id_slot_mulai, $sks,
                 $idTahunAkademik, $jadwal->id_jadwal, $poolRuanganValid
             );
             if ($ruanganBaru) {
+                if (str_contains($jadwal->kelas->matakuliah->nama_matkul ?? '', 'Audit Sistem Informasi')) {
+                    \Log::info("AUDIT DEBUG perbaikiJadwal: SUCCESS ganti ruangan ke " . $ruanganBaru->id_ruang);
+                }
                 $jadwal->update(['id_ruang' => $ruanganBaru->id_ruang]);
                 return true;
+            }
+            if (str_contains($jadwal->kelas->matakuliah->nama_matkul ?? '', 'Audit Sistem Informasi')) {
+                \Log::info("AUDIT DEBUG perbaikiJadwal: FAILED ganti ruangan di slot sama, lanjut ke full strategy");
             }
             // Tidak ketemu ruangan pengganti di slot yang sama — lanjut ke
             // strategi penuh (cari hari+slot+ruangan baru) di bawah.
@@ -657,9 +694,17 @@ class OptimizeJadwal
                     $idTahunAkademik, $jadwal->id_jadwal,
                     $poolRuanganValid
                 );
-                if (!$ruangan) continue;
+                if (!$ruangan) {
+                    if (str_contains($jadwal->kelas->matakuliah->nama_matkul ?? '', 'Audit Sistem Informasi')) {
+                        \Log::info("AUDIT DEBUG perbaikiJadwal full: FAILED cariRuanganBebas untuk hari={$hariId} slotMulai={$slotMulai}");
+                    }
+                    continue;
+                }
 
                 // Update jadwal ke slot + ruangan baru
+                if (str_contains($jadwal->kelas->matakuliah->nama_matkul ?? '', 'Audit Sistem Informasi')) {
+                    \Log::info("AUDIT DEBUG perbaikiJadwal full: SUCCESS hari={$hariId} slotMulai={$slotMulai} ruang={$ruangan->id_ruang}");
+                }
                 $jadwal->update([
                     'id_hari'       => $hariId,
                     'id_slot_mulai' => $slotMulai,
@@ -669,7 +714,10 @@ class OptimizeJadwal
                 return true;
             }
         }
-
+        
+        if (str_contains($jadwal->kelas->matakuliah->nama_matkul ?? '', 'Audit Sistem Informasi')) {
+            \Log::info("AUDIT DEBUG perbaikiJadwal: COMPLETELY FAILED, cannot find any slot+room");
+        }
         return false;
     }
 
@@ -831,10 +879,6 @@ class OptimizeJadwal
                     ))
                     ->pluck('id_ruang')->unique()->toArray();
                 $ruanganA = $poolA->whereNotIn('id_ruang', $ruanganTerpakaiSlotA)->first();
-                if (!$ruanganA && $poolA !== $semuaRuangan) {
-                    $poolSemuaA = $semuaRuangan->filter(fn($r) => $this->tipeRuanganSesuai($jadwalA->kelas->matakuliah->jenis ?? 'teori', $r->tipe_ruangan ?? 'reguler'));
-                    $ruanganA = ($poolSemuaA->isNotEmpty() ? $poolSemuaA : $semuaRuangan)->whereNotIn('id_ruang', $ruanganTerpakaiSlotA)->first();
-                }
                 if (!$ruanganA) continue;
 
                 // Cari ruangan bebas untuk B
@@ -845,10 +889,6 @@ class OptimizeJadwal
                     ))
                     ->pluck('id_ruang')->unique()->toArray();
                 $ruanganB = $poolB->whereNotIn('id_ruang', $ruanganTerpakaiSlotB)->first();
-                if (!$ruanganB && $poolB !== $semuaRuangan) {
-                    $poolSemuaB = $semuaRuangan->filter(fn($r) => $this->tipeRuanganSesuai($jadwalB->kelas->matakuliah->jenis ?? 'teori', $r->tipe_ruangan ?? 'reguler'));
-                    $ruanganB = ($poolSemuaB->isNotEmpty() ? $poolSemuaB : $semuaRuangan)->whereNotIn('id_ruang', $ruanganTerpakaiSlotB)->first();
-                }
                 if (!$ruanganB) continue;
 
                 // Semua aman — terapkan
@@ -957,12 +997,6 @@ class OptimizeJadwal
             ->toArray();
 
         $ruangan = $poolRuangan->whereNotIn('id_ruang', $ruanganTerpakai)->first();
-        if (!$ruangan && $poolRuangan->count() < Ruangan::count()) {
-            $jadwalObj = Jadwal::with('kelas.matakuliah')->find($jadwalIdDikecualikan);
-            $jenis = $jadwalObj?->kelas?->matakuliah?->jenis ?? 'teori';
-            $poolSemua = Ruangan::all()->filter(fn($r) => $this->tipeRuanganSesuai($jenis, $r->tipe_ruangan ?? 'reguler'));
-            $ruangan = ($poolSemua->isNotEmpty() ? $poolSemua : Ruangan::all())->whereNotIn('id_ruang', $ruanganTerpakai)->first();
-        }
         return $ruangan;
     }
 

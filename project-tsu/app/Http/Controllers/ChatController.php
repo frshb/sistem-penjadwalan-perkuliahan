@@ -17,12 +17,23 @@ class ChatController extends Controller
     {
         $currentUserId = Auth::id();
 
-        // Get users that are relevant for chatting (exclude mahasiswa/dosen if needed, or just allow all)
-        // Here we just get users with roles: admin, dekan, kaprodi, sekretaris prodi.
+        $chatUserIds = \App\Models\Message::where('sender_id', $currentUserId)
+            ->orWhere('receiver_id', $currentUserId)
+            ->select('sender_id', 'receiver_id')
+            ->get()
+            ->flatMap(function ($msg) use ($currentUserId) {
+                return [$msg->sender_id, $msg->receiver_id];
+            })
+            ->unique()
+            ->reject(fn($id) => $id == $currentUserId);
+
+        // Get users that are relevant for chatting (admin, dekan, dll) ATAU yang sudah punya history chat
         $contacts = User::with('role')
             ->where('id_user', '!=', $currentUserId)
-            ->whereHas('role', function($q) {
-                $q->whereIn('nama_role', ['Admin', 'Dekan', 'Kaprodi', 'Sekretaris Prodi']);
+            ->where(function($q) use ($chatUserIds) {
+                $q->whereHas('role', function($roleQuery) {
+                    $roleQuery->whereIn('nama_role', ['Admin', 'Dekan', 'Kaprodi', 'Sekretaris Prodi']);
+                })->orWhereIn('id_user', $chatUserIds);
             })
             ->get();
 
@@ -50,12 +61,33 @@ class ChatController extends Controller
             if(!isset($messagesByContact[$otherId])) {
                 $messagesByContact[$otherId] = [];
             }
+
+            // Set timezone to Asia/Jakarta
+            $msgTime = $msg->created_at->timezone('Asia/Jakarta');
+            
+            // Format label for the date divider
+            if ($msgTime->isToday()) {
+                $dateLabel = 'Hari ini';
+            } elseif ($msgTime->isYesterday()) {
+                $dateLabel = 'Kemarin';
+            } else {
+                // e.g. 10 Ags 2026
+                $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+                $dateLabel = $msgTime->format('d') . ' ' . $months[$msgTime->format('n') - 1] . ' ' . $msgTime->format('Y');
+            }
+
+            $isEdited = $msg->updated_at->diffInSeconds($msg->created_at) > 1;
+
             $messagesByContact[$otherId][] = [
                 'id' => $msg->id,
                 'text' => $msg->message,
                 'is_mine' => $msg->sender_id === $currentUserId,
-                'time' => $msg->created_at->format('H:i'),
-                'is_read' => $msg->is_read
+                'time' => $msgTime->format('H:i'),
+                'date' => $msgTime->format('Y-m-d'),
+                'date_label' => $dateLabel,
+                'is_read' => $msg->is_read,
+                'timestamp' => $msg->created_at->timestamp * 1000,
+                'is_edited' => $isEdited
             ];
         }
 
@@ -112,12 +144,28 @@ class ChatController extends Controller
             ->get();
 
         $messagesData = $messages->map(function($msg) use ($currentUserId) {
+            $msgTime = $msg->created_at->timezone('Asia/Jakarta');
+            if ($msgTime->isToday()) {
+                $dateLabel = 'Hari ini';
+            } elseif ($msgTime->isYesterday()) {
+                $dateLabel = 'Kemarin';
+            } else {
+                $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+                $dateLabel = $msgTime->format('d') . ' ' . $months[$msgTime->format('n') - 1] . ' ' . $msgTime->format('Y');
+            }
+
+            $isEdited = $msg->updated_at->diffInSeconds($msg->created_at) > 1;
+
             return [
                 'id' => $msg->id,
                 'text' => $msg->message,
                 'is_mine' => $msg->sender_id === $currentUserId,
-                'time' => $msg->created_at->format('H:i'),
-                'is_read' => $msg->is_read
+                'time' => $msgTime->format('H:i'),
+                'date' => $msgTime->format('Y-m-d'),
+                'date_label' => $dateLabel,
+                'is_read' => $msg->is_read,
+                'timestamp' => $msg->created_at->timestamp * 1000,
+                'is_edited' => $isEdited
             ];
         });
 
@@ -144,15 +192,77 @@ class ChatController extends Controller
             'is_read' => false
         ]);
 
+        \App\Models\Notification::create([
+            'user_id'     => $message->receiver_id,
+            'role_target' => null,
+            'judul'       => '💬 Pesan Baru',
+            'pesan'       => (Auth::user()->username ?? 'Seseorang') . ' telah mengirimkan Anda sebuah pesan baru di Obrolan.',
+            'tipe'        => 'info',
+            'is_read'     => false,
+        ]);
+
+        $msgTime = $message->created_at->timezone('Asia/Jakarta');
+        if ($msgTime->isToday()) {
+            $dateLabel = 'Hari ini';
+        } elseif ($msgTime->isYesterday()) {
+            $dateLabel = 'Kemarin';
+        } else {
+            $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+            $dateLabel = $msgTime->format('d') . ' ' . $months[$msgTime->format('n') - 1] . ' ' . $msgTime->format('Y');
+        }
+
         return response()->json([
             'success' => true,
             'message' => [
                 'id' => $message->id,
                 'text' => $message->message,
                 'is_mine' => true,
-                'time' => $message->created_at->format('H:i'),
-                'is_read' => false
+                'time' => $msgTime->format('H:i'),
+                'date' => $msgTime->format('Y-m-d'),
+                'date_label' => $dateLabel,
+                'is_read' => false,
+                'timestamp' => $message->created_at->timestamp * 1000,
+                'is_edited' => false
             ]
+        ]);
+    }
+
+    /**
+     * Update an existing message
+     */
+    public function updateMessage(Request $request, $id)
+    {
+        $request->validate([
+            'message' => 'required|string|max:1000'
+        ]);
+
+        $message = Message::where('id', $id)->where('sender_id', Auth::id())->first();
+
+        if (!$message) {
+            return response()->json(['success' => false, 'message' => 'Pesan tidak ditemukan atau Anda tidak berhak mengeditnya'], 403);
+        }
+
+        if ($message->created_at->diffInMinutes(now()) > 30) {
+            return response()->json(['success' => false, 'message' => 'Batas waktu edit pesan (30 menit) telah habis'], 403);
+        }
+
+        $message->update([
+            'message' => $request->message,
+            'is_read' => false
+        ]);
+
+        \App\Models\Notification::create([
+            'user_id'     => $message->receiver_id,
+            'role_target' => null,
+            'judul'       => '💬 Pesan Diperbarui',
+            'pesan'       => (Auth::user()->username ?? 'Seseorang') . ' telah mengubah pesan yang dikirimkan kepada Anda di Obrolan.',
+            'tipe'        => 'info',
+            'is_read'     => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'text' => $message->message
         ]);
     }
 
@@ -167,6 +277,22 @@ class ChatController extends Controller
             ->where('receiver_id', $currentUserId)
             ->where('is_read', false)
             ->update(['is_read' => true]);
+
+        // Also mark corresponding system notifications as read
+        $sender = User::find($userId);
+        if ($sender) {
+            $senderName = $sender->nama_user ?? $sender->username ?? '';
+            if ($senderName) {
+                \App\Models\Notification::where('user_id', $currentUserId)
+                    ->where('is_read', false)
+                    ->where(function($q) {
+                        $q->where('judul', 'like', '%Pesan%')
+                          ->orWhere('judul', 'like', '%Obrolan%');
+                    })
+                    ->where('pesan', 'like', '%' . $senderName . '%')
+                    ->update(['is_read' => true]);
+            }
+        }
 
         return response()->json(['success' => true]);
     }
@@ -216,9 +342,26 @@ class ChatController extends Controller
             ->where('is_read', false)
             ->count();
 
+        // Also fetch system notifications unread count for the same user
+        $currentUser = Auth::user();
+        $currentRole = strtolower($currentUser->role->nama_role ?? '');
+
+        $systemCount = \App\Models\Notification::where(function($q) use ($currentUser, $currentRole) {
+            $q->where('user_id', $currentUser->id_user)
+              ->orWhere('role_target', $currentRole)
+              ->orWhereNull('role_target');
+        })
+        ->where(function($q) use ($currentUser) {
+            $q->whereNull('deleted_by')
+              ->orWhereJsonDoesntContain('deleted_by', $currentUser->id_user);
+        })
+        ->where('is_read', false)
+        ->count();
+
         return response()->json([
             'success' => true,
-            'count' => $count
+            'count' => $count,
+            'system_count' => $systemCount
         ]);
     }
 }

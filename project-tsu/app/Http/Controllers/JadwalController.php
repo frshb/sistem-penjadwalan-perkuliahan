@@ -253,20 +253,20 @@ class JadwalController extends Controller
         $jadwalJson = $jadwalTersimpan->map(fn($j) => [
             'jadwal_id'    => $j->id_jadwal,
             'kelas_id'     => $j->id_kelas,
-            'nama_kelas'   => $j->kelas->nama_kelas               ?? '-',
-            'nama'         => $j->kelas->matakuliah->nama_matkul  ?? '-',
-            'kode_mk'      => $j->kelas->matakuliah->kode_matkul  ?? '-',
+            'nama_kelas'   => $j->kelas?->nama_kelas               ?? '-',
+            'nama'         => $j->kelas?->matakuliah?->nama_matkul ?? '-',
+            'kode_mk'      => $j->kelas?->matakuliah?->kode_matkul ?? '-',
             'dosen'        => $j->dosen?->nama_dosen ?? ($j->kelas?->pengampuKelas?->first()?->dosen?->nama_dosen ?? '-'),
             'dosen_id'     => $j->id_dosen ?? ($j->kelas?->pengampuKelas?->first()?->id_dosen ?? null),
-            'prodi'        => $j->kelas->prodi->nama_prodi        ?? '-',
-            'prodi_id'     => $j->kelas->id_prodi                 ?? null,
-            'is_read_only' => !$canMoveCard || ($prodiId ? (($j->kelas->id_prodi ?? null) != $prodiId) : false),
-            'is_other_prodi' => $prodiId ? (($j->kelas->id_prodi ?? null) != $prodiId) : false,
+            'prodi'        => $j->kelas?->prodi?->nama_prodi       ?? '-',
+            'prodi_id'     => $j->kelas?->id_prodi                 ?? null,
+            'is_read_only' => !$canMoveCard || ($prodiId ? (($j->kelas?->id_prodi ?? null) != $prodiId) : false),
+            'is_other_prodi' => $prodiId ? (($j->kelas?->id_prodi ?? null) != $prodiId) : false,
             'ruangan'      => $j->ruangan?->nama_ruang             ?? '',
             'ruangan_id'   => $j->id_ruang,
             'slot_id'      => $j->id_slot_mulai,
             'sks'          => $j->durasi_sks,
-            'hari'         => strtolower($j->hari->nama_hari ?? 'senin'),
+            'hari'         => strtolower($j->hari?->nama_hari ?? 'senin'),
         ])->toJson();
 
         $adaJadwalOtomatis = Jadwal::where('id_tahunakademik', $idTahun)->exists();

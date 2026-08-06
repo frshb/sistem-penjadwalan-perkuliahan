@@ -148,24 +148,37 @@
             </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
-            {{-- Tombol Beri Komentar / Keluhan (Kembalikan ke Admin) --}}
-            <button type="button" 
-                onclick="bukaModalDecisionApproval('{{ route('jadwal.validasi.revisi-sekprodi', $tahunAkademik->id_tahunakademik) }}', '⚠️ Kembalikan Jadwal ke Admin', 'Berikan catatan atau keluhan terkait jadwal yang perlu diperbaiki oleh Admin.', true, 'revisi')"
-                class="px-5 py-3.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-900/30 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer border border-rose-400/30">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                <span>Beri Komentar / Keluhan</span>
-            </button>
-
-            {{-- Tombol Ajukan ke Kaprodi --}}
-            <form action="{{ route('jadwal.validasi.setujui-sekprodi', $tahunAkademik->id_tahunakademik) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin jadwal perkuliahan sudah sesuai dan ingin meneruskannya kepada Kaprodi?')">
-                @csrf
-                <button type="submit" class="w-full px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl font-black text-sm shadow-xl shadow-emerald-900/40 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                    <span>Ajukan ke Kaprodi</span>
+        @php
+            $uProdiId = Auth::user()->id_prodi ?? null;
+            $mySekprodiValidasi = \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $tahunAkademik->id_tahunakademik)->where('id_prodi', $uProdiId)->first();
+            $isMySekprodiDone = $mySekprodiValidasi && $mySekprodiValidasi->status_sekprodi === 'disetujui';
+        @endphp
+        
+        @if($isMySekprodiDone)
+            <div class="flex items-center gap-2 px-5 py-3.5 bg-emerald-500/20 border border-emerald-400/30 rounded-2xl text-emerald-100 font-bold text-sm shadow-lg mt-4 sm:mt-0">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                <span>Anda telah menyetujui jadwal ini. Menunggu Sekretaris Prodi lainnya.</span>
+            </div>
+        @else
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
+                {{-- Tombol Beri Komentar / Keluhan (Kembalikan ke Admin) --}}
+                <button type="button" 
+                    onclick="bukaModalDecisionApproval('{{ route('jadwal.validasi.revisi-sekprodi', $tahunAkademik->id_tahunakademik) }}', '⚠️ Kembalikan Jadwal ke Admin', 'Berikan catatan atau keluhan terkait jadwal yang perlu diperbaiki oleh Admin.', true, 'revisi')"
+                    class="px-5 py-3.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-900/30 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer border border-rose-400/30">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span>Beri Komentar / Keluhan</span>
                 </button>
-            </form>
-        </div>
+
+                {{-- Tombol Ajukan ke Kaprodi --}}
+                <form action="{{ route('jadwal.validasi.setujui-sekprodi', $tahunAkademik->id_tahunakademik) }}" method="POST" onsubmit="if(confirm('Apakah Anda yakin jadwal perkuliahan sudah sesuai dan ingin meneruskannya kepada Kaprodi?')){ return handleFormSubmit(this, 'Mengajukan...'); } return false;">
+                    @csrf
+                    <button type="submit" class="w-full px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl font-black text-sm shadow-xl shadow-emerald-900/40 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                        <span>Ajukan ke Kaprodi</span>
+                    </button>
+                </form>
+            </div>
+        @endif
     </div>
 </div>
 @endif
@@ -193,24 +206,37 @@
             </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
-            {{-- Tombol Beri Komentar / Keluhan (Kembalikan ke Admin) --}}
-            <button type="button" 
-                onclick="bukaModalDecisionApproval('{{ route('jadwal.validasi.revisi-kaprodi', $tahunAkademik->id_tahunakademik) }}', '⚠️ Kembalikan Jadwal ke Admin', 'Berikan catatan keluhan atau alasan revisi jadwal perkuliahan.', true, 'revisi')"
-                class="px-5 py-3.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-900/30 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer border border-rose-400/30">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                <span>Beri Komentar / Revisi</span>
-            </button>
+        @php
+            $uProdiId = Auth::user()->id_prodi ?? null;
+            $myKaprodiValidasi = \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $tahunAkademik->id_tahunakademik)->where('id_prodi', $uProdiId)->first();
+            $isMyKaprodiDone = $myKaprodiValidasi && $myKaprodiValidasi->status_kaprodi === 'disetujui';
+        @endphp
 
-            {{-- Tombol Setujui Penjadwalan --}}
-            <form action="{{ route('jadwal.validasi.setujui-kaprodi', $tahunAkademik->id_tahunakademik) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin menyetujui jadwal perkuliahan ini? Setelah disetujui, Admin dapat mengajukannya ke Dekan.')">
-                @csrf
-                <button type="submit" class="w-full px-6 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-900/40 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                    <span>Setujui Penjadwalan</span>
+        @if($isMyKaprodiDone)
+            <div class="flex items-center gap-2 px-5 py-3.5 bg-emerald-500/20 border border-emerald-400/30 rounded-2xl text-emerald-100 font-bold text-sm shadow-lg mt-4 sm:mt-0">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                <span>Anda telah menyetujui jadwal ini. Menunggu Kaprodi lainnya.</span>
+            </div>
+        @else
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
+                {{-- Tombol Beri Komentar / Keluhan (Kembalikan ke Admin) --}}
+                <button type="button" 
+                    onclick="bukaModalDecisionApproval('{{ route('jadwal.validasi.revisi-kaprodi', $tahunAkademik->id_tahunakademik) }}', '⚠️ Kembalikan Jadwal ke Admin', 'Berikan catatan keluhan atau alasan revisi jadwal perkuliahan.', true, 'revisi')"
+                    class="px-5 py-3.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-900/30 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer border border-rose-400/30">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span>Beri Catatan Revisi</span>
                 </button>
-            </form>
-        </div>
+
+                {{-- Tombol Setujui Jadwal --}}
+                <form action="{{ route('jadwal.validasi.setujui-kaprodi', $tahunAkademik->id_tahunakademik) }}" method="POST" onsubmit="if(confirm('Apakah Anda yakin menyetujui jadwal ini? Jika semua Kaprodi setuju, jadwal akan diteruskan ke Dekan.')){ return handleFormSubmit(this, 'Menyetujui...'); } return false;">
+                    @csrf
+                    <button type="submit" class="w-full px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl font-black text-sm shadow-xl shadow-emerald-900/40 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Setujui Jadwal</span>
+                    </button>
+                </form>
+            </div>
+        @endif
     </div>
 </div>
 @endif

@@ -20,6 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/dashboard');
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, $request) {
+            if ($request->expectsJson() || $request->isXmlHttpRequest()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi Anda telah kedaluwarsa. Silakan muat ulang halaman.'
+                ], 419);
+            }
+            return redirect()->back()->withInput($request->except('_token'))
+                             ->with('error', 'Sesi Anda telah kedaluwarsa. Silakan muat ulang halaman atau ulangi aksi Anda.');
+        });
     })->create();
 
