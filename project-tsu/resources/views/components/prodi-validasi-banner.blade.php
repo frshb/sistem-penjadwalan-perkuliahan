@@ -126,12 +126,12 @@
 @endif
 
 {{-- 1. PANEL REVIEW SEKRETARIS PRODI --}}
-@if($isSekprodi && $isFullProgress && $status === 'review_sekprodi')
+@if($isSekprodi && $isFullProgress && in_array($status, ['review_sekprodi', 'review_kaprodi']))
 <div class="mb-8 bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-teal-500/30">
     <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute right-20 top-0 w-32 h-32 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none"></div>
 
-    <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+    <div class="relative z-10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
         <div class="space-y-2 max-w-2xl">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-200 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
                 <span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
@@ -141,7 +141,11 @@
                 <span>📋 Pemeriksaan & Review Jadwal Kuliah</span>
             </h3>
             <p class="text-sm sm:text-base text-teal-100/90 leading-relaxed">
-                Admin telah menyelesaikan penyusunan jadwal untuk periode <strong class="text-white">{{ $tahunAkademik->nama_tahunakademik }}</strong>. Silakan periksa kesesuaian mata kuliah, jam, ruangan, dan bentrok dosen.
+                @if($status === 'review_sekprodi')
+                    Admin telah menyelesaikan penyusunan jadwal untuk periode <strong class="text-white">{{ $tahunAkademik->nama_tahunakademik }}</strong>. Silakan periksa kesesuaian mata kuliah, jam, ruangan, dan bentrok dosen.
+                @else
+                    Jadwal telah diajukan ke Kaprodi untuk periode <strong class="text-white">{{ $tahunAkademik->nama_tahunakademik }}</strong>. Menunggu review dan persetujuan Kaprodi.
+                @endif
             </p>
             <div class="pt-2 flex items-center gap-4 text-xs font-medium text-teal-200/80">
                 <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> {{ $jadwalCount }} dari {{ $kelasCount }} Kelas Dijadwalkan (100%)</span>
@@ -154,13 +158,27 @@
             $isMySekprodiDone = $mySekprodiValidasi && $mySekprodiValidasi->status_sekprodi === 'disetujui';
         @endphp
         
-        @if($isMySekprodiDone)
+        @if($status === 'review_kaprodi')
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto shrink-0 mt-4 sm:mt-0 flex-wrap">
+                <div class="flex items-center gap-2 px-5 py-3.5 bg-emerald-500/20 border border-emerald-400/30 rounded-2xl text-emerald-100 font-bold text-sm shadow-lg">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    <span>Anda telah menyetujui jadwal ini. Menunggu Review Kaprodi.</span>
+                </div>
+                <form action="{{ route('jadwal.validasi.batal-setujui-sekprodi', $tahunAkademik->id_tahunakademik) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pengajuan jadwal ke Kaprodi?');">
+                    @csrf
+                    <button type="submit" class="px-5 py-3.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-900/30 transition hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer border border-rose-400/30 w-full sm:w-auto">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <span>Batalkan Pengajuan</span>
+                    </button>
+                </form>
+            </div>
+        @elseif($isMySekprodiDone)
             <div class="flex items-center gap-2 px-5 py-3.5 bg-emerald-500/20 border border-emerald-400/30 rounded-2xl text-emerald-100 font-bold text-sm shadow-lg mt-4 sm:mt-0">
                 <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
                 <span>Anda telah menyetujui jadwal ini. Menunggu Sekretaris Prodi lainnya.</span>
             </div>
         @else
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto shrink-0 flex-wrap">
                 {{-- Tombol Beri Komentar / Keluhan (Kembalikan ke Admin) --}}
                 <button type="button" 
                     onclick="bukaModalDecisionApproval('{{ route('jadwal.validasi.revisi-sekprodi', $tahunAkademik->id_tahunakademik) }}', '⚠️ Kembalikan Jadwal ke Admin', 'Berikan catatan atau keluhan terkait jadwal yang perlu diperbaiki oleh Admin.', true, 'revisi')"
@@ -189,7 +207,7 @@
     <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute right-20 top-0 w-32 h-32 bg-blue-400/10 rounded-full blur-2xl pointer-events-none"></div>
 
-    <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+    <div class="relative z-10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
         <div class="space-y-2 max-w-2xl">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
                 <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
@@ -218,7 +236,7 @@
                 <span>Anda telah menyetujui jadwal ini. Menunggu Kaprodi lainnya.</span>
             </div>
         @else
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto shrink-0 flex-wrap">
                 {{-- Tombol Beri Komentar / Keluhan (Kembalikan ke Admin) --}}
                 <button type="button" 
                     onclick="bukaModalDecisionApproval('{{ route('jadwal.validasi.revisi-kaprodi', $tahunAkademik->id_tahunakademik) }}', '⚠️ Kembalikan Jadwal ke Admin', 'Berikan catatan keluhan atau alasan revisi jadwal perkuliahan.', true, 'revisi')"
@@ -242,7 +260,7 @@
 @endif
 
 {{-- 3. BANNER INFO STATUS UNTUK PRODI JIKA TIDAK SEDANG DALAM TAHAP REVIEW MEREKA --}}
-@if(($isSekprodi && $status !== 'review_sekprodi') || ($isKaprodi && $status !== 'review_kaprodi'))
+@if(($isSekprodi && !in_array($status, ['review_sekprodi', 'review_kaprodi'])) || ($isKaprodi && $status !== 'review_kaprodi'))
 <div class="mb-6 bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 text-slate-300 flex items-center justify-between flex-wrap gap-3">
     <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-slate-700/80 flex items-center justify-center text-teal-400 shrink-0">

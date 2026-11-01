@@ -221,6 +221,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/penjadwalan/{id}/batalkan-pengajuan', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanPengajuan'])->name('jadwal.validasi.batalkan-pengajuan');
         Route::post('/penjadwalan/{id}/kirim-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'kirimSekprodi'])->name('jadwal.validasi.kirim-sekprodi');
         Route::post('/penjadwalan/{id}/batalkan-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanSekprodi'])->name('jadwal.validasi.batalkan-sekprodi');
+        Route::post('/penjadwalan/{id}/batal-setujui-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'batalkanSetujuiSekprodi'])->name('jadwal.validasi.batal-setujui-sekprodi');
         Route::post('/penjadwalan/{id}/revisi-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'revisiSekprodi'])->name('jadwal.validasi.revisi-sekprodi');
         Route::post('/penjadwalan/{id}/setujui-sekprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'setujuiSekprodi'])->name('jadwal.validasi.setujui-sekprodi');
         Route::post('/penjadwalan/{id}/revisi-kaprodi', [\App\Http\Controllers\JadwalValidasiController::class, 'revisiKaprodi'])->name('jadwal.validasi.revisi-kaprodi');

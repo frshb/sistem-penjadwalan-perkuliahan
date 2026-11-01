@@ -247,6 +247,28 @@ function chatSystem() {
         totalUnread: 0,
         pollingInterval: null,
 
+        async safeJson(res) {
+            let text = await res.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error("Failed to parse JSON. Response was:", text);
+                // ByetHost often injects HTML at the end of JSON responses.
+                // Try to extract just the JSON part.
+                try {
+                    let start = text.search(/[\{\[]/);
+                    let end = text.lastIndexOf('}') > text.lastIndexOf(']') ? text.lastIndexOf('}') : text.lastIndexOf(']');
+                    if(start !== -1 && end !== -1) {
+                        let jsonStr = text.substring(start, end + 1);
+                        return JSON.parse(jsonStr);
+                    }
+                } catch (e2) {
+                    console.error("Fallback JSON extraction also failed:", e2);
+                }
+                return { success: false, message: 'Invalid response from server' };
+            }
+        },
+
         initChat() {
             this.fetchUnreadCount();
             this.fetchContacts();
@@ -277,7 +299,7 @@ function chatSystem() {
                         'Accept': 'application/json'
                     }
                 });
-                let data = await res.json();
+                let data = await this.safeJson(res);
                 if(data.success) {
                     this.totalUnread = data.count;
                     if (data.system_count !== undefined) {
@@ -296,7 +318,7 @@ function chatSystem() {
                         }
                     }
                 }
-            } catch(e) {}
+            } catch(e) { console.error("Chat error:", e); }
         },
 
         async fetchContacts(silent = false) {
@@ -307,7 +329,7 @@ function chatSystem() {
                         'Accept': 'application/json'
                     }
                 });
-                let data = await res.json();
+                let data = await this.safeJson(res);
                 if(data.success) {
                     this.contacts = data.contacts;
                     this.allUsers = data.all_users;
@@ -324,7 +346,7 @@ function chatSystem() {
                         }
                     }
                 }
-            } catch(e) {}
+            } catch(e) { console.error("Chat error:", e); }
         },
 
         filteredAllUsers() {
@@ -409,7 +431,7 @@ function chatSystem() {
                         },
                         body: JSON.stringify({ message: text })
                     });
-                    let data = await res.json();
+                    let data = await this.safeJson(res);
                     if(data.success) {
                         let msgObj = this.messages.find(m => m.id === editingId);
                         if(msgObj) {
@@ -435,14 +457,16 @@ function chatSystem() {
                             message: text
                         })
                     });
-                    let data = await res.json();
+                    let data = await this.safeJson(res);
                     if(data.success) {
                         this.messages.push(data.message);
                         this.scrollToBottom();
                         this.fetchContacts(true); // update last message snippet
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error("Error in sendMessage:", e);
+            }
 
             this.isSending = false;
         },
@@ -458,7 +482,7 @@ function chatSystem() {
                         'Accept': 'application/json'
                     }
                 });
-                let data = await res.json();
+                let data = await this.safeJson(res);
                 if(data.success) {
                     this.messages = this.messages.filter(m => m.id !== id);
                     this.fetchContacts(true); // update last message snippet
@@ -479,7 +503,7 @@ function chatSystem() {
                         'Accept': 'application/json'
                     }
                 });
-                let data = await res.json();
+                let data = await this.safeJson(res);
                 if(data.success) {
                     this.messages = [];
                     // Update contact list to remove them if we have no chat history

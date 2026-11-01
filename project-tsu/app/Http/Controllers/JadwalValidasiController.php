@@ -542,6 +542,52 @@ class JadwalValidasiController extends Controller
     }
 
     /**
+     * Sekretaris Prodi membatalkan persetujuan jadwal
+     */
+    public function batalkanSetujuiSekprodi(Request $request, $idTahun)
+    {
+        $user = Auth::user();
+        if (!$user || !in_array(strtolower($user->role->nama_role ?? ''), ['sekretaris prodi', 'admin', 'kaprodi'])) {
+            return back()->with('error', 'Anda tidak memiliki hak akses untuk membatalkan persetujuan ini.');
+        }
+
+        $tahunAkademik = $this->checkAccessTahunAkademik($idTahun);
+        $oldStatus = $tahunAkademik->status_validasi ?? 'review_kaprodi';
+
+        DB::transaction(function () use ($tahunAkademik, $user, $oldStatus, $idTahun) {
+            $prodiId = \App\Helpers\ProdiFilter::getProdiId() ?: ($user->id_prodi ?? null);
+
+            if ($prodiId) {
+                \App\Models\JadwalValidasiProdi::where('id_tahunakademik', $idTahun)
+                    ->where('id_prodi', $prodiId)
+                    ->update([
+                        'status_sekprodi' => 'menunggu'
+                    ]);
+            }
+
+            if ($tahunAkademik->status_validasi === 'review_kaprodi') {
+                $tahunAkademik->update([
+                    'status_validasi' => 'review_sekprodi',
+                ]);
+            }
+
+            $prodiName = $user->prodi->nama_prodi ?? '';
+            Notification::create([
+                'user_id'     => null,
+                'role_target' => 'admin',
+                'judul'       => "⚠️ Pembatalan Pengajuan dari Sekprodi $prodiName",
+                'pesan'       => "Sekretaris Prodi $prodiName membatalkan pengajuan jadwal. Jadwal kembali ke tahap Review Sekprodi.",
+                'tipe'        => 'warning',
+                'is_read'     => false,
+            ]);
+
+            $this->recordHistory($tahunAkademik->id_tahunakademik, 'batal_setujui_sekprodi', $oldStatus, 'review_sekprodi');
+        });
+
+        return back()->with('success', 'Persetujuan jadwal berhasil dibatalkan. Jadwal ditarik kembali.');
+    }
+
+    /**
      * Kaprodi meminta revisi / memberikan komentar keluhan ke Admin
      */
     public function revisiKaprodi(Request $request, $idTahun)
